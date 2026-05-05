@@ -4,7 +4,11 @@ const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
-
+const paymentRoutes = require("./routes/paymentRoutes");
+const supportRoutes = require("./routes/supportRoutes");
+const superadminRoutes = require("./routes/superadminRoutes");
+const publicRoutes = require("./routes/publicRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 const app = express();
 
 app.use(cors());
@@ -18,5 +22,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/inventory", inventoryRoutes);
-
+app.use("/api/payments", paymentRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/superadmin", superadminRoutes);
+app.use("/api/public", publicRoutes);
+app.use("/api/ai", aiRoutes);
 module.exports = app;
