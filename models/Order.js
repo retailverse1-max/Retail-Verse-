@@ -32,6 +32,11 @@ const orderItemSchema = new mongoose.Schema(
 
 const orderSchema = new mongoose.Schema(
   {
+    orderId: {
+      type: String,
+      unique: true,
+      required: true,
+    },
     channel: {
       type: String,
       enum: ["pos", "ecommerce", "woo"],

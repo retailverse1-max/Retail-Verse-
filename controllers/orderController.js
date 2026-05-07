@@ -14,6 +14,11 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
+    // Generate unique order ID
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    const orderId = `RV-POS-${timestamp}-${random}`;
+
     let finalItems = [];
     let computedTotal = 0;
 
@@ -41,14 +46,16 @@ const createOrder = async (req, res) => {
     }
 
     const order = await Order.create({
+      orderId,
       channel: "pos",
       items: finalItems,
       total: total || computedTotal,
-      paymentMethod,
+      paymentMethod: paymentMethod.toLowerCase(),
       status: "completed",
       createdBy: req.user._id,
     });
 
+    // Update stock and logs
     for (const item of finalItems) {
       const product = await Product.findById(item.productId);
       const beforeStock = product.stock;
@@ -68,13 +75,16 @@ const createOrder = async (req, res) => {
     }
 
     res.status(201).json({
+      success: true,
       message: "Order created successfully",
       order,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Order Creation Error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
 const getOrders = async (req, res) => {
   try {
     const orders = await Order.find()
@@ -82,11 +92,12 @@ const getOrders = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json({
+      success: true,
       message: "Orders fetched successfully",
       data: orders,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
