@@ -21,23 +21,24 @@ const getRazorpayInstance = () => {
 exports.createRazorpayOrder = async (req, res) => {
   try {
     const { amount, receipt } = req.body;
-    console.log(`RAZORPAY_REQ: Amount=${amount}, Receipt=${receipt}`);
     
     if (!amount) {
       return res.status(400).json({ success: false, message: "Amount is required" });
     }
 
     const razorpay = getRazorpayInstance();
+    // Use integer for amount as required by Razorpay
+    const finalAmount = Math.round(parseFloat(amount) * 100);
+
     const options = {
-      amount: Math.round(parseFloat(amount) * 100), // Ensure it is a number and convert to paise
+      amount: finalAmount,
       currency: "INR",
       receipt: receipt || `receipt_${Date.now()}`,
     };
 
-    console.log("RAZORPAY_OPTIONS:", options);
+    console.log("SENDING_TO_RAZORPAY:", options);
 
     const order = await razorpay.orders.create(options);
-    console.log("RAZORPAY_ORDER_CREATED:", order.id);
     
     res.status(200).json({
       success: true,
@@ -47,11 +48,19 @@ exports.createRazorpayOrder = async (req, res) => {
       currency: order.currency,
     });
   } catch (error) {
-    console.error("DETAILED RAZORPAY ERROR:", error);
+    console.error("FULL RAZORPAY ERROR:", error);
+    
+    // Stringify the full error to see it in the snackbar
+    let errorMsg = error.message || "Unknown error";
+    if (error.error && error.error.description) {
+        errorMsg = error.error.description;
+    } else if (typeof error === 'object') {
+        errorMsg = JSON.stringify(error);
+    }
+
     res.status(500).json({ 
       success: false, 
-      message: "Razorpay Error: " + (error.description || error.message || "Unknown Razorpay error"),
-      error: error
+      message: "Razorpay Error: " + errorMsg
     });
   }
 };
