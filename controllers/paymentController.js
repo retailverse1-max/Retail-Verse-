@@ -8,13 +8,19 @@ const getRazorpayInstance = () => {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   
   if (!keyId || !keySecret) {
-    throw new Error("Razorpay credentials missing in environment variables");
+    console.error("RAZORPAY ERROR: Keys are missing in ENV variables");
+    throw new Error("Razorpay credentials missing. Please add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Render Environment Variables.");
   }
 
-  return new Razorpay({
-    key_id: keyId,
-    key_secret: keySecret,
-  });
+  try {
+    return new Razorpay({
+      key_id: keyId.trim(),
+      key_secret: keySecret.trim(),
+    });
+  } catch (err) {
+    console.error("RAZORPAY INSTANCE ERROR:", err);
+    throw new Error("Failed to initialize Razorpay. Check if keys are valid.");
+  }
 };
 
 // POST /api/payments/razorpay/create-order
@@ -44,7 +50,11 @@ exports.createRazorpayOrder = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating Razorpay order:", error);
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Server Error",
+      tip: "Ensure RAZORPAY_KEY_ID is correct in Render dashboard."
+    });
   }
 };
 
@@ -73,7 +83,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
     const isAuthentic = expectedSignature === razorpay_signature;
 
     if (isAuthentic) {
-      // Update POS Order if ID provided
       if (posOrderId) {
         await Order.findByIdAndUpdate(posOrderId, {
           paymentStatus: "paid",
@@ -89,13 +98,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
         message: "Payment verified successfully",
       });
     } else {
-      if (posOrderId) {
-        await Order.findByIdAndUpdate(posOrderId, {
-          paymentStatus: "failed",
-          razorpayOrderId: razorpay_order_id,
-          razorpayPaymentId: razorpay_payment_id
-        });
-      }
       res.status(400).json({
         success: false,
         message: "Invalid signature verification failed",
