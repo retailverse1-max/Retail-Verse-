@@ -102,3 +102,62 @@ exports.getRecentActivities = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.getCustomers = async (req, res) => {
+  try {
+    const clientId = req.user?.clientId;
+    const filter = clientId ? { clientId } : {};
+
+    const customers = await Customer.find(filter).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: customers,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.addCustomer = async (req, res) => {
+  try {
+    const { name, phone, email, address } = req.body;
+    const clientId = req.user?.clientId;
+
+    if (!name || !phone) {
+      return res.status(400).json({ success: false, message: "Name and Phone are required" });
+    }
+
+    // Logging for debugging (Check your Render logs)
+    console.log("Adding customer for clientId:", clientId);
+
+    const customerData = {
+      name,
+      phone,
+      email,
+      address,
+    };
+
+    if (clientId) {
+      customerData.clientId = clientId;
+    } else {
+      // Fallback: If no clientId, find the first business or handle accordingly
+      // For now, we'll return an error if clientId is strictly required in model
+      return res.status(400).json({ success: false, message: "User has no associated Business (clientId)" });
+    }
+
+    const customer = await Customer.create(customerData);
+
+    res.status(201).json({
+      success: true,
+      message: "Customer added successfully",
+      data: customer,
+    });
+  } catch (error) {
+    console.error("ADD CUSTOMER ERROR:", error);
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: "Customer with this phone already exists" });
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
