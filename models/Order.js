@@ -80,6 +80,11 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      required: true,
+    },
   },
   { timestamps: true }
 );

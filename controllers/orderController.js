@@ -53,6 +53,7 @@ const createOrder = async (req, res) => {
       paymentMethod: paymentMethod.toLowerCase(),
       status: "completed",
       createdBy: req.user._id,
+      clientId: req.user.clientId,
     });
 
     // Update stock and logs
@@ -87,7 +88,10 @@ const createOrder = async (req, res) => {
 
 const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
+    const clientId = req.user?.clientId;
+    const filter = clientId ? { clientId } : {};
+
+    const orders = await Order.find(filter)
       .populate("createdBy", "name email role")
       .sort({ createdAt: -1 });
 

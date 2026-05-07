@@ -50,6 +50,11 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      required: true,
+    },
   },
   { timestamps: true }
 );
