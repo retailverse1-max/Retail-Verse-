@@ -155,9 +155,19 @@ exports.getAllDomains = async (req, res) => {
 
 exports.addCustomDomain = async (req, res) => {
   try {
-    const domain = await CustomDomain.create(req.body);
-    res.status(201).json({ success: true, data: domain });
+    const { domain } = req.body;
+    // Check if domain already exists
+    const existing = await CustomDomain.findOne({ domain });
+    if (existing) {
+      return res.status(200).json({ success: true, data: existing, message: "Domain already registered" });
+    }
+    const newDomain = await CustomDomain.create(req.body);
+    res.status(201).json({ success: true, data: newDomain });
   } catch (error) {
+    if (error.code === 11000) {
+      const existing = await CustomDomain.findOne({ domain: req.body.domain });
+      return res.status(200).json({ success: true, data: existing, message: "Domain already registered" });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
