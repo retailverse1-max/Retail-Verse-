@@ -26,6 +26,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/support", supportRoutes);
 app.use(["/api/superadmin", "/api/super-admin"], superadminRoutes);
+app.use("/api/users", superadminRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);

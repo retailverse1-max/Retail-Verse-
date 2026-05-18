@@ -45,12 +45,18 @@ router.put("/businesses/:id", protect, updateBusiness);
 router.delete("/businesses/:id", protect, deleteBusiness);
 router.put("/businesses/:id/status", protect, updateBusinessStatus);
 
-// Users (Platform Level)
+// Users (Platform Level & Admin Level)
 router.get("/users", protect, getAllUsers);
 router.post("/users", protect, createUser);
 router.patch("/users/:id/status", protect, updateUserStatus);
 router.patch("/users/:id/role", protect, updateUserRole);
 router.delete("/users/:id", protect, deleteUser);
+
+router.get("/", protect, getAllUsers);
+router.post("/", protect, createUser);
+router.patch("/:id/status", protect, updateUserStatus);
+router.patch("/:id/role", protect, updateUserRole);
+router.delete("/:id", protect, deleteUser);
 
 // Subscriptions & Plans
 router.get("/subscription-plans", protect, getAllPlans);
