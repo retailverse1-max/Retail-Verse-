@@ -51,7 +51,7 @@ const createOrder = async (req, res) => {
       items: finalItems,
       total: total || computedTotal,
       paymentMethod: paymentMethod.toLowerCase(),
-      status: "completed",
+      status: req.body.status || "completed",
       createdBy: req.user._id,
       clientId: req.user.clientId,
     });

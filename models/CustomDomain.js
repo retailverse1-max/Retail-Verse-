@@ -28,7 +28,7 @@ const customDomainSchema = new mongoose.Schema(
     },
     dnsValue: {
       type: String,
-      default: "app.omnicommerce.in",
+      default: "app.retailverse.in",
     },
     verifiedAt: {
       type: Date,
