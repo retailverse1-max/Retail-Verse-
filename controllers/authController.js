@@ -93,6 +93,13 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists with this email" });
     }
 
+    if (phone) {
+      const phoneExists = await User.findOne({ phone });
+      if (phoneExists) {
+        return res.status(400).json({ message: "User already exists with this phone number" });
+      }
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -130,4 +137,37 @@ const registerUser = async (req, res) => {
   }
 };
 
-module.exports = { loginUser, googleLogin, registerUser };
+const phoneLogin = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ message: "Phone number is required" });
+
+    const user = await User.findOne({ phone });
+    if (!user || !user.isActive) {
+      return res.status(404).json({ message: "User not found with this phone number or inactive" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        storeId: user.storeId,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { loginUser, googleLogin, registerUser, phoneLogin };
