@@ -37,6 +37,31 @@ const productSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    category: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    imageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    reorderLevel: {
+      type: Number,
+      default: 10,
+      min: 0,
+    },
+    unit: {
+      type: String,
+      default: "pcs",
+      trim: true,
+    },
     source: {
       type: String,
       enum: ["internal", "woo", "external"],
@@ -53,7 +78,7 @@ const productSchema = new mongoose.Schema(
     clientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: false,
     },
   },
   { timestamps: true }
