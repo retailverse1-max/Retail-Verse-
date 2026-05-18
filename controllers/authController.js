@@ -142,8 +142,16 @@ const phoneLogin = async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ message: "Phone number is required" });
 
+    // Extract the last 10 digits to ignore country codes like +91
+    const numericPhone = phone.replace(/\D/g, ''); 
+    let basePhone = numericPhone;
+    if (basePhone.length > 10) {
+      basePhone = basePhone.slice(-10);
+    }
+    const phoneRegex = new RegExp(`${basePhone}$`);
+
     // Pick the most recently created account in case there are duplicates from before the duplicate check was added
-    const user = await User.findOne({ phone }).sort({ createdAt: -1 });
+    const user = await User.findOne({ phone: phoneRegex }).sort({ createdAt: -1 });
     if (!user || !user.isActive) {
       return res.status(404).json({ message: "User not found with this phone number or inactive" });
     }
