@@ -2,7 +2,7 @@ const Product = require("../models/Product");
 
 const getProducts = async (req, res) => {
   try {
-    const filter = { isActive: true };
+    const filter = {};
     if (req.user?.clientId) {
       filter.clientId = req.user.clientId;
     }
