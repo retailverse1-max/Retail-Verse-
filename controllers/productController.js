@@ -38,6 +38,9 @@ const createProduct = async (req, res) => {
       ...req.body,
       clientId: req.user?.clientId || req.user?._id,
     };
+    if (req.body.imageBase64) {
+      productData.imageUrl = req.body.imageBase64;
+    }
     const product = await Product.create(productData);
 
     res.status(201).json({
@@ -51,7 +54,11 @@ const createProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+    if (req.body.imageBase64) {
+      updateData.imageUrl = req.body.imageBase64;
+    }
+    const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
