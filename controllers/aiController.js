@@ -63,7 +63,19 @@ The JSON MUST contain the following keys exactly:
     }
 
     if (!result || !result.response) {
-      throw new Error(`All Gemini models failed. Last error: ${lastError?.message}`);
+      let availableModelsStr = "Could not fetch models.";
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const data = await response.json();
+        if (data.models) {
+          availableModelsStr = data.models.map(m => m.name).join(', ');
+        } else {
+          availableModelsStr = JSON.stringify(data);
+        }
+      } catch (fetchErr) {
+        availableModelsStr = fetchErr.message;
+      }
+      throw new Error(`All Gemini models failed. Available models on your key: ${availableModelsStr}. Last error: ${lastError?.message}`);
     }
 
     const responseText = result.response.text();
