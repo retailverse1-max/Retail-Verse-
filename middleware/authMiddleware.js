@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const Business = require("../models/Business");
 
 const protect = async (req, res, next) => {
   try {
@@ -17,21 +16,6 @@ const protect = async (req, res, next) => {
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
-    }
-
-    // Auto-associate a Business if user does not have one, and role is not super_admin
-    if (!user.clientId && user.role !== "super_admin") {
-      let business = await Business.findOne({ ownerEmail: user.email });
-      if (!business) {
-        business = await Business.create({
-          businessName: `${user.name}'s Business`,
-          ownerName: user.name,
-          ownerEmail: user.email,
-          phone: user.phone || "",
-        });
-      }
-      user.clientId = business._id;
-      await user.save();
     }
 
     req.user = user;

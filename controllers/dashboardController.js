@@ -141,9 +141,21 @@ exports.addCustomer = async (req, res) => {
     if (clientId) {
       customerData.clientId = clientId;
     } else {
-      // Fallback: If no clientId, find the first business or handle accordingly
-      // For now, we'll return an error if clientId is strictly required in model
-      return res.status(400).json({ success: false, message: "User has no associated Business (clientId)" });
+      // Auto-create a Business for users who registered before auto-creation was added
+      const Business = require("../models/Business");
+      const business = await Business.create({
+        businessName: `${req.user.name || "My"}'s Business`,
+        ownerName: req.user.name || "",
+        ownerEmail: req.user.email || "",
+        phone: req.user.phone || "",
+        status: "active",
+        subscriptionPlan: "free",
+        subscriptionStatus: "active",
+      });
+      // Link business to user for future requests
+      await User.findByIdAndUpdate(req.user._id, { clientId: business._id });
+      customerData.clientId = business._id;
+      console.log("Auto-created business for user:", req.user._id, "->", business._id);
     }
 
     const customer = await Customer.create(customerData);

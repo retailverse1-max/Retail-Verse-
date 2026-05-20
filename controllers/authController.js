@@ -104,12 +104,15 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Auto-create a Business for the newly registered merchant
+    // Create a Business for this new admin user so they can manage customers, products, orders
     const business = await Business.create({
-      businessName: `${name.trim()}'s Business`,
-      ownerName: name.trim(),
-      ownerEmail: email.trim().toLowerCase(),
-      phone: phone ? phone.trim() : "",
+      businessName: `${name}'s Business`,
+      ownerName: name,
+      ownerEmail: email,
+      phone: phone || "",
+      status: "active",
+      subscriptionPlan: "free",
+      subscriptionStatus: "active",
     });
 
     const user = await User.create({
@@ -117,7 +120,7 @@ const registerUser = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      role: "admin", // Default role for newly registered users
+      role: "admin",
       clientId: business._id,
     });
 
