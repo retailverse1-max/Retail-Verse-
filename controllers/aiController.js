@@ -22,8 +22,7 @@ exports.scanProductImage = async (req, res) => {
 
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-
+    
     const mimeType = req.file.mimetype;
     const imagePart = {
       inlineData: {
@@ -45,7 +44,28 @@ The JSON MUST contain the following keys exactly:
   "priceEstimate": 29.99
 }`;
 
-    const result = await model.generateContent([prompt, imagePart]);
+    const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-pro-vision", "gemini-1.0-pro-vision-latest"];
+    let result = null;
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        result = await model.generateContent([prompt, imagePart]);
+        if (result && result.response) {
+          console.log(`Successfully used model: ${modelName}`);
+          break; // Stop trying if successful
+        }
+      } catch (e) {
+        console.warn(`Model ${modelName} failed:`, e.message);
+        lastError = e;
+      }
+    }
+
+    if (!result || !result.response) {
+      throw new Error(`All Gemini models failed. Last error: ${lastError?.message}`);
+    }
+
     const responseText = result.response.text();
 
     // Clean up potential markdown formatting from Gemini
