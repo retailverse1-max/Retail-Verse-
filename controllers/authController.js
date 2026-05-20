@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Business = require("../models/Business");
 
 const loginUser = async (req, res) => {
   try {
@@ -103,12 +104,21 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Auto-create a Business for the newly registered merchant
+    const business = await Business.create({
+      businessName: `${name.trim()}'s Business`,
+      ownerName: name.trim(),
+      ownerEmail: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : "",
+    });
+
     const user = await User.create({
       name,
       email,
       phone,
       password: hashedPassword,
       role: "admin", // Default role for newly registered users
+      clientId: business._id,
     });
 
     if (user) {
