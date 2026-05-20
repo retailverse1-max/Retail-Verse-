@@ -23,7 +23,24 @@ exports.scanProductImage = async (req, res) => {
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    const mimeType = req.file.mimetype;
+    let mimeType = req.file.mimetype;
+    // Fallback if mimetype is generic or missing
+    if (!mimeType || mimeType === 'application/octet-stream') {
+      const originalName = req.file.originalname || '';
+      const parts = originalName.split('.');
+      const ext = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+      if (ext === 'png') {
+        mimeType = 'image/png';
+      } else if (ext === 'webp') {
+        mimeType = 'image/webp';
+      } else if (ext === 'gif') {
+        mimeType = 'image/gif';
+      } else {
+        mimeType = 'image/jpeg'; // Default safe fallback for product photo scan
+      }
+      console.log(`Deduced mimeType fallback: ${mimeType} for file: ${originalName}`);
+    }
+
     const imagePart = {
       inlineData: {
         data: req.file.buffer.toString("base64"),
