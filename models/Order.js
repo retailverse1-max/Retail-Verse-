@@ -105,6 +105,18 @@ const orderSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    discount: {
+      type: Number,
+      default: 0,
+    },
+    tax: {
+      type: Number,
+      default: 0,
+    },
+    converted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

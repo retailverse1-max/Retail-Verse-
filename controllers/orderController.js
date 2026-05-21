@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const Business = require("../models/Business");
 const InventoryLog = require("../models/InventoryLog");
 
 const createOrder = async (req, res) => {
@@ -21,6 +22,32 @@ const createOrder = async (req, res) => {
 
     if (!paymentMethod) {
       return res.status(400).json({ message: "Payment method is required" });
+    }
+
+    // ── Resolve clientId ──────────────────────────────
+    let clientId = req.user.clientId;
+    if (!clientId) {
+      // Try to find an existing Business linked to the user's email
+      const biz = await Business.findOne({ ownerEmail: req.user.email });
+      if (biz) {
+        clientId = biz._id;
+        // Back-fill the User record so this look-up won't be needed again
+        req.user.clientId = biz._id;
+        await req.user.save();
+      } else {
+        // Auto-create a Business for this user
+        const newBiz = await Business.create({
+          businessName: `${req.user.name}'s Business`,
+          ownerName: req.user.name,
+          ownerEmail: req.user.email,
+          status: "active",
+          subscriptionPlan: "free",
+          subscriptionStatus: "active",
+        });
+        clientId = newBiz._id;
+        req.user.clientId = newBiz._id;
+        await req.user.save();
+      }
     }
 
     // Generate unique order ID
@@ -62,7 +89,7 @@ const createOrder = async (req, res) => {
       paymentMethod: paymentMethod.toLowerCase(),
       status: req.body.status || "completed",
       createdBy: req.user._id,
-      clientId: req.user.clientId,
+      clientId: clientId,
       customerName,
       customerPhone,
       customerEmail,
@@ -119,4 +146,153 @@ const getOrders = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getOrders };
+const updateOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      items,
+      paymentMethod,
+      total,
+      status,
+      paymentStatus,
+      customerName,
+      customerPhone,
+      customerEmail,
+      customerAddress,
+      notes,
+      discount,
+      tax,
+      converted,
+    } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    if (order.clientId && req.user?.clientId && order.clientId.toString() !== req.user.clientId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to update this order" });
+    }
+
+    // Adjust stock differences if items are modified
+    if (items && Array.isArray(items)) {
+      const oldQtyMap = {};
+      for (const item of order.items) {
+        oldQtyMap[item.productId.toString()] = item.qty;
+      }
+
+      const newQtyMap = {};
+      for (const item of items) {
+        newQtyMap[item.productId.toString()] = item.qty;
+      }
+
+      // 1. Restore stock for completely removed items
+      for (const item of order.items) {
+        const prodIdStr = item.productId.toString();
+        if (!newQtyMap[prodIdStr]) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            const beforeStock = product.stock;
+            product.stock += item.qty;
+            await product.save();
+
+            await InventoryLog.create({
+              productId: product._id,
+              type: "adjustment",
+              quantity: item.qty,
+              beforeStock,
+              afterStock: product.stock,
+              referenceId: order._id.toString(),
+              notes: "Stock returned due to item removal from order update",
+            });
+          }
+        }
+      }
+
+      // 2. Adjust stock for updated/new items
+      let finalItems = [];
+      let computedTotal = 0;
+
+      for (const item of items) {
+        const product = await Product.findById(item.productId);
+        if (!product) {
+          return res.status(404).json({ success: false, message: `Product not found: ${item.productId}` });
+        }
+
+        const oldQty = oldQtyMap[product._id.toString()] || 0;
+        const diff = item.qty - oldQty;
+
+        if (diff > 0) {
+          if (product.stock < diff) {
+            return res.status(400).json({ success: false, message: `Insufficient stock for ${product.name}` });
+          }
+          const beforeStock = product.stock;
+          product.stock -= diff;
+          await product.save();
+
+          await InventoryLog.create({
+            productId: product._id,
+            type: "sale",
+            quantity: diff,
+            beforeStock,
+            afterStock: product.stock,
+            referenceId: order._id.toString(),
+          });
+        } else if (diff < 0) {
+          const beforeStock = product.stock;
+          product.stock += Math.abs(diff);
+          await product.save();
+
+          await InventoryLog.create({
+            productId: product._id,
+            type: "adjustment",
+            quantity: Math.abs(diff),
+            beforeStock,
+            afterStock: product.stock,
+            referenceId: order._id.toString(),
+            notes: "Stock returned due to quantity reduction in order update",
+          });
+        }
+
+        const itemTotal = product.price * item.qty;
+        computedTotal += itemTotal;
+
+        finalItems.push({
+          productId: product._id,
+          name: product.name,
+          qty: item.qty,
+          price: product.price,
+          total: itemTotal,
+        });
+      }
+
+      order.items = finalItems;
+      order.total = total || computedTotal;
+    }
+
+    if (paymentMethod !== undefined) order.paymentMethod = paymentMethod.toLowerCase();
+    if (status !== undefined) order.status = status.toLowerCase();
+    if (paymentStatus !== undefined) order.paymentStatus = paymentStatus.toLowerCase();
+    if (customerName !== undefined) order.customerName = customerName;
+    if (customerPhone !== undefined) order.customerPhone = customerPhone;
+    if (customerEmail !== undefined) order.customerEmail = customerEmail;
+    if (customerAddress !== undefined) order.customerAddress = customerAddress;
+    if (notes !== undefined) order.notes = notes;
+    if (discount !== undefined) order.discount = discount;
+    if (tax !== undefined) order.tax = tax;
+    if (converted !== undefined) order.converted = converted;
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Order updated successfully",
+      order,
+    });
+  } catch (error) {
+    console.error("Order Update Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { createOrder, getOrders, updateOrder };
