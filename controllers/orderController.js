@@ -4,7 +4,16 @@ const InventoryLog = require("../models/InventoryLog");
 
 const createOrder = async (req, res) => {
   try {
-    const { items, paymentMethod, total } = req.body;
+    const {
+      items,
+      paymentMethod,
+      total,
+      customerName,
+      customerPhone,
+      customerEmail,
+      customerAddress,
+      notes,
+    } = req.body;
 
     if (!items || !items.length) {
       return res.status(400).json({ message: "Order items are required" });
@@ -54,6 +63,11 @@ const createOrder = async (req, res) => {
       status: req.body.status || "completed",
       createdBy: req.user._id,
       clientId: req.user.clientId,
+      customerName,
+      customerPhone,
+      customerEmail,
+      customerAddress,
+      notes,
     });
 
     // Update stock and logs

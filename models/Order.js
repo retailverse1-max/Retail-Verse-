@@ -85,6 +85,26 @@ const orderSchema = new mongoose.Schema(
       ref: "Business",
       required: true,
     },
+    customerName: {
+      type: String,
+      trim: true,
+    },
+    customerPhone: {
+      type: String,
+      trim: true,
+    },
+    customerEmail: {
+      type: String,
+      trim: true,
+    },
+    customerAddress: {
+      type: String,
+      trim: true,
+    },
+    notes: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );
