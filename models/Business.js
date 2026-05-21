@@ -61,12 +61,11 @@ const businessSchema = new mongoose.Schema(
 );
 
 // Auto-generate businessId if not present
-businessSchema.pre('save', function(next) {
+businessSchema.pre('save', function() {
   if (!this.businessId) {
     const random = Math.floor(100000 + Math.random() * 900000);
     this.businessId = `RV-${random}`;
   }
-  next();
 });
 
 businessSchema.set('toJSON', {
