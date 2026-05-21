@@ -38,6 +38,7 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         storeId: user.storeId,
+        clientId: user.clientId,
       },
     });
   } catch (error) {
@@ -74,6 +75,7 @@ const googleLogin = async (req, res) => {
         email: user.email,
         role: user.role,
         storeId: user.storeId,
+        clientId: user.clientId,
       },
     });
   } catch (error) {
@@ -140,6 +142,7 @@ const registerUser = async (req, res) => {
           email: user.email,
           role: user.role,
           storeId: user.storeId,
+          clientId: user.clientId,
         },
       });
     } else {
@@ -185,6 +188,7 @@ const phoneLogin = async (req, res) => {
         phone: user.phone,
         role: user.role,
         storeId: user.storeId,
+        clientId: user.clientId,
       },
     });
   } catch (error) {
