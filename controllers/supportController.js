@@ -217,3 +217,78 @@ exports.getRecentTickets = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+// PUT /api/support/ticket/:id
+exports.updateTicketStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ success: false, message: "Status is required" });
+    }
+
+    let ticket = await Ticket.findOneAndUpdate(
+      { ticketId: Number(id) },
+      { status },
+      { new: true }
+    );
+
+    if (!ticket) {
+      // Fallback: search by mongo _id if number matching fails
+      try {
+        ticket = await Ticket.findByIdAndUpdate(
+          id,
+          { status },
+          { new: true }
+        );
+      } catch (err) {
+        // Ignore cast error if not a valid ObjectId
+      }
+    }
+
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: "Ticket not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Ticket status updated successfully",
+      ticket
+    });
+  } catch (error) {
+    console.error("Error updating support ticket status:", error);
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+
+// DELETE /api/support/ticket/:id
+exports.deleteTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    let ticket = await Ticket.findOneAndDelete({ ticketId: Number(id) });
+
+    if (!ticket) {
+      // Fallback: search by mongo _id
+      try {
+        ticket = await Ticket.findByIdAndDelete(id);
+      } catch (err) {
+        // Ignore cast error if not a valid ObjectId
+      }
+    }
+
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: "Ticket not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Ticket deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting support ticket:", error);
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+

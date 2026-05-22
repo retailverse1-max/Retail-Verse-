@@ -29,6 +29,19 @@ const loginUser = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    let subscriptionPlan = "free";
+    let subscriptionStatus = "active";
+    let subscriptionExpiry = null;
+
+    if (user.clientId) {
+      const biz = await Business.findById(user.clientId);
+      if (biz) {
+        subscriptionPlan = biz.subscriptionPlan || "free";
+        subscriptionStatus = biz.subscriptionStatus || "active";
+        subscriptionExpiry = biz.subscriptionExpiry;
+      }
+    }
+
     res.json({
       message: "Login successful",
       token,
@@ -39,6 +52,9 @@ const loginUser = async (req, res) => {
         role: user.role,
         storeId: user.storeId,
         clientId: user.clientId,
+        subscriptionPlan,
+        subscriptionStatus,
+        subscriptionExpiry,
       },
     });
   } catch (error) {
@@ -66,6 +82,19 @@ const googleLogin = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    let subscriptionPlan = "free";
+    let subscriptionStatus = "active";
+    let subscriptionExpiry = null;
+
+    if (user.clientId) {
+      const biz = await Business.findById(user.clientId);
+      if (biz) {
+        subscriptionPlan = biz.subscriptionPlan || "free";
+        subscriptionStatus = biz.subscriptionStatus || "active";
+        subscriptionExpiry = biz.subscriptionExpiry;
+      }
+    }
+
     res.json({
       message: "Login successful",
       token,
@@ -76,6 +105,9 @@ const googleLogin = async (req, res) => {
         role: user.role,
         storeId: user.storeId,
         clientId: user.clientId,
+        subscriptionPlan,
+        subscriptionStatus,
+        subscriptionExpiry,
       },
     });
   } catch (error) {
@@ -106,6 +138,10 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Calculate 14 days from now for the trial
+    const trialExpiry = new Date();
+    trialExpiry.setDate(trialExpiry.getDate() + 14);
+
     // Create a Business for this new admin user so they can manage customers, products, orders
     const business = await Business.create({
       businessName: `${name}'s Business`,
@@ -113,8 +149,9 @@ const registerUser = async (req, res) => {
       ownerEmail: email,
       phone: phone || "",
       status: "active",
-      subscriptionPlan: "free",
+      subscriptionPlan: "trial",
       subscriptionStatus: "active",
+      subscriptionExpiry: trialExpiry,
     });
 
     const user = await User.create({
@@ -143,6 +180,9 @@ const registerUser = async (req, res) => {
           role: user.role,
           storeId: user.storeId,
           clientId: user.clientId,
+          subscriptionPlan: business.subscriptionPlan,
+          subscriptionStatus: business.subscriptionStatus,
+          subscriptionExpiry: business.subscriptionExpiry,
         },
       });
     } else {
@@ -178,6 +218,19 @@ const phoneLogin = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    let subscriptionPlan = "free";
+    let subscriptionStatus = "active";
+    let subscriptionExpiry = null;
+
+    if (user.clientId) {
+      const biz = await Business.findById(user.clientId);
+      if (biz) {
+        subscriptionPlan = biz.subscriptionPlan || "free";
+        subscriptionStatus = biz.subscriptionStatus || "active";
+        subscriptionExpiry = biz.subscriptionExpiry;
+      }
+    }
+
     res.json({
       message: "Login successful",
       token,
@@ -189,6 +242,9 @@ const phoneLogin = async (req, res) => {
         role: user.role,
         storeId: user.storeId,
         clientId: user.clientId,
+        subscriptionPlan,
+        subscriptionStatus,
+        subscriptionExpiry,
       },
     });
   } catch (error) {

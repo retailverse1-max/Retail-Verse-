@@ -39,6 +39,7 @@ exports.getAnalyticsSummary = async (req, res) => {
     // 1. Total Metrics
     const totalBusinesses = await Business.countDocuments();
     const activeBusinesses = await Business.countDocuments({ status: "active" });
+    const trialBusinesses = await Business.countDocuments({ subscriptionPlan: "trial" });
     
     const orderStats = await Order.aggregate([
       { $group: { _id: null, totalRevenue: { $sum: "$total" }, totalOrders: { $sum: 1 } } }
@@ -98,6 +99,7 @@ exports.getAnalyticsSummary = async (req, res) => {
         cards: {
           totalBusinesses,
           activeBusinesses,
+          trialBusinesses,
           totalRevenue,
           totalOrders,
           totalCustomers,
