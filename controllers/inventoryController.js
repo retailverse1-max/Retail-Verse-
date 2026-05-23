@@ -3,7 +3,11 @@ const InventoryLog = require("../models/InventoryLog");
 
 const getInventory = async (req, res) => {
   try {
-    const products = await Product.find({ isActive: true }).sort({ createdAt: -1 });
+    const filter = { isActive: true };
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
+    const products = await Product.find(filter).sort({ createdAt: -1 });
 
     res.json({
       message: "Inventory fetched successfully",
@@ -16,10 +20,14 @@ const getInventory = async (req, res) => {
 
 const getLowStockProducts = async (req, res) => {
   try {
-    const products = await Product.find({
+    const filter = {
       isActive: true,
       stock: { $lte: 10 },
-    }).sort({ stock: 1 });
+    };
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
+    const products = await Product.find(filter).sort({ stock: 1 });
 
     res.json({
       message: "Low stock products fetched successfully",
