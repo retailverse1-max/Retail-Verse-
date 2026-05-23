@@ -11,6 +11,7 @@ const publicRoutes = require("./routes/publicRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const app = express();
 
 app.use(cors());
@@ -33,4 +34,5 @@ app.use("/api/public", publicRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
 module.exports = app;
