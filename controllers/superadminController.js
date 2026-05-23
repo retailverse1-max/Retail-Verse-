@@ -216,7 +216,11 @@ exports.deleteBusiness = async (req, res) => {
 // --- USER MANAGEMENT ---
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const filter = {};
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
+    const users = await User.find(filter).select("-password").sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: users });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -225,6 +229,9 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
+    if (req.user && req.user.role !== "super_admin") {
+      req.body.clientId = req.user.clientId;
+    }
     const user = await User.create(req.body);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
