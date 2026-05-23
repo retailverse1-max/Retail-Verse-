@@ -4,6 +4,7 @@ const User = require("../models/User");
 const CustomDomain = require("../models/CustomDomain");
 const SubscriptionPlan = require("../models/SubscriptionPlan");
 const AuditLog = require("../models/AuditLog");
+const bcrypt = require("bcryptjs");
 
 // --- DASHBOARD & ANALYTICS ---
 exports.getDashboardStats = async (req, res) => {
@@ -232,6 +233,13 @@ exports.createUser = async (req, res) => {
     if (req.user && req.user.role !== "super_admin") {
       req.body.clientId = req.user.clientId;
     }
+    
+    // Hash password before saving
+    if (req.body.password) {
+      const salt = await bcrypt.genSalt(10);
+      req.body.password = await bcrypt.hash(req.body.password, salt);
+    }
+    
     const user = await User.create(req.body);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
