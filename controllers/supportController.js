@@ -28,6 +28,7 @@ exports.createTicket = async (req, res) => {
       role,
       businessName,
       storeId,
+      clientId: req.user?.clientId,
       status: "open",
       priority: "normal"
     });
@@ -139,10 +140,14 @@ exports.getSupportStats = async (req, res) => {
     }
 
     // 2. Aggregate from local MongoDB
-    const localTotal = await Ticket.countDocuments();
-    const localOpen = await Ticket.countDocuments({ status: "open" });
-    const localResolved = await Ticket.countDocuments({ status: { $in: ["resolved", "closed", "solved"] } });
-    const localPending = await Ticket.countDocuments({ status: "pending" });
+    const filter = {};
+    if (req.user && req.user.role !== 'super_admin') {
+      filter.clientId = req.user.clientId;
+    }
+    const localTotal = await Ticket.countDocuments(filter);
+    const localOpen = await Ticket.countDocuments({ ...filter, status: "open" });
+    const localResolved = await Ticket.countDocuments({ ...filter, status: { $in: ["resolved", "closed", "solved"] } });
+    const localPending = await Ticket.countDocuments({ ...filter, status: "pending" });
 
     total += localTotal;
     open += localOpen;
@@ -195,7 +200,11 @@ exports.getRecentTickets = async (req, res) => {
     }
 
     // 2. Fetch from local MongoDB
-    const localTickets = await Ticket.find().sort({ createdAt: -1 }).limit(20);
+    const filter = {};
+    if (req.user && req.user.role !== 'super_admin') {
+      filter.clientId = req.user.clientId;
+    }
+    const localTickets = await Ticket.find(filter).sort({ createdAt: -1 }).limit(20);
     const mappedLocal = localTickets.map(t => ({
       id: t.ticketId,
       subject: t.subject,

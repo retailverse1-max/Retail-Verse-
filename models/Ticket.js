@@ -11,6 +11,9 @@ const ticketSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    clientId: {
+      type: String,
+    },
     message: {
       type: String,
       required: true,
