@@ -107,8 +107,8 @@ exports.getSupportStats = async (req, res) => {
   try {
     let total = 0, open = 0, resolved = 0, pending = 0;
 
-    // 1. Get stats from Zendesk if configured
-    if (isZendeskConfigured()) {
+    // 1. Get stats from Zendesk if configured AND user is super_admin
+    if (isZendeskConfigured() && req.user && req.user.role === 'super_admin') {
       try {
         const subdomain = process.env.ZENDESK_SUBDOMAIN;
         const zendeskEmail = process.env.ZENDESK_EMAIL;
@@ -168,8 +168,8 @@ exports.getRecentTickets = async (req, res) => {
   try {
     let tickets = [];
 
-    // 1. Fetch from Zendesk if configured
-    if (isZendeskConfigured()) {
+    // 1. Fetch from Zendesk if configured AND user is super_admin
+    if (isZendeskConfigured() && req.user && req.user.role === 'super_admin') {
       try {
         const subdomain = process.env.ZENDESK_SUBDOMAIN;
         const zendeskEmail = process.env.ZENDESK_EMAIL;
