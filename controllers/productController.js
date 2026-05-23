@@ -3,7 +3,7 @@ const Product = require("../models/Product");
 const getProducts = async (req, res) => {
   try {
     const filter = {};
-    if (req.user?.clientId) {
+    if (req.user && req.user.role !== "super_admin") {
       filter.clientId = req.user.clientId;
     }
     const products = await Product.find(filter).sort({ createdAt: -1 });

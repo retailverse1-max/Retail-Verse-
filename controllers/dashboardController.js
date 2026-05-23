@@ -7,8 +7,10 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const clientId = req.user?.clientId;
 
-    // Build filter: if user has clientId, filter by it
-    const filter = clientId ? { clientId } : {};
+    const filter = {};
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
     const orderFilter = { ...filter, status: { $ne: "cancelled" } };
 
     // Today's date range
@@ -86,8 +88,10 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getRecentActivities = async (req, res) => {
   try {
-    const clientId = req.user?.clientId;
-    const filter = clientId ? { clientId } : {};
+    const filter = {};
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
 
     const activities = await Order.find(filter)
       .sort({ createdAt: -1 })
@@ -105,8 +109,10 @@ exports.getRecentActivities = async (req, res) => {
 
 exports.getCustomers = async (req, res) => {
   try {
-    const clientId = req.user?.clientId;
-    const filter = clientId ? { clientId } : {};
+    const filter = {};
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
 
     const customers = await Customer.find(filter).sort({ createdAt: -1 });
 

@@ -129,8 +129,10 @@ const createOrder = async (req, res) => {
 
 const getOrders = async (req, res) => {
   try {
-    const clientId = req.user?.clientId;
-    const filter = clientId ? { clientId } : {};
+    const filter = {};
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user.clientId;
+    }
 
     const orders = await Order.find(filter)
       .populate("createdBy", "name email role")
