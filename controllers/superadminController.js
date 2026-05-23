@@ -272,7 +272,11 @@ exports.getAllPlans = async (req, res) => {
 // --- CUSTOM DOMAINS ---
 exports.getAllDomains = async (req, res) => {
   try {
-    const domains = await CustomDomain.find();
+    const filter = {};
+    if (req.user && req.user.role !== "super_admin") {
+      filter.businessId = req.user.clientId;
+    }
+    const domains = await CustomDomain.find(filter);
     res.status(200).json({ success: true, data: domains });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -282,6 +286,9 @@ exports.getAllDomains = async (req, res) => {
 exports.addCustomDomain = async (req, res) => {
   try {
     const { domain } = req.body;
+    if (req.user && req.user.role !== "super_admin") {
+      req.body.businessId = req.user.clientId;
+    }
     // Check if domain already exists
     const existing = await CustomDomain.findOne({ domain });
     if (existing) {
