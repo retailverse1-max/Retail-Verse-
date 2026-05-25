@@ -18,7 +18,7 @@ const initializeDummyPlans = async () => {
           maxUsers: 3
         },
         {
-          name: "Pro",
+          name: "Plus",
           price: 1999,
           billingCycle: "monthly",
           features: ["Unlimited Products", "10 Admin Users", "Advanced POS & Inventory", "Priority Support", "Analytics"],
@@ -27,7 +27,7 @@ const initializeDummyPlans = async () => {
           maxUsers: 10
         },
         {
-          name: "Enterprise",
+          name: "Premium",
           price: 4999,
           billingCycle: "monthly",
           features: ["Unlimited Everything", "Custom Domain", "Dedicated Account Manager", "Custom Integrations", "24/7 Support"],
@@ -37,6 +37,10 @@ const initializeDummyPlans = async () => {
         }
       ]);
       console.log("Dummy subscription plans initialized.");
+    } else {
+      // Auto-migrate old names to new names
+      await SubscriptionPlan.updateMany({ name: "Pro" }, { $set: { name: "Plus" } });
+      await SubscriptionPlan.updateMany({ name: "Enterprise" }, { $set: { name: "Premium" } });
     }
   } catch (err) {
     console.error("Error initializing dummy plans:", err);
