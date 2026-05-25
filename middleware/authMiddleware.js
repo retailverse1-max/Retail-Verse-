@@ -19,13 +19,18 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    if (req.user.role === 'super_admin' && req.headers['x-client-id']) {
+      req.user.originalRole = 'super_admin';
+      req.user.role = 'admin';
+      req.user.clientId = req.headers['x-client-id'];
+    }
     next();
   } catch (error) {
     res.status(401).json({ message: "Invalid token" });
   }
 };
 const superAdminOnly = (req, res, next) => {
-  if (req.user && req.user.role === "super_admin") {
+  if (req.user && (req.user.role === "super_admin" || req.user.originalRole === "super_admin")) {
     next();
   } else {
     res.status(403).json({ success: false, message: "Forbidden. Super admin only." });
