@@ -1,0 +1,158 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:retail_verse_pos/core/theme/app_colors.dart';
+import 'package:retail_verse_pos/core/theme/app_typography.dart';
+import 'package:retail_verse_pos/core/utils/formatters.dart';
+import 'package:retail_verse_pos/core/widgets/common/modern_search_bar.dart';
+import 'package:retail_verse_pos/core/widgets/common/status_badge.dart';
+import 'package:retail_verse_pos/data/models/order_model.dart';
+import 'package:retail_verse_pos/features/pos/providers/order_providers.dart';
+import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
+
+class OrdersListScreen extends ConsumerStatefulWidget {
+  const OrdersListScreen({super.key});
+
+  @override
+  ConsumerState<OrdersListScreen> createState() => _OrdersListScreenState();
+}
+
+class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String selectedFilter = 'All';
+  final List<String> filters = ['All', 'Today', 'This Week', 'Completed', 'Pending'];
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Order> _filtered(List<Order> all) {
+    return all.where((o) {
+      final matchesSearch = o.id.toString().contains(_searchQuery);
+      final matchesFilter = selectedFilter == 'All' || o.status.toLowerCase() == selectedFilter.toLowerCase();
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ordersAsync = ref.watch(ordersProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          // ── PREMIUM SEARCH HEADER ──────────────────────
+          PremiumSearchHeader(
+            title: 'Order History',
+            searchBar: ModernSearchBar(
+              controller: _searchController,
+              hintText: 'Search by Order ID...',
+              onChanged: (v) => setState(() => _searchQuery = v),
+              onClear: () => setState(() => _searchQuery = ''),
+            ),
+            bottom: _buildFilterTabs(),
+          ),
+
+          Expanded(
+            child: ordersAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (orders) {
+                final list = _filtered(orders);
+                if (list.isEmpty) return _buildEmptyState();
+                
+                return ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: list.length,
+                  itemBuilder: (context, index) => _buildOrderCard(list[index]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((f) {
+          final isSelected = selectedFilter == f;
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilterChip(
+              label: Text(f),
+              selected: isSelected,
+              onSelected: (val) => setState(() => selectedFilter = f),
+              backgroundColor: Colors.white10,
+              selectedColor: AppColors.primary,
+              labelStyle: AppTypography.labelLarge.copyWith(color: isSelected ? Colors.white : Colors.white70),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(Order order) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 8))],
+        border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
+      ),
+      child: InkWell(
+        onTap: () => context.push('/orders/${order.id}'),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Order #${order.id}', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(AppFormatters.formatDateTime(order.createdAt), style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
+                  ],
+                ),
+                StatusBadge(status: order.status),
+              ],
+            ),
+            const Divider(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${order.items.length} Items', style: AppTypography.bodyMedium),
+                Text(AppFormatters.formatCurrency(order.total), style: AppTypography.headlineSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long_rounded, size: 80, color: AppColors.textSecondary.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text('No orders found', style: AppTypography.headlineSmall.copyWith(color: AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
+}

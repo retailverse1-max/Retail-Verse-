@@ -1,0 +1,381 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../data/remote/super_admin_service.dart';
+import '../widgets/sa_stat_card.dart';
+
+class SaBusinessesScreen extends StatefulWidget {
+  const SaBusinessesScreen({super.key});
+
+  @override
+  State<SaBusinessesScreen> createState() => _SaBusinessesScreenState();
+}
+
+class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
+  final _svc = SuperAdminService();
+  late Future<Map<String, dynamic>> _f;
+  final _searchC = TextEditingController();
+  String _searchQ = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _f = _loadData();
+  }
+
+  Future<Map<String, dynamic>> _loadData() async {
+    final res = await Future.wait([
+      _svc.listBusinesses(),
+      _svc.listCustomDomains(),
+      _svc.getAnalyticsSummary(),
+    ]);
+    return {
+      'businesses': res[0] as List<Map<String, dynamic>>,
+      'domains': res[1] as List<Map<String, dynamic>>,
+      'analytics': res[2] as Map<String, dynamic>,
+    };
+  }
+
+  Future<void> _openAddBusiness() async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => const _AddBusinessSheet(),
+    );
+    if (!mounted) return;
+    if (saved == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        
+        // Refresh the list
+        setState(() => _f = _loadData());
+        
+        // Show success feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Business created successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Debug log
+        final data = await _f;
+        debugPrint('BUSINESS LIST AFTER REFRESH: ${data['businesses']?.length} items');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Platform Clients',
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Manage and monitor your software buyers',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _openAddBusiness,
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text('Add'),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.35)),
+        Expanded(
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: _f,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snap.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: scheme.error),
+                        const SizedBox(height: 12),
+                        Text(
+                          '${snap.error}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: scheme.onSurface),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.tonal(
+                          onPressed: () => setState(() => _f = _loadData()),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final data = snap.data ?? {};
+              final businesses = (data['businesses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+              final domains = (data['domains'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+              final analytics = (data['analytics'] as Map?)?.cast<String, dynamic>() ?? {};
+              final cards = (analytics['data']?['cards'] as Map?)?.cast<String, dynamic>() ?? {};
+
+              final total = cards['totalBusinesses'] ?? businesses.length;
+              final active = cards['activeBusinesses'] ?? businesses.where((b) => b['status'] == 'active').length;
+              final newThisMonth = cards['newBusinessesThisMonth'] ?? 0;
+              final churnRate = cards['churnRate'] ?? '0.0%';
+
+              final filtered = businesses.where((b) {
+                if (_searchQ.isEmpty) return true;
+                final name = b['businessName']?.toString().toLowerCase() ?? '';
+                final id = b['businessId']?.toString().toLowerCase() ?? '';
+                final email = b['ownerEmail']?.toString().toLowerCase() ?? '';
+                return name.contains(_searchQ) || id.contains(_searchQ) || email.contains(_searchQ);
+              }).toList();
+
+              return RefreshIndicator(
+                onRefresh: () async => setState(() => _f = _loadData()),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  children: [
+                    GridView.count(
+                      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 1.4,
+                      children: [
+                        SaStatCard(
+                          title: 'Total customers',
+                          value: total.toString(),
+                          icon: Icons.people_outline,
+                        ),
+                        SaStatCard(
+                          title: 'Active members',
+                          value: active.toString(),
+                          icon: Icons.check_circle_outline,
+                        ),
+                        SaStatCard(
+                          title: 'New this month',
+                          value: newThisMonth.toString(),
+                          icon: Icons.trending_up_rounded,
+                        ),
+                        SaStatCard(
+                          title: 'Churn rate',
+                          value: churnRate.toString(),
+                          icon: Icons.trending_down_rounded,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _searchC,
+                      onChanged: (v) => setState(() => _searchQ = v.trim().toLowerCase()),
+                      decoration: InputDecoration(
+                        hintText: 'Search customers...',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        filled: true,
+                        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'Registered Businesses',
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (filtered.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 56,
+                                color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQ.isEmpty ? 'No businesses found. Create your first client business.' : 'No matches found',
+                                textAlign: TextAlign.center,
+                                style: AppTypography.titleMedium.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      ...List.generate(filtered.length, (i) {
+                        final b = filtered[i];
+                        final id = b['businessId']?.toString() ?? '';
+                        final status = b['status']?.toString() ?? '';
+                        final plan = b['subscriptionPlan']?.toString() ?? 'free';
+                        final subStatus = b['subscriptionStatus']?.toString() ?? '';
+                        final name = b['businessName']?.toString() ?? id;
+                        final owner = b['ownerName']?.toString() ?? '';
+                        final email = b['ownerEmail']?.toString() ?? '';
+                        final phone = b['phone']?.toString() ?? '';
+                        final created = b['createdAt']?.toString() ?? '';
+                        
+                        // Find associated domain if exists
+                        final bId = b['id']?.toString() ?? b['_id']?.toString() ?? id;
+                        final domainObj = domains.cast<Map<String, dynamic>?>().firstWhere(
+                          (d) => d?['businessId'] == bId && d?['status'] == 'active',
+                          orElse: () => domains.cast<Map<String, dynamic>?>().firstWhere(
+                            (d) => d?['businessId'] == bId,
+                            orElse: () => null
+                          )
+                        );
+                        final domainText = domainObj?['domain']?.toString() ?? '';
+                        final domainStatus = domainObj?['status']?.toString() ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Material(
+                            elevation: 0.5,
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: scheme.outlineVariant.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.store_rounded,
+                                          color: AppColors.primary,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: AppTypography.titleMedium.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: -0.5,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              owner.isNotEmpty ? owner : 'No owner listed',
+                                              style: AppTypography.bodySmall.copyWith(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      _StatusChip(label: status, scheme: scheme),
+                                    ],
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    child: Divider(height: 1, thickness: 0.5),
+                                  ),
+                                  if (email.isNotEmpty)
+                                    _DetailRow(icon: Icons.email_outlined, label: 'Email', value: email),
+                                  if (phone.isNotEmpty)
+                                    _DetailRow(icon: Icons.phone_outlined, label: 'Phone', value: phone),
+                                  if (created.isNotEmpty)
+                                    _DetailRow(icon: Icons.calendar_today_outlined, label: 'Joined', value: created.split('T')[0]),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      _InfoChip(
+                                        icon: Icons.workspace_premium_outlined,
+                                        text: '${plan.toUpperCase()} / ${subStatus.toUpperCase()}',
+                                        color: AppColors.primary.withValues(alpha: 0.05),
+                                        textColor: AppColors.primary,
+                                      ),
+                                      if (domainText.isNotEmpty)
+                                        _InfoChip(
+                                          icon: Icons.language_rounded,
+                                          text: domainText,
+                                          color: domainStatus == 'active' 
+                                            ? Colors.green.withValues(alpha: 0.1) 
+                                            : Colors.orange.withValues(alpha: 0.1),
+                                          textColor: domainStatus == 'active' 
+                                            ? Colors.green[700] 
+                                            : Colors.orange[800],
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}

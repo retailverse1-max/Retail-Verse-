@@ -1,0 +1,573 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../data/remote/super_admin_service.dart';
+
+class SaCustomDomainsScreen extends ConsumerStatefulWidget {
+  const SaCustomDomainsScreen({super.key});
+
+  @override
+  ConsumerState<SaCustomDomainsScreen> createState() => _SaCustomDomainsScreenState();
+}
+
+class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
+  final _superAdminService = SuperAdminService();
+  final _domainController = TextEditingController();
+
+  List<Map<String, dynamic>> _businesses = [];
+  List<Map<String, dynamic>> _domains = [];
+  String? _selectedBusinessId;
+
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+
+  Map<String, dynamic>? _lastAddedDomain;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _domainController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final businesses = await _superAdminService.listBusinesses();
+      final domains = await _superAdminService.listCustomDomains();
+      if (mounted) {
+        setState(() {
+          _businesses = businesses;
+          _domains = domains;
+          if (_businesses.isNotEmpty && _selectedBusinessId == null) {
+            _selectedBusinessId = _businesses.first['id']?.toString() ?? _businesses.first['_id']?.toString();
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Failed to load data: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _addDomain() async {
+    if (_selectedBusinessId == null) {
+      _showError('Please select a business');
+      return;
+    }
+    final domain = _domainController.text.trim();
+    if (domain.isEmpty) {
+      _showError('Please enter a domain');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final newDomain = await _superAdminService.addCustomDomain(
+        businessId: _selectedBusinessId!,
+        domain: domain,
+      );
+      _domainController.clear();
+      _showSuccess('Domain added successfully. Please configure DNS.');
+      setState(() {
+        _lastAddedDomain = newDomain;
+      });
+      await _loadData(); // Refresh list
+    } catch (e) {
+      _showError('Failed to add domain: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _verifyDomain(String id) async {
+    try {
+      await _superAdminService.verifyCustomDomain(id);
+      _showSuccess('Domain verified successfully');
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to verify domain: $e');
+    }
+  }
+
+  Future<void> _activateDomain(String id) async {
+    try {
+      await _superAdminService.activateCustomDomain(id);
+      _showSuccess('Domain activated successfully');
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to activate domain: $e');
+    }
+  }
+
+  Future<void> _deleteDomain(String id) async {
+    try {
+      await _superAdminService.deleteCustomDomain(id);
+      _showSuccess('Domain deleted successfully');
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to delete domain: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    if (_isLoading && _domains.isEmpty && _businesses.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final isSmallScreen = MediaQuery.of(context).size.width < 800;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Custom Domains',
+              style: AppTypography.headlineMedium.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Connect client store domains with Retail Verse',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 32),
+
+            // Card 1: Form Section
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Connect New Domain', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 24),
+                  if (isSmallScreen) ...[
+                    _buildBusinessDropdown(),
+                    const SizedBox(height: 16),
+                    _buildDomainField(),
+                    const SizedBox(height: 24),
+                    _buildConnectButton(),
+                  ] else ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(flex: 2, child: _buildBusinessDropdown()),
+                        const SizedBox(width: 16),
+                        Expanded(flex: 3, child: _buildDomainField()),
+                        const SizedBox(width: 16),
+                        _buildConnectButton(),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            if (_lastAddedDomain != null) ...[
+              const SizedBox(height: 32),
+              _buildDnsInstructions(_lastAddedDomain!),
+            ],
+
+            const SizedBox(height: 40),
+            Text('Connected Domains', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            
+            // Card 3: Domain List
+            if (_domains.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.link_off_rounded, size: 48, color: AppColors.textTertiary),
+                    const SizedBox(height: 16),
+                    Text('No custom domains found.', style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary)),
+                  ],
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _domains.length,
+                itemBuilder: (context, index) {
+                  final domain = _domains[index];
+                  return _buildDomainCard(domain, scheme);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBusinessDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Select Business', style: AppTypography.labelMedium),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedBusinessId,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          items: _businesses.map((b) {
+            final name = b['businessName']?.toString() ?? 'Unnamed Business';
+            final owner = b['ownerName']?.toString() ?? '';
+            final email = b['ownerEmail']?.toString() ?? '';
+            final label = [name, owner, email].where((e) => e.isNotEmpty).join(' · ');
+            return DropdownMenuItem<String>(
+              value: b['id']?.toString() ?? b['_id']?.toString(),
+              child: Text(label, overflow: TextOverflow.ellipsis),
+            );
+          }).toList(),
+          onChanged: (val) {
+            setState(() => _selectedBusinessId = val);
+          },
+          isExpanded: true,
+          hint: const Text('Select a business'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDomainField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Domain', style: AppTypography.labelMedium),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _domainController,
+          decoration: InputDecoration(
+            hintText: 'store.clientdomain.com',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectButton() {
+    return SizedBox(
+      height: 52,
+      width: MediaQuery.of(context).size.width < 800 ? double.infinity : null,
+      child: FilledButton.icon(
+        onPressed: _isSubmitting ? null : _addDomain,
+        icon: _isSubmitting 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Icon(Icons.add_link_rounded),
+        label: const Text('Connect Domain'),
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDnsInstructions(Map<String, dynamic> domainInfo) {
+    final scheme = Theme.of(context).colorScheme;
+    final isSmallScreen = MediaQuery.of(context).size.width < 800;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: scheme.primary),
+              const SizedBox(width: 12),
+              Text('DNS Instructions', style: AppTypography.titleMedium.copyWith(color: scheme.primary, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Ask the client to create a CNAME record pointing to your platform domain.',
+            style: AppTypography.bodyMedium,
+          ),
+          const SizedBox(height: 24),
+          if (isSmallScreen) ...[
+            _buildDnsField('Type', domainInfo['dnsType'] ?? 'CNAME'),
+            const SizedBox(height: 16),
+            _buildDnsField('Name', domainInfo['dnsName'] ?? 'store'),
+            const SizedBox(height: 16),
+            _buildDnsField('Value', domainInfo['dnsValue'] ?? 'retail-verse-website-bj2s.vercel.app'),
+          ] else ...[
+            Row(
+              children: [
+                _buildDnsField('Type', domainInfo['dnsType'] ?? 'CNAME'),
+                const SizedBox(width: 24),
+                _buildDnsField('Name', domainInfo['dnsName'] ?? 'store'),
+                const SizedBox(width: 24),
+                Expanded(child: _buildDnsField('Value', domainInfo['dnsValue'] ?? 'retail-verse-website-bj2s.vercel.app')),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDnsField(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(child: Text(value, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600))),
+              const SizedBox(width: 12),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: value));
+                  _showSuccess('$label copied');
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: const Padding(
+                  padding: EdgeInsets.all(4.0),
+                  child: Icon(Icons.copy_rounded, size: 20, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDomainCard(Map<String, dynamic> domainData, ColorScheme scheme) {
+    final id = domainData['_id'] ?? '';
+    final domain = domainData['domain'] ?? 'Unknown';
+    final status = domainData['status'] ?? 'pending';
+    final businessId = domainData['businessId'] ?? '';
+    
+    // Find business name
+    final business = _businesses.cast<Map<String, dynamic>?>().firstWhere(
+      (b) => (b?['id']?.toString() == businessId || b?['_id']?.toString() == businessId), 
+      orElse: () => null
+    );
+    final businessName = business?['businessName'] ?? businessId;
+
+    Color statusColor;
+    if (status == 'active') statusColor = AppColors.success;
+    else if (status == 'verified') statusColor = Colors.blue;
+    else if (status == 'failed') statusColor = AppColors.error;
+    else statusColor = Colors.orange;
+
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: isSmallScreen
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.language_rounded, color: statusColor),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(domain, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text('Business: $businessName', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildStatusBadge(status, statusColor),
+                      _buildActionButtons(status, id),
+                    ],
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.language_rounded, color: statusColor),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(domain, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text('Business: $businessName', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  _buildStatusBadge(status, statusColor),
+                  const SizedBox(width: 24),
+                  _buildActionButtons(status, id),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status, Color statusColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        status.toString().toUpperCase(),
+        style: AppTypography.labelSmall.copyWith(color: statusColor, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(String status, String id) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (status == 'pending')
+          OutlinedButton(
+            onPressed: () => _verifyDomain(id),
+            child: const Text('Verify'),
+          ),
+        if (status == 'verified')
+          FilledButton(
+            onPressed: () => _activateDomain(id),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+            child: const Text('Set Active'),
+          ),
+        const SizedBox(width: 12),
+        IconButton(
+          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+          onPressed: () => _deleteDomain(id),
+          tooltip: 'Delete Domain',
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.error.withValues(alpha: 0.1),
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,749 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
+import 'package:retail_verse_pos/core/constants/app_constants.dart';
+import 'package:retail_verse_pos/core/navigation/role_nav.dart';
+import 'package:retail_verse_pos/core/theme/app_colors.dart';
+import 'package:retail_verse_pos/core/theme/app_typography.dart';
+import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
+import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+
+/// Primary routes shown in bottom nav (mobile) — keep ≤4 for readable labels.
+const _kPrimaryShellRoutes = <_SaRoute>[
+  _SaRoute(
+    label: 'Home',
+    path: '/super-admin/dashboard',
+    icon: Icons.space_dashboard_outlined,
+    selectedIcon: Icons.space_dashboard_rounded,
+  ),
+  _SaRoute(
+    label: 'Clients',
+    path: '/super-admin/businesses',
+    icon: Icons.apartment_outlined,
+    selectedIcon: Icons.apartment_rounded,
+  ),
+  _SaRoute(
+    label: 'Team',
+    path: '/super-admin/users',
+    icon: Icons.groups_outlined,
+    selectedIcon: Icons.groups_rounded,
+  ),
+];
+
+/// Secondary routes: drawer + “More” sheet (not in bottom nav).
+const _kSecondaryShellRoutes = <_SaRoute>[
+  _SaRoute(
+    label: 'Subscriptions',
+    path: '/super-admin/subscriptions',
+    icon: Icons.workspace_premium_outlined,
+    selectedIcon: Icons.workspace_premium_rounded,
+  ),
+  _SaRoute(
+    label: 'Analytics',
+    path: '/super-admin/analytics',
+    icon: Icons.insights_outlined,
+    selectedIcon: Icons.insights_rounded,
+  ),
+  _SaRoute(
+    label: 'Settings',
+    path: '/super-admin/settings',
+    icon: Icons.tune_outlined,
+    selectedIcon: Icons.tune_rounded,
+  ),
+  _SaRoute(
+    label: 'Custom Domain',
+    path: '/super-admin/custom-domains',
+    icon: Icons.language_outlined,
+    selectedIcon: Icons.language_rounded,
+  ),
+  _SaRoute(
+    label: 'Audit logs',
+    path: '/super-admin/logs',
+    icon: Icons.history_rounded,
+    selectedIcon: Icons.history_rounded,
+  ),
+];
+
+class SuperAdminShell extends ConsumerStatefulWidget {
+  const SuperAdminShell({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<SuperAdminShell> createState() => _SuperAdminShellState();
+}
+
+class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _superAdminService = SuperAdminService();
+
+  Future<void> _openClientStorePicker(BuildContext context) async {
+    final scheme = Theme.of(context).colorScheme;
+    late final List<Map<String, dynamic>> items;
+    try {
+      items = await _superAdminService.listBusinesses();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load client stores: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) return;
+
+    var q = '';
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            final filtered = q.isEmpty
+                ? items
+                : items.where((b) {
+                    final name = (b['businessName'] ?? '').toString().toLowerCase();
+                    final id = (b['businessId'] ?? '').toString().toLowerCase();
+                    final email = (b['ownerEmail'] ?? '').toString().toLowerCase();
+                    return name.contains(q) || id.contains(q) || email.contains(q);
+                  }).toList();
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.viewInsetsOf(ctx).bottom + 12,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 6),
+                    Text(
+                      'Which store do you want to open?',
+                      style: AppTypography.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        hintText: 'Search clients…',
+                        filled: true,
+                        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: scheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                      onChanged: (v) => setLocal(() => q = v.trim().toLowerCase()),
+                    ),
+                    const SizedBox(height: 12),
+                    if (filtered.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'No matching client stores.',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (ctx, i) {
+                            final b = filtered[i];
+                            final name = b['businessName']?.toString() ?? '';
+                            final id = b['businessId']?.toString() ?? '';
+                            final status =
+                                b['subscriptionStatus']?.toString() ?? 'active';
+                            return Material(
+                              color: scheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              child: ListTile(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: scheme.outlineVariant.withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                title: Text(name.isEmpty ? id : name),
+                                subtitle: Text('ID: $id · $status'),
+                                trailing:
+                                    const Icon(Icons.open_in_new_rounded, size: 20),
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  if (context.mounted) {
+                                    context.go('/dashboard');
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Opened store app (selected: ${name.isEmpty ? id : name})',
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (kDebugMode) {
+      debugPrint(
+        '[SuperAdminShell] active — single menu + outlined Store UI (if you do not see it, wrong folder or stale install)',
+      );
+    }
+  }
+
+  static int _bottomIndexForPath(String path) {
+    for (var i = 0; i < _kPrimaryShellRoutes.length; i++) {
+      final p = _kPrimaryShellRoutes[i].path;
+      if (path == p || path.startsWith('$p/')) return i;
+    }
+    for (final r in _kSecondaryShellRoutes) {
+      if (path == r.path || path.startsWith('${r.path}/')) {
+        return 3; // “More” bucket
+      }
+    }
+    return 0;
+  }
+
+  static int _railIndexForPath(String path) {
+    final all = [..._kPrimaryShellRoutes, ..._kSecondaryShellRoutes];
+    for (var i = 0; i < all.length; i++) {
+      final p = all[i].path;
+      if (path == p || path.startsWith('$p/')) return i;
+    }
+    return 0;
+  }
+
+  void _openMoreSheet(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: scheme.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Text(
+                    'More tools',
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                for (final r in _kSecondaryShellRoutes)
+                  ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      child: Icon(r.icon, color: AppColors.primary),
+                    ),
+                    title: Text(
+                      r.label,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      context.go(r.path);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final role = effectiveUserRole(ref.watch(authProvider).user);
+    if (role != 'super_admin') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/dashboard');
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final path = GoRouterState.of(context).uri.path;
+    final user = ref.watch(authProvider).user ?? {};
+    final email = user['email']?.toString() ?? '';
+    final scheme = Theme.of(context).colorScheme;
+    final isWide = MediaQuery.sizeOf(context).width >= 840;
+
+    if (isWide) {
+      final railIndex = _railIndexForPath(path).clamp(
+        0,
+        _kPrimaryShellRoutes.length + _kSecondaryShellRoutes.length - 1,
+      );
+      final all = [..._kPrimaryShellRoutes, ..._kSecondaryShellRoutes];
+
+      return Scaffold(
+        backgroundColor: AppColors.backgroundSecondary,
+        body: Row(
+          children: [
+            NavigationRail(
+              extended: MediaQuery.sizeOf(context).width >= 1024,
+              backgroundColor: scheme.surface,
+              selectedIndex: railIndex,
+              onDestinationSelected: (i) => context.go(all[i].path),
+              leading: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                child: Column(
+                  children: [
+                    Icon(Icons.shield_rounded, color: AppColors.primary, size: 28),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        iconColor: Colors.black,
+                        side: const BorderSide(color: Colors.black26),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onPressed: () => _openClientStorePicker(context),
+                      icon: const Icon(Icons.storefront_outlined, size: 20),
+                      label: const Text(
+                        'Client Store',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              trailing: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Icon(
+                  Icons.verified_user_outlined,
+                  size: 20,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              destinations: [
+                for (final d in all)
+                  NavigationRailDestination(
+                    icon: Icon(d.icon),
+                    selectedIcon: Icon(d.selectedIcon),
+                    label: Text(d.label),
+                  ),
+              ],
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Material(
+                    elevation: 0,
+                    color: scheme.surface,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            AppConstants.logoAsset,
+                            height: 32,
+                            width: 32,
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Platform control',
+                            style: AppTypography.headlineSmall.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => _openClientStorePicker(context),
+                            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                            label: const Text('Open client store'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ColoredBox(
+                      color: AppColors.backgroundSecondary,
+                      child: PopScope(
+                        canPop: false,
+                        onPopInvokedWithResult: (didPop, _) {
+                          if (didPop || !context.mounted) return;
+                          
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                            return;
+                          }
+                          
+                          if (context.canPop()) {
+                            context.pop();
+                            return;
+                          }
+                          
+                          final path = GoRouterState.of(context).uri.path;
+                          const home = '/super-admin/dashboard';
+                          if (path != home && path.startsWith('/super-admin')) {
+                            context.go(home);
+                          } else {
+                            // Let the system handle app exit
+                            SystemNavigator.pop();
+                          }
+                        },
+                        child: widget.child,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bottomIdx = _bottomIndexForPath(path);
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: AppColors.backgroundSecondary,
+      drawer: _SuperAdminDrawer(
+        email: email,
+        onStore: () {
+          Navigator.of(context).pop();
+          _openClientStorePicker(context);
+        },
+        onPick: (p) {
+          Navigator.of(context).pop();
+          context.go(p);
+        },
+      ),
+      appBar: path == '/super-admin/dashboard' 
+        ? null 
+        : AppBar(
+            elevation: 0,
+            scrolledUnderElevation: 0.5,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: scheme.surface,
+            foregroundColor: AppColors.textPrimary,
+        // One explicit drawer control — disables the default implied leading so we never
+        // stack two menu affordances (drawer button + duplicate IconButton in actions).
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Open menu',
+          icon: const Icon(Icons.menu_rounded),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: Row(
+          children: [
+            Image.asset(
+              AppConstants.logoAsset,
+              height: 32,
+              width: 32,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Super Admin',
+              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.2),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.black,
+                iconColor: Colors.black,
+                side: const BorderSide(color: Colors.black26),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              onPressed: () => _openClientStorePicker(context),
+              icon: const Icon(Icons.storefront_outlined, size: 20),
+              label: const Text(
+                'Client Store',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop || !context.mounted) return;
+
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+            return;
+          }
+
+          if (context.canPop()) {
+            context.pop();
+            return;
+          }
+
+          final path = GoRouterState.of(context).uri.path;
+          const home = '/super-admin/dashboard';
+          if (path != home && path.startsWith('/super-admin')) {
+            context.go(home);
+          } else {
+            SystemNavigator.pop();
+          }
+        },
+        child: widget.child,
+      ),
+      extendBody: true,
+      bottomNavigationBar: PremiumFloatingNavBar(
+        selectedIndex: bottomIdx,
+        onDestinationSelected: (i) {
+          if (i == 3) {
+            _openMoreSheet(context);
+            return;
+          }
+          context.go(_kPrimaryShellRoutes[i].path);
+        },
+        items: [
+          for (final d in _kPrimaryShellRoutes)
+            PremiumNavItem(
+              icon: d.icon,
+              selectedIcon: d.selectedIcon,
+              label: d.label,
+            ),
+          const PremiumNavItem(
+            icon: Icons.more_horiz_rounded,
+            selectedIcon: Icons.apps_rounded,
+            label: 'More',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuperAdminDrawer extends StatelessWidget {
+  const _SuperAdminDrawer({
+    required this.email,
+    required this.onStore,
+    required this.onPick,
+  });
+
+  final String email;
+  final VoidCallback onStore;
+  final void Function(String path) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final path = GoRouterState.of(context).uri.path;
+
+    bool active(String p) => path == p || path.startsWith('$p/');
+
+    return Drawer(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.85),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'PLATFORM CONTROL',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    email.isEmpty ? 'Super Admin' : email,
+                    style: AppTypography.titleLarge.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryLight,
+                        foregroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: onStore,
+                      icon: const Icon(Icons.storefront_outlined, size: 20),
+                      label: const Text('Open store POS'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Text(
+                'Navigate',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                children: [
+                  for (final r in [..._kPrimaryShellRoutes, ..._kSecondaryShellRoutes])
+                    _DrawerTile(
+                      route: r,
+                      selected: active(r.path),
+                      onTap: () => onPick(r.path),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerTile extends StatelessWidget {
+  const _DrawerTile({
+    required this.route,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _SaRoute route;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Material(
+        color: selected
+            ? AppColors.primary.withValues(alpha: 0.1)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          leading: Icon(
+            selected ? route.selectedIcon : route.icon,
+            color: selected ? AppColors.primary : AppColors.textSecondary,
+          ),
+          title: Text(
+            route.label,
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? AppColors.primary : AppColors.textPrimary,
+            ),
+          ),
+          trailing: selected
+              ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 20)
+              : null,
+          onTap: onTap,
+        ),
+      ),
+    );
+  }
+}
+
+class _SaRoute {
+  final String label;
+  final String path;
+  final IconData icon;
+  final IconData selectedIcon;
+
+  const _SaRoute({
+    required this.label,
+    required this.path,
+    required this.icon,
+    required this.selectedIcon,
+  });
+}

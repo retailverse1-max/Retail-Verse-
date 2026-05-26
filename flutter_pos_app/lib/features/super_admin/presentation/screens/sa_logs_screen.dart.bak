@@ -1,0 +1,63 @@
+import 'package:flutter/material.dart';
+
+import '../../../../data/remote/super_admin_service.dart';
+
+class SaLogsScreen extends StatefulWidget {
+  const SaLogsScreen({super.key});
+
+  @override
+  State<SaLogsScreen> createState() => _SaLogsScreenState();
+}
+
+class _SaLogsScreenState extends State<SaLogsScreen> {
+  final _svc = SuperAdminService();
+  late Future<List<Map<String, dynamic>>> _f;
+
+  @override
+  void initState() {
+    super.initState();
+    _f = _svc.listAuditLogs(limit: 100);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snap.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Error: ${snap.error}'),
+            ),
+          );
+        }
+        final items = snap.data ?? const [];
+        return RefreshIndicator(
+          onRefresh: () async => setState(() => _f = _svc.listAuditLogs(limit: 100)),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(8),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, i) {
+              final l = items[i];
+              final action = l['action']?.toString() ?? '';
+              final actor = l['actorEmail']?.toString() ?? '';
+              final biz = l['businessId']?.toString() ?? '';
+              final at = l['createdAt']?.toString() ?? '';
+              return ListTile(
+                title: Text(action),
+                subtitle: Text('${actor.isEmpty ? "—" : actor}'
+                    '${biz.isEmpty ? "" : " · biz=$biz"}'
+                    '${at.isEmpty ? "" : " · $at"}'),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}

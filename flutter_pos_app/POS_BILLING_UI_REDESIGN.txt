@@ -1,0 +1,532 @@
+// STUNNING POS BILLING UI - COMPLETE REDESIGN
+// Replace the entire _buildCartSummary method and related classes
+
+Widget _buildCartSummary(BuildContext context) {
+  return Consumer(
+    builder: (context, ref, _) {
+      final cartState = ref.watch(cartProvider);
+      final hasItems = cartState.items.isNotEmpty;
+
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(
+            top: BorderSide(color: AppColors.primary.withOpacity(0.1), width: 2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, -8),
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Decorative Top Bar
+            Container(
+              width: 60,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryLight],
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(
+                children: [
+                  // Bill Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary.withOpacity(0.1),
+                              AppColors.primaryLight.withOpacity(0.15),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bill Details',
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              '${cartState.items.length} item${cartState.items.length != 1 ? 's' : ''}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (hasItems)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            'Active',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Subtotal
+                  _BillRow(
+                    icon: Icons.calculate_rounded,
+                    label: 'Subtotal',
+                    value: AppFormatters.formatCurrency(cartState.subtotal),
+                    iconColor: AppColors.textSecondary,
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Tax
+                  _BillRow(
+                    icon: Icons.percent_rounded,
+                    label: 'Tax (${(cartState.taxRate * 100).toInt()}%)',
+                    value: AppFormatters.formatCurrency(cartState.taxAmount),
+                    iconColor: AppColors.primary,
+                  ),
+                  
+                  if (cartState.discount > 0) ...[
+                    const SizedBox(height: 12),
+                    _BillRow(
+                      icon: Icons.discount_rounded,
+                      label: 'Discount',
+                      value: '- ${AppFormatters.formatCurrency(cartState.discount)}',
+                      iconColor: AppColors.success,
+                      isPositive: true,
+                    ),
+                  ],
+                  
+                  // Divider
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(thickness: 2, color: AppColors.border, height: 1),
+                  ),
+                  
+                  // Grand Total - Hero Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.08),
+                          AppColors.primaryLight.withOpacity(0.12),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.2),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.account_balance_wallet_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Grand Total',
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          AppFormatters.formatCurrency(cartState.total),
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Payment Button - Primary CTA
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                tween: Tween<double>(begin: 0.0, end: hasItems ? 1.0 : 0.0),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: 0.95 + (0.05 * value),
+                    child: Opacity(
+                      opacity: 0.7 + (0.3 * value),
+                      child: Material(
+                        elevation: hasItems ? 12 : 0,
+                        borderRadius: BorderRadius.circular(18),
+                        shadowColor: AppColors.primary.withOpacity(0.4),
+                        child: Container(
+                          width: double.infinity,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            gradient: hasItems
+                                ? LinearGradient(
+                                    colors: [AppColors.primary, AppColors.primaryLight],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  )
+                                : null,
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: hasItems
+                                  ? AppColors.primary
+                                  : AppColors.border.withOpacity(0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: hasItems ? () => _proceedToPayment(context, ref) : null,
+                            borderRadius: BorderRadius.circular(18),
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: hasItems
+                                          ? Colors.white.withOpacity(0.2)
+                                          : AppColors.backgroundSecondary,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.payment_rounded,
+                                      color: hasItems ? Colors.white : AppColors.textTertiary,
+                                      size: 28,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Flexible(
+                                    child: Text(
+                                      'Proceed to Payment',
+                                      style: AppTypography.titleMedium.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 18,
+                                        letterSpacing: 0.5,
+                                        color: hasItems ? Colors.white : AppColors.textTertiary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (hasItems) ...[
+                                    const SizedBox(width: 12),
+                                    const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+void _proceedToPayment(BuildContext context, WidgetRef ref) {
+  HapticFeedback.mediumImpact();
+  
+  final cartState = ref.read(cartProvider);
+
+  // Show beautiful loading dialog
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Animated loading indicator
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 1500),
+              tween: Tween<double>(begin: 0.0, end: 1.0),
+              builder: (context, value, child) {
+                return ShaderMask(
+                  shaderCallback: (bounds) {
+                    return LinearGradient(
+                      colors: [
+                        AppColors.primary.withOpacity(0.3),
+                        AppColors.primary,
+                        AppColors.primaryLight,
+                        AppColors.primary.withOpacity(0.3),
+                      ],
+                      stops: [
+                        0.0,
+                        value.clamp(0.0, 1.0),
+                        (value + 0.3).clamp(0.0, 1.0),
+                        1.0,
+                      ],
+                    ).createShader(bounds);
+                  },
+                  child: const Icon(Icons.sync_rounded, size: 64, color: Colors.white),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Processing Order...',
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we create your order',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  // Process order after short delay
+  Future.delayed(const Duration(milliseconds: 100), () async {
+    try {
+      final orderNotifier = ref.read(orderCreationProvider.notifier);
+      final success = await orderNotifier.createOrder(
+        cartItems: cartState.items,
+        paymentMethod: 'Cash',
+        discount: cartState.discount,
+        taxRate: cartState.taxRate,
+      );
+
+      if (dialogContext.mounted) {
+        Navigator.pop(dialogContext);
+      }
+
+      if (success) {
+        HapticFeedback.lightImpact();
+        ref.read(cartProvider.notifier).clearCart();
+        
+        if (context.mounted) {
+          context.go('/main/orders');
+        }
+      } else {
+        if (context.mounted) {
+          _showErrorSnackBar(context, 'Failed to create order. Please try again.');
+        }
+      }
+    } catch (e) {
+      if (dialogContext.mounted) {
+        Navigator.pop(dialogContext);
+      }
+
+      if (context.mounted) {
+        _showErrorSnackBar(context, 'Error: ${e.toString()}');
+      }
+    }
+  });
+}
+
+void _showErrorSnackBar(BuildContext context, String message) {
+  HapticFeedback.vibrate();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.bodyMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Colors.red.shade700,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label: 'Dismiss',
+        textColor: Colors.white,
+        onPressed: () {},
+      ),
+    ),
+  );
+}
+
+// New Bill Row Widget
+class _BillRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color iconColor;
+  final bool isPositive;
+
+  const _BillRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.iconColor,
+    this.isPositive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundTertiary.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  iconColor.withOpacity(0.1),
+                  iconColor.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 22, color: iconColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isPositive)
+                  Text(
+                    'Savings applied',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Text(
+            value,
+            style: AppTypography.titleMedium.copyWith(
+              color: isPositive ? AppColors.success : AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

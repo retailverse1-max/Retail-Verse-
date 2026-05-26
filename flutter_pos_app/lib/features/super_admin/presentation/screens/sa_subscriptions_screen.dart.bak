@@ -1,0 +1,292 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../data/remote/super_admin_service.dart';
+
+class SaSubscriptionsScreen extends StatefulWidget {
+  const SaSubscriptionsScreen({super.key});
+
+  @override
+  State<SaSubscriptionsScreen> createState() => _SaSubscriptionsScreenState();
+}
+
+class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> {
+  final _svc = SuperAdminService();
+  late Future<List<Map<String, dynamic>>> _plansF;
+  late Future<List<Map<String, dynamic>>> _bizF;
+  String _q = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _plansF = _svc.listSubscriptionPlans();
+    _bizF = _svc.listBusinesses();
+  }
+
+  static ({String label, Color bg, Color fg, IconData icon}) _statusStyle(
+    String raw,
+  ) {
+    final s = raw.trim().toLowerCase();
+    if (s == 'active') {
+      return (
+        label: 'Active',
+        bg: const Color(0xFF2B8A3E).withValues(alpha: 0.10),
+        fg: const Color(0xFF2B8A3E),
+        icon: Icons.check_circle_rounded,
+      );
+    }
+    if (s == 'pending') {
+      return (
+        label: 'Pending',
+        bg: const Color(0xFFF08C00).withValues(alpha: 0.12),
+        fg: const Color(0xFFF08C00),
+        icon: Icons.hourglass_bottom_rounded,
+      );
+    }
+    return (
+      label: 'Expired',
+      bg: const Color(0xFFC92A2A).withValues(alpha: 0.10),
+      fg: const Color(0xFFC92A2A),
+      icon: Icons.cancel_rounded,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Subscriptions',
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Client subscription status and plan catalog',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+            child: TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search_rounded),
+                hintText: 'Search clients…',
+                filled: true,
+                fillColor: scheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
+            ),
+          ),
+          TabBar(
+            labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w800),
+            tabs: const [
+              Tab(text: 'Clients'),
+              Tab(text: 'Plans'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _bizF,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snap.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text('Error: ${snap.error}'),
+                        ),
+                      );
+                    }
+                    final all = snap.data ?? const [];
+                    final items = _q.isEmpty
+                        ? all
+                        : all.where((b) {
+                            final name = (b['businessName'] ?? '').toString().toLowerCase();
+                            final id = (b['businessId'] ?? '').toString().toLowerCase();
+                            final email = (b['ownerEmail'] ?? '').toString().toLowerCase();
+                            return name.contains(_q) ||
+                                id.contains(_q) ||
+                                email.contains(_q);
+                          }).toList();
+                    if (items.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('No matching clients.'),
+                        ),
+                      );
+                    }
+                    return RefreshIndicator(
+                      onRefresh: () async =>
+                          setState(() => _bizF = _svc.listBusinesses()),
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, i) {
+                          final b = items[i];
+                          final name = b['businessName']?.toString() ?? '';
+                          final id = b['businessId']?.toString() ?? '';
+                          final status = b['subscriptionStatus']?.toString() ?? 'active';
+                          final plan = b['subscriptionPlan']?.toString() ?? 'free';
+                          final st = _statusStyle(status);
+                          return Material(
+                            color: scheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: scheme.outlineVariant.withValues(alpha: 0.45),
+                                ),
+                              ),
+                              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name.isEmpty ? id : name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Plan: $plan · $id',
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: st.bg,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: st.fg.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(st.icon, size: 16, color: st.fg),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          st.label,
+                                          style: TextStyle(
+                                            color: st.fg,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _plansF,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snap.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text('Error: ${snap.error}'),
+                        ),
+                      );
+                    }
+                    final items = snap.data ?? const [];
+                    if (items.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('No subscription plans yet.'),
+                        ),
+                      );
+                    }
+                    return RefreshIndicator(
+                      onRefresh: () async => setState(
+                        () => _plansF = _svc.listSubscriptionPlans(),
+                      ),
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, i) {
+                          final p = items[i];
+                          final code = p['code']?.toString() ?? '';
+                          final period = p['billingPeriod']?.toString() ?? '';
+                          final price = p['price']?.toString() ?? '0';
+                          final active = p['isActive'] == true;
+                          return Material(
+                            color: scheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            child: ListTile(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: scheme.outlineVariant.withValues(alpha: 0.45),
+                                ),
+                              ),
+                              title: Text('$code / $period'),
+                              subtitle: Text('₹$price · ${active ? "active" : "inactive"}'),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

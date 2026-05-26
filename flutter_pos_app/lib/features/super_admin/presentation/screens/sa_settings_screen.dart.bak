@@ -1,0 +1,165 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../auth/providers/auth_provider.dart';
+
+/// Super Admin settings: wired actions to store app where real prefs live.
+class SaSettingsScreen extends ConsumerWidget {
+  const SaSettingsScreen({super.key});
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text(
+          'You will return to the sign-in screen. Unsaved work in this panel is not kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    await ref.read(authProvider.notifier).logout();
+    if (context.mounted) context.go('/login');
+  }
+
+  void _snack(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      children: [
+        Text(
+          'Platform settings',
+          style: AppTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Opens the store app where these preferences are implemented.',
+          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 20),
+        _SettingsTile(
+          icon: Icons.person_outline_rounded,
+          title: 'Account & profile',
+          subtitle: 'Name, email, password in the store app',
+          onTap: () => context.go('/account'),
+        ),
+        _SettingsTile(
+          icon: Icons.storefront_outlined,
+          title: 'Store app & POS',
+          subtitle: 'Dashboard, billing, inventory',
+          onTap: () => context.go('/dashboard'),
+        ),
+        _SettingsTile(
+          icon: Icons.tune_outlined,
+          title: 'Store settings',
+          subtitle: 'API URL, theme, POS, sync, security',
+          onTap: () => context.go('/settings'),
+        ),
+        Divider(height: 32, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+        _SettingsTile(
+          icon: Icons.notifications_outlined,
+          title: 'Notifications',
+          subtitle: 'Broadcast & alerts — planned for a future release',
+          enabled: false,
+          onTap: () {},
+        ),
+        _SettingsTile(
+          icon: Icons.cloud_sync_outlined,
+          title: 'Platform maintenance',
+          subtitle: 'Feature toggles & maintenance mode — not wired yet',
+          onTap: () => _snack(
+            context,
+            'Not available yet. Use Store settings for API and connectivity.',
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text(
+          'Session',
+          style: AppTypography.labelLarge.copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.tonalIcon(
+          onPressed: () => _confirmLogout(context, ref),
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Log out'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: scheme.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.45)),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: CircleAvatar(
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            child: Icon(icon, color: AppColors.primary),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(
+            subtitle,
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+          ),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            color: enabled ? scheme.onSurfaceVariant : scheme.outline,
+          ),
+          onTap: enabled ? onTap : null,
+        ),
+      ),
+    );
+  }
+}

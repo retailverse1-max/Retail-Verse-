@@ -1,0 +1,342 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../data/remote/super_admin_service.dart';
+import '../widgets/sa_stat_card.dart';
+
+class SaAnalyticsScreen extends StatefulWidget {
+  const SaAnalyticsScreen({super.key});
+
+  @override
+  State<SaAnalyticsScreen> createState() => _SaAnalyticsScreenState();
+}
+
+class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> {
+  final _svc = SuperAdminService();
+  late Future<Map<String, dynamic>> _f;
+
+  @override
+  void initState() {
+    super.initState();
+    _f = _svc.getAnalyticsSummary();
+  }
+
+  static num _n(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v;
+    return num.tryParse(v.toString()) ?? 0;
+  }
+
+  static String _money(num n) {
+    if (n == n.roundToDouble()) return n.toInt().toString();
+    return n.toStringAsFixed(2);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snap.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.insights_outlined, size: 48, color: scheme.error),
+                  const SizedBox(height: 12),
+                  Text('${snap.error}', textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  FilledButton.tonal(
+                    onPressed: () => setState(() => _f = _svc.getAnalyticsSummary()),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        final root = snap.data ?? const {};
+        final data = (root['data'] is Map)
+            ? Map<String, dynamic>.from(root['data'] as Map)
+            : const <String, dynamic>{};
+        final cards = (data['cards'] is Map)
+            ? Map<String, dynamic>.from(data['cards'] as Map)
+            : const <String, dynamic>{};
+        final per = data['perBusinessOrders'];
+        final rows = (per is List)
+            ? per.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            : <Map<String, dynamic>>[];
+        final top = data['topProductsPerBusiness'];
+        final topRows = (top is List)
+            ? top.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            : <Map<String, dynamic>>[];
+        final topByBiz = <String, List<Map<String, dynamic>>>{};
+        for (final r in topRows) {
+          final bid = r['businessId']?.toString() ?? '';
+          final products = r['products'];
+          if (products is List) {
+            topByBiz[bid] =
+                products.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          }
+        }
+        final users = (data['users'] is Map)
+            ? Map<String, dynamic>.from(data['users'] as Map)
+            : const <String, dynamic>{};
+
+        final totalOrders = _n(cards['totalOrders']);
+        final totalRev = _n(cards['totalRevenue']);
+        final totalBiz = _n(cards['totalBusinesses']);
+        final activeBiz = _n(cards['activeBusinesses']);
+        final totalUsers = _n(users['total']);
+        final activeUsers = _n(users['active']);
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() => _f = _svc.getAnalyticsSummary());
+            await _f;
+          },
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.insights_rounded, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Analytics',
+                          style: AppTypography.headlineSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Live aggregates from your backend',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: 'Refresh',
+                    onPressed: () => setState(() => _f = _svc.getAnalyticsSummary()),
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Overview',
+                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, c) {
+                  final cross = c.maxWidth >= 520 ? 2 : 1;
+                  return GridView.count(
+                    crossAxisCount: cross,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: cross == 2 ? 1.65 : 2.1,
+                    children: [
+                      SaStatCard(
+                        title: 'Total revenue',
+                        value: _money(totalRev),
+                        subtitle: 'All non-cancelled orders',
+                        icon: Icons.payments_outlined,
+                      ),
+                      SaStatCard(
+                        title: 'Orders',
+                        value: totalOrders.toInt().toString(),
+                        subtitle: 'Platform-wide',
+                        icon: Icons.receipt_long_outlined,
+                      ),
+                      SaStatCard(
+                        title: 'Businesses',
+                        value: totalBiz.toInt().toString(),
+                        subtitle: '$activeBiz active',
+                        icon: Icons.apartment_outlined,
+                      ),
+                      SaStatCard(
+                        title: 'Users',
+                        value: totalUsers.toInt().toString(),
+                        subtitle: '$activeUsers active accounts',
+                        icon: Icons.groups_outlined,
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Top businesses by orders',
+                      style: AppTypography.titleMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Uses order → creator → businessId (best-effort).',
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              if (rows.isEmpty)
+                Material(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: scheme.onSurfaceVariant),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'No per-business rows yet. Users may not have businessId set on orders.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ...rows.take(12).map((r) {
+                  final bid = r['businessId']?.toString() ?? '';
+                  final orders = _n(r['orders']);
+                  final rev = _n(r['revenue']);
+                  final label = bid.isEmpty ? 'Unassigned' : bid;
+                  final maxO = rows.map((x) => _n(x['orders'])).fold<num>(0, (a, b) => a > b ? a : b);
+                  final bar = maxO > 0 ? (orders / maxO).clamp(0.0, 1.0).toDouble() : 0.0;
+                  final products = topByBiz[bid] ?? const <Map<String, dynamic>>[];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Material(
+                      elevation: 0,
+                      color: scheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: scheme.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '${orders.toInt()} orders',
+                                  style: AppTypography.labelLarge.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Revenue ${_money(rev)}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: bar,
+                                minHeight: 6,
+                                backgroundColor:
+                                    scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                                color: AppColors.primary.withValues(alpha: 0.75),
+                              ),
+                            ),
+                            if (products.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Top products',
+                                style: AppTypography.labelLarge.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              for (final p in products.take(3))
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          p['name']?.toString() ?? '—',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        'x${(_n(p['qty'])).toInt()}',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

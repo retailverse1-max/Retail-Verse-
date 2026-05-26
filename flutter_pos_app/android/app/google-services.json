@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "127152555107",
+    "project_id": "retail-verse",
+    "storage_bucket": "retail-verse.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:127152555107:android:6c3ea4948215ec036a6456",
+        "android_client_info": {
+          "package_name": "com.hexerveSolutions.RetailVerse"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "127152555107-fsein4j98b0fium0q98q486nnqr3cbg8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hexerveSolutions.RetailVerse",
+            "certificate_hash": "ff508d416d3fd288a6916d186878046cbffbc72b"
+          }
+        },
+        {
+          "client_id": "127152555107-mo61lp114l0e25128696iud0e0ul2q65.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtWjSYBeWVmBP7KXdbk0Jr3jypsIEpuas"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "127152555107-mo61lp114l0e25128696iud0e0ul2q65.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,447 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../data/remote/admin_users_service.dart';
+import '../../../../core/network/api_exception.dart';
+import '../../../../data/remote/super_admin_service.dart';
+
+class SaUsersScreen extends StatefulWidget {
+  const SaUsersScreen({super.key});
+
+  @override
+  State<SaUsersScreen> createState() => _SaUsersScreenState();
+}
+
+class _SaUsersScreenState extends State<SaUsersScreen> {
+  final _svc = SuperAdminService();
+  final _adminUsers = AdminUsersService();
+  late Future<List<Map<String, dynamic>>> _f;
+  bool _isLoading = false;
+
+  static const _assignableRoles = ['admin', 'client', 'cashier', 'inventory', 'user'];
+
+  @override
+  void initState() {
+    super.initState();
+    _f = _svc.listUsers();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Team',
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final nameC = TextEditingController();
+                      final emailC = TextEditingController();
+                      final phoneC = TextEditingController();
+                      final passC = TextEditingController();
+                      var role = _assignableRoles.first;
+                      final formKey = GlobalKey<FormState>();
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => StatefulBuilder(
+                          builder: (ctx, setLocal) => AlertDialog(
+                            title: const Text('Create team member'),
+                            content: Form(
+                              key: formKey,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextFormField(
+                                      controller: nameC,
+                                      decoration:
+                                          const InputDecoration(labelText: 'Name'),
+                                      validator: (v) => AppValidators.validateRequired(
+                                        v,
+                                        'Name',
+                                      ),
+                                    ),
+                                    TextFormField(
+                                      controller: emailC,
+                                      decoration:
+                                          const InputDecoration(labelText: 'Email'),
+                                      keyboardType: TextInputType.emailAddress,
+                                      validator: AppValidators.validateEmail,
+                                    ),
+                                    TextFormField(
+                                      controller: phoneC,
+                                      decoration:
+                                          const InputDecoration(labelText: 'Phone'),
+                                      keyboardType: TextInputType.phone,
+                                      validator: AppValidators.validatePhone,
+                                    ),
+                                    TextFormField(
+                                      controller: passC,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Password (min 6 chars)',
+                                      ),
+                                      obscureText: true,
+                                      validator: AppValidators.validatePassword,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    DropdownButtonFormField<String>(
+                                      value: role,
+                                      items: _assignableRoles
+                                          .map(
+                                            (r) => DropdownMenuItem(
+                                              value: r,
+                                              child: Text(r.replaceAll('_', ' ')),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (v) {
+                                        if (v != null) setLocal(() => role = v);
+                                      },
+                                      decoration: const InputDecoration(
+                                        labelText: 'Role',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () {
+                                  if (formKey.currentState?.validate() != true) {
+                                    return;
+                                  }
+                                  Navigator.pop(ctx, true);
+                                },
+                                child: const Text('Create'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                      if (ok != true || !context.mounted) return;
+                      try {
+                        print('TEAM ACTION REQUEST: Create user ${emailC.text}');
+                        await _svc.createUser(
+                          name: nameC.text,
+                          email: emailC.text,
+                          phone: phoneC.text,
+                          password: passC.text,
+                          role: role,
+                        );
+                        print('TEAM ACTION RESPONSE: User created successfully');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User created successfully'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                        setState(() {
+                          _f = _svc.listUsers();
+                        });
+                      } catch (e) {
+                        print('TEAM ACTION ERROR: $e');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                e is ApiException ? e.message : '$e',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.person_add_alt_rounded, size: 18),
+                    label: const Text('Create'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Platform users across all businesses',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.35)),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _f,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snap.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: scheme.error),
+                        const SizedBox(height: 12),
+                        Text('${snap.error}', textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        FilledButton.tonal(
+                          onPressed: () => setState(() {
+                            _f = _svc.listUsers();
+                          }),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final users = snap.data ?? const [];
+              return RefreshIndicator(
+                onRefresh: () async => setState(() {
+                  _f = _svc.listUsers();
+                }),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  itemCount: users.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, i) {
+                    final u = users[i];
+                    final name = u['name']?.toString() ?? '';
+                    final email = u['email']?.toString() ?? '';
+                    final role = u['role']?.toString() ?? '';
+                    final active = u['isActive'] == true;
+                    final businessId = u['businessId']?.toString();
+                    final title = name.isEmpty ? email : name;
+                    return Material(
+                      elevation: 0,
+                      color: scheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: scheme.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              backgroundColor:
+                                  AppColors.primary.withValues(alpha: 0.12),
+                              child: Text(
+                                title.isNotEmpty ? title[0].toUpperCase() : '?',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    email,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    children: [
+                                      Chip(
+                                        visualDensity: VisualDensity.compact,
+                                        label: Text(
+                                          role.isEmpty ? '—' : role,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      Chip(
+                                        visualDensity: VisualDensity.compact,
+                                        avatar: Icon(
+                                          active ? Icons.check_circle : Icons.pause_circle,
+                                          size: 16,
+                                          color: active
+                                              ? scheme.primary
+                                              : scheme.onSurfaceVariant,
+                                        ),
+                                        label: Text(active ? 'Active' : 'Inactive'),
+                                      ),
+                                      if (businessId != null && businessId.isNotEmpty)
+                                        Chip(
+                                          visualDensity: VisualDensity.compact,
+                                          label: Text(
+                                            'Biz: $businessId',
+                                            style: const TextStyle(fontSize: 11),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              onSelected: (v) async {
+                                final id =
+                                    u['_id']?.toString() ?? u['id']?.toString() ?? '';
+                                if (id.isEmpty) return;
+
+                                setState(() => _isLoading = true);
+
+                                try {
+                                  String successMsg = '';
+                                  if (v == 'toggle') {
+                                    await _svc.updateUserStatus(
+                                      userId: id,
+                                      isActive: !active,
+                                    );
+                                    successMsg =
+                                        active ? 'User deactivated successfully' : 'User activated successfully';
+                                  } else if (v == 'delete') {
+                                    final ok = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Delete team member?'),
+                                        content: Text(
+                                          'This will remove access for $email.',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx, false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () => Navigator.pop(ctx, true),
+                                            child: const Text('Delete'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (ok != true) {
+                                      setState(() => _isLoading = false);
+                                      return;
+                                    }
+                                    await _svc.deleteUser(userId: id);
+                                    successMsg = 'User deleted successfully';
+                                  } else if (v.startsWith('role:')) {
+                                    final nextRole = v.substring('role:'.length);
+                                    await _svc.updateUserRole(
+                                      userId: id,
+                                      role: nextRole,
+                                    );
+                                    successMsg = 'User role updated successfully';
+                                  }
+
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(successMsg),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                    setState(() {
+                                      _f = _svc.listUsers();
+                                      _isLoading = false;
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    setState(() => _isLoading = false);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          e is ApiException ? e.message : '$e',
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              itemBuilder: (ctx) => [
+                                PopupMenuItem(
+                                  value: 'toggle',
+                                  child: Text(active ? 'Deactivate' : 'Activate'),
+                                ),
+                                const PopupMenuDivider(),
+                                const PopupMenuItem(
+                                  value: 'role:admin',
+                                  child: Text('Role: Admin'),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'role:cashier',
+                                  child: Text('Role: Cashier'),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'role:inventory',
+                                  child: Text('Role: Inventory'),
+                                ),
+                                const PopupMenuDivider(),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
