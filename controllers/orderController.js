@@ -2,6 +2,7 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Business = require("../models/Business");
 const InventoryLog = require("../models/InventoryLog");
+const { createAndSendNotification } = require("../services/notificationService");
 
 const createOrder = async (req, res) => {
   try {
@@ -114,6 +115,18 @@ const createOrder = async (req, res) => {
         afterStock,
         referenceId: order._id.toString(),
       });
+
+      // Push notification for out of stock
+      if (afterStock === 0 && beforeStock > 0) {
+        await createAndSendNotification({
+          title: "Product Out of Stock 🚨",
+          message: `${product.name} has run out of stock! Please restock soon.`,
+          type: "low_stock",
+          targetRoles: ["inventory", "admin"],
+          clientId: clientId,
+          data: { productId: product._id.toString() },
+        });
+      }
     }
 
     res.status(201).json({

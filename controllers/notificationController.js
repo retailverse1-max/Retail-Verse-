@@ -1,5 +1,7 @@
 const nodemailer = require("nodemailer");
 const Ticket = require("../models/Ticket");
+const Notification = require("../models/Notification");
+const { createAndSendNotification } = require("../services/notificationService");
 
 const sendEmailInvoice = async (req, res) => {
   const { to, subject, htmlContent } = req.body;
@@ -104,4 +106,111 @@ const sendEmailInvoice = async (req, res) => {
   }
 };
 
-module.exports = { sendEmailInvoice };
+const getNotifications = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userRole = req.user.role;
+    const clientId = req.user.clientId;
+
+    const query = {
+      targetRoles: userRole,
+    };
+
+    if (clientId) {
+      query.$or = [{ clientId }, { clientId: null }];
+    } else {
+      query.clientId = null;
+    }
+
+    const notifications = await Notification.find(query)
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const unreadCount = notifications.filter(
+      (n) => !n.readBy.includes(userId)
+    ).length;
+
+    res.status(200).json({ success: true, notifications, unreadCount });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const markAsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // We can mark all as read for this user, or just one
+    // For simplicity, mark all matching notifications as read
+    const userRole = req.user.role;
+    const clientId = req.user.clientId;
+
+    const query = {
+      targetRoles: userRole,
+      readBy: { $ne: userId }
+    };
+
+    if (clientId) {
+      query.$or = [{ clientId }, { clientId: null }];
+    } else {
+      query.clientId = null;
+    }
+
+    await Notification.updateMany(query, { $push: { readBy: userId } });
+
+    res.status(200).json({ success: true, message: "Marked as read" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const broadcastNotification = async (req, res) => {
+  try {
+    const { title, message, targetRoles, type } = req.body;
+    
+    // Only super_admin should broadcast globally without clientId
+    let clientId = req.user.clientId;
+    if (req.user.role === "super_admin" && !req.body.clientId) {
+      clientId = null; // Global broadcast
+    }
+
+    await createAndSendNotification({
+      title,
+      message,
+      type: type || "general",
+      targetRoles: targetRoles || ["admin", "client", "customer"],
+      clientId,
+    });
+
+    res.status(200).json({ success: true, message: "Broadcast sent successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const requestRestock = async (req, res) => {
+  try {
+    const { productId, note } = req.body;
+    const clientId = req.user.clientId;
+    
+    // In a real scenario, you'd fetch the product name, but we can just use generic if needed.
+    // For now, simple text:
+    const title = "Restock Requested 🚨";
+    const message = `A restock was requested by ${req.user.name || 'Cashier'} ${note ? '- Note: ' + note : ''}`;
+    
+    await createAndSendNotification({
+      title,
+      message,
+      type: "low_stock",
+      targetRoles: ["inventory", "admin"],
+      clientId,
+      data: { productId }
+    });
+    
+    res.status(200).json({ success: true, message: "Restock request sent" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { sendEmailInvoice, getNotifications, markAsRead, broadcastNotification, requestRestock };

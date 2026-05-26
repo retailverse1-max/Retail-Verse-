@@ -252,4 +252,22 @@ const phoneLogin = async (req, res) => {
   }
 };
 
-module.exports = { loginUser, googleLogin, registerUser, phoneLogin };
+const updateFcmToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ message: "fcmToken is required" });
+    }
+    
+    // Update the FCM token for the currently logged in user
+    req.user.fcmToken = fcmToken;
+    await req.user.save();
+    
+    res.status(200).json({ success: true, message: "FCM token updated successfully" });
+  } catch (error) {
+    console.error("Update FCM Token Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { loginUser, googleLogin, registerUser, phoneLogin, updateFcmToken };

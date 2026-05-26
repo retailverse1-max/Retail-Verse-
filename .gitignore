@@ -1,2 +1,10 @@
 node_modules/
 .env
+firebaseServiceAccountKey.json
+backend/
+flutter_pos_app/
+patch_exact.py
+patch_multiline.py
+patch_others.py
+patch_sa_headers.py
+tmp/

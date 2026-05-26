@@ -34,6 +34,10 @@ const customerSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    fcmToken: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );
