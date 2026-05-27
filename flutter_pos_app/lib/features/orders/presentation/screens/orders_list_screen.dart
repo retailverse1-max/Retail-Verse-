@@ -7,6 +7,7 @@ import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/core/widgets/common/status_badge.dart';
 import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/features/pos/providers/order_providers.dart';
+import 'package:retail_verse_pos/data/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/features/orders/presentation/widgets/create_quote_modal.dart';
 import 'package:retail_verse_pos/features/orders/presentation/widgets/invoice_details_modal.dart';
