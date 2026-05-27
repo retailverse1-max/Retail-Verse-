@@ -622,10 +622,14 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.trending_up, color: AppColors.primary, size: 14),
+                          Icon(
+                            _selectedTab == 0 ? Icons.mail_outline : Icons.support_agent_rounded, 
+                            color: AppColors.primary, 
+                            size: 14
+                          ),
                           const SizedBox(width: 6),
                           Text(
-                            'CONTACT MESSAGES',
+                            _selectedTab == 0 ? 'CONTACT MESSAGES' : 'SUPPORT TICKETS',
                             style: AppTypography.labelLarge.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -637,7 +641,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Contact Messages',
+                        _selectedTab == 0 ? 'Contact Messages' : 'Support Tickets',
                         style: AppTypography.headlineMedium.copyWith(
                           fontWeight: FontWeight.w900,
                           color: AppColors.textPrimary,
@@ -651,7 +655,9 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Manage your contact messages and view detailed insights.',
+            _selectedTab == 0 
+                ? 'Manage your contact messages and view detailed insights.'
+                : 'Manage your support tickets and assist your customers.',
             style: AppTypography.bodySmall.copyWith(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
@@ -1824,10 +1830,13 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInfoBanner(),
+                    // If accessed from 'Contact Form' (initialTab == 0), show only contact form UI
+                    // If accessed from 'Support' (initialTab == 1), show only support UI
+                    
                     // KPI Cards Stack
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
+                      child: widget.initialTab == 0 ? Column(
                         children: [
                           _buildKpiCard(
                             title: 'TOTAL MESSAGES',
@@ -1847,6 +1856,9 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                             iconBgColor: const Color(0xFFFEF3C7),
                             subtitle: 'Submissions still marked as active',
                           ),
+                        ],
+                      ) : Column(
+                        children: [
                           statsAsync.when(
                             data: (stats) => _buildKpiCard(
                               title: 'OPEN TICKETS',
@@ -1879,9 +1891,8 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                         ],
                       ),
                     ),
-                    _buildCustomTabs(allContactSubmissions.length),
                     const SizedBox(height: 12),
-                    // Switch based on selected tab
+                    // Body based on selected tab
                     _selectedTab == 0
                         ? _buildContactMessagesView(filteredContactSubmissions)
                         : ticketsAsync.when(
