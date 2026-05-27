@@ -17,6 +17,7 @@ import 'package:retail_verse_pos/features/pos/providers/pos_held_cart_provider.d
 import 'package:retail_verse_pos/features/pos/presentation/widgets/invoice_dialog.dart';
 import 'package:retail_verse_pos/features/pos/presentation/widgets/pos_cart_line_tile.dart';
 import 'package:retail_verse_pos/features/pos/presentation/widgets/card_payment_simulation_dialog.dart';
+import 'package:retail_verse_pos/features/pos/presentation/widgets/upi_payment_simulation_dialog.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/data/models/customer_model.dart';
 
@@ -230,8 +231,14 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
 
     // Direct UPI Flow
     if (_paymentMethod == 'UPI') {
-      await _launchUPI();
-      // After launching, we still need to confirm if they want to place the order
+      final upiOk = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => UpiPaymentSimulationDialog(amount: updated.total),
+      );
+      if (upiOk != true || !mounted) return;
+      await _executeOrderPlacement();
+      return;
     }
 
     final ok = await showDialog<bool>(
