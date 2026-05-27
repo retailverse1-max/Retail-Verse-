@@ -81,23 +81,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: IconButton(
-                                  onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                                  icon: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.cardBorder.withOpacity(0.5),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
-                                  ),
-                                ),
-                              )
-                            else
-                              const ResponsiveMenuButton(),
+                            ResponsiveMenuButton(isSuperAdmin: ref.watch(authProvider.select((s) => s.user?['role'])) == 'super_admin'),
                             const SizedBox(width: 4),
                             Text(
                               'Quotes & Invoices',

@@ -1343,7 +1343,11 @@ class ResponsiveMenuButton extends ConsumerWidget {
           color: (color ?? AppColors.textPrimary).withOpacity(0.12),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(Icons.menu_rounded, color: color ?? AppColors.textPrimary, size: 20),
+        child: Icon(
+          isSuperAdmin ? Icons.more_vert_rounded : Icons.menu_rounded, 
+          color: color ?? AppColors.textPrimary, 
+          size: 20
+        ),
       ),
     );
   }
