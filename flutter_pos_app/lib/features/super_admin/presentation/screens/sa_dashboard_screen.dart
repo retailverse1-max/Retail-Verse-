@@ -7,6 +7,10 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+import 'package:retail_verse_pos/core/services/session_service.dart';
+import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
 
 class SaDashboardScreen extends StatefulWidget {
@@ -963,14 +967,14 @@ class _ModernKPICard extends StatelessWidget {
   }
 }
 
-class _StorePickerSheet extends StatefulWidget {
+class _StorePickerSheet extends ConsumerStatefulWidget {
   const _StorePickerSheet();
 
   @override
-  State<_StorePickerSheet> createState() => _StorePickerSheetState();
+  ConsumerState<_StorePickerSheet> createState() => _StorePickerSheetState();
 }
 
-class _StorePickerSheetState extends State<_StorePickerSheet> {
+class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
   final _svc = SuperAdminService();
   List<Map<String, dynamic>> _all = [];
   String _search = '';
@@ -1069,11 +1073,16 @@ class _StorePickerSheetState extends State<_StorePickerSheet> {
                           border: Border.all(color: AppColors.cardBorder.withOpacity(0.4)),
                         ),
                         child: ListTile(
-                          onTap: () {
-                            final id = b['id']?.toString() ?? b['_id']?.toString() ?? '';
-                            Navigator.pop(context);
-                            if (id.isNotEmpty) {
-                              context.push('/super-admin/businesses/$id');
+                          onTap: () async {
+                            final storeId = b['id']?.toString() ?? b['_id']?.toString() ?? b['businessId']?.toString();
+                            if (storeId != null && storeId.isNotEmpty) {
+                              await ref.read(authProvider.notifier).updateLocalUser({'storeId': storeId});
+                              SessionService.currentStoreId = storeId;
+                              invalidateAllDashboardProviders(ref);
+                            }
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              context.go('/dashboard');
                             }
                           },
                           contentPadding: const EdgeInsets.all(12),
