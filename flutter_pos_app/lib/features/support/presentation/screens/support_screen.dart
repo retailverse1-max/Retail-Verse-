@@ -152,7 +152,7 @@ class SupportScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          _buildHeader(context, isPhone, isTablet, isDesktop),
+          _buildHeader(context, ref, isPhone, isTablet, isDesktop),
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,
@@ -182,7 +182,10 @@ class SupportScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isPhone, bool isTablet, bool isDesktop) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, bool isPhone, bool isTablet, bool isDesktop) {
+    final role = ref.watch(authProvider.select((s) => s.user?['role']));
+    final isSuperAdmin = role == 'super_admin';
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
@@ -210,7 +213,7 @@ class SupportScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-                const ResponsiveMenuButton(),
+                ResponsiveMenuButton(isSuperAdmin: isSuperAdmin),
                 const SizedBox(width: 8),
               Expanded(
                 child: Column(
