@@ -23,7 +23,7 @@ const _kSecondaryShellRoutes = <_SaRoute>[
   _SaRoute(label: 'Settings', path: '/super-admin/settings', icon: Icons.tune_outlined, selectedIcon: Icons.tune_rounded),
   _SaRoute(label: 'Custom Domain', path: '/super-admin/custom-domains', icon: Icons.language_outlined, selectedIcon: Icons.language_rounded),
   _SaRoute(label: 'Audit logs', path: '/super-admin/logs', icon: Icons.history_rounded, selectedIcon: Icons.history_rounded),
-  _SaRoute(label: 'Support', path: 'support', icon: Icons.support_agent_rounded, selectedIcon: Icons.support_agent_rounded),
+  _SaRoute(label: 'Support', path: '/super-admin/support', icon: Icons.support_agent_rounded, selectedIcon: Icons.support_agent_rounded),
 ];
 
 final saSidebarPinnedProvider = StateProvider<bool>((ref) => false);
@@ -377,11 +377,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
               if (isDrawer && Navigator.of(context).canPop()) {
                 Navigator.pop(context); 
               }
-              if (r.path == 'support') {
-                showDialog(context: context, builder: (c) => const SupportDialog());
-              } else {
-                onPick(r.path); 
-              }
+              onPick(r.path); 
             },
             hoverColor: AppColors.primary.withOpacity(0.05),
           ),

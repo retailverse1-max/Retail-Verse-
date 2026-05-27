@@ -35,14 +35,15 @@ class ContactSubmission {
 }
 
 class SaContactsScreen extends ConsumerStatefulWidget {
-  const SaContactsScreen({super.key});
+  final int initialTab;
+  const SaContactsScreen({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<SaContactsScreen> createState() => _SaContactsScreenState();
 }
 
 class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
-  int _selectedTab = 0; // 0 = Contact Messages, 1 = Support Tickets
+  late int _selectedTab; // 0 = Contact Messages, 1 = Support Tickets
   String _selectedStatus = 'All statuses';
   final Map<String, String> _localTicketStatuses = {};
   final Set<String> _localDeletedMockIds = {};
@@ -132,6 +133,22 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
       'createdAt': '2026-05-21T14:15:00Z',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab = widget.initialTab;
+  }
+
+  @override
+  void didUpdateWidget(SaContactsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      setState(() {
+        _selectedTab = widget.initialTab;
+      });
+    }
+  }
 
   // Helper colors for status badges
   Color _getStatusBgColor(String status) {
