@@ -1860,23 +1860,42 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                       ) : Column(
                         children: [
                           statsAsync.when(
-                            data: (stats) => _buildKpiCard(
-                              title: 'OPEN TICKETS',
-                              value: stats.open.toString(),
-                              accentColor: const Color(0xFF8B5CF6),
-                              icon: Icons.confirmation_number_outlined,
-                              iconColor: const Color(0xFF7C3AED),
-                              iconBgColor: const Color(0xFFF5F3FF),
-                              subtitle: 'User support tickets awaiting response',
+                            data: (stats) => Column(
+                              children: [
+                                _buildKpiCard(
+                                  title: 'TOTAL TICKETS',
+                                  value: stats.total.toString(),
+                                  accentColor: const Color(0xFF3B82F6),
+                                  icon: Icons.support_agent_rounded,
+                                  iconColor: const Color(0xFF2563EB),
+                                  iconBgColor: const Color(0xFFEFF6FF),
+                                  subtitle: 'All-time support tickets raised',
+                                ),
+                                _buildKpiCard(
+                                  title: 'OPEN TICKETS',
+                                  value: stats.open.toString(),
+                                  accentColor: const Color(0xFF8B5CF6),
+                                  icon: Icons.confirmation_number_outlined,
+                                  iconColor: const Color(0xFF7C3AED),
+                                  iconBgColor: const Color(0xFFF5F3FF),
+                                  subtitle: 'User support tickets awaiting response',
+                                ),
+                                _buildKpiCard(
+                                  title: 'RESOLVED TICKETS',
+                                  value: stats.resolved.toString(),
+                                  accentColor: const Color(0xFF10B981),
+                                  icon: Icons.check_circle_outline_rounded,
+                                  iconColor: const Color(0xFF059669),
+                                  iconBgColor: const Color(0xFFECFDF5),
+                                  subtitle: 'Successfully resolved issues',
+                                ),
+                              ],
                             ),
-                            loading: () => _buildKpiCard(
-                              title: 'OPEN TICKETS',
-                              value: '0',
-                              accentColor: const Color(0xFF8B5CF6),
-                              icon: Icons.confirmation_number_outlined,
-                              iconColor: const Color(0xFF7C3AED),
-                              iconBgColor: const Color(0xFFF5F3FF),
-                              subtitle: 'User support tickets awaiting response',
+                            loading: () => const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: CircularProgressIndicator(color: AppColors.primary),
+                              ),
                             ),
                             error: (e, _) => _buildKpiCard(
                               title: 'OPEN TICKETS',
