@@ -251,19 +251,17 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
               foregroundColor: Colors.white,
             ),
           ),
-          if (cartItemCount > 0) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => context.push('/pos/cart'),
-              icon: const Icon(Icons.shopping_bag_outlined),
-              label: const Text('Go to Checkout'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-              ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: cartItemCount > 0 ? () => context.push('/pos/cart') : null,
+            icon: const Icon(Icons.shopping_bag_outlined),
+            label: Text(cartItemCount > 0 ? 'Go to Checkout ($cartItemCount items)' : 'Cart is Empty'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              foregroundColor: cartItemCount > 0 ? AppColors.primary : Colors.grey,
+              side: BorderSide(color: cartItemCount > 0 ? AppColors.primary : Colors.grey.shade300),
             ),
-          ],
+          ),
         ],
       ),
     );
