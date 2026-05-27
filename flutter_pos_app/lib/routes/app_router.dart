@@ -148,7 +148,7 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/super-admin/support',
-          builder: (context, state) => const SaContactsScreen(initialTab: 1),
+          builder: (context, state) => SupportScreen(),
         ),
         GoRoute(
           path: '/super-admin/logs',
