@@ -99,7 +99,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
             children: [
               IconButton(
                 icon: const Icon(Icons.shopping_cart_outlined, color: AppColors.primary),
-                onPressed: () => context.pop(),
+                onPressed: () => context.go('/pos'),
               ),
               if (cartItemCount > 0)
                 Positioned(
