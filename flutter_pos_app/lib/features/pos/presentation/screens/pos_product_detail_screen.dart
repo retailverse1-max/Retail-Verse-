@@ -250,6 +250,19 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
               foregroundColor: Colors.white,
             ),
           ),
+          if (cartItemCount > 0) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.go('/pos'),
+              icon: const Icon(Icons.shopping_bag_outlined),
+              label: const Text('Go to Checkout'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+              ),
+            ),
+          ],
         ],
       ),
     );
