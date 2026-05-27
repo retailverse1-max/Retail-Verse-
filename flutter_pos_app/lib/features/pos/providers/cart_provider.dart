@@ -240,12 +240,13 @@ class CartNotifier extends StateNotifier<CartState> {
     tryAddItem(product);
   }
 
-  /// Sets line quantity for [product] (adds line if missing). Clamped to `1..product.stock`.
+  /// Adds [quantity] to the line for [product] (adds line if missing). Clamped to `1..product.stock`.
   void addProductWithQuantity(Product product, int quantity) {
-    if (!product.isInStock) return;
-    final q = quantity.clamp(1, product.stock);
+    if (!product.isInStock || quantity <= 0) return;
+    
     final idx = state.items.indexWhere((i) => i.product.id == product.id);
     if (idx < 0) {
+      final q = quantity.clamp(1, product.stock);
       state = CartState(
         items: [...state.items, CartItem(product: product, quantity: q)],
         taxRate: state.taxRate,
@@ -258,7 +259,9 @@ class CartNotifier extends StateNotifier<CartState> {
         orderNotes: state.orderNotes,
       );
     } else {
-      state = state.updateQuantity(product.id, q);
+      final currentQty = state.items[idx].quantity;
+      final newQty = (currentQty + quantity).clamp(1, product.stock);
+      state = state.updateQuantity(product.id, newQty);
     }
   }
 

@@ -74,7 +74,8 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
   Widget build(BuildContext context) {
     final p = widget.product;
     final desc = p.description?.trim();
-    final cartItemCount = ref.watch(cartProvider.select((c) => c.itemCount));
+    final cartState = ref.watch(cartProvider);
+    final cartItemCount = cartState.itemCount;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
