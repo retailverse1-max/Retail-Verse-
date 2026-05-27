@@ -68,13 +68,14 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
         behavior: SnackBarBehavior.floating,
       ),
     );
-    context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
     final desc = p.description?.trim();
+    final cartItemCount = ref.watch(cartProvider.select((c) => c.itemCount));
+
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
@@ -92,6 +93,42 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
             color: AppColors.primary,
           ),
         ),
+        actions: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined, color: AppColors.primary),
+                onPressed: () => context.pop(),
+              ),
+              if (cartItemCount > 0)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Center(
+                      child: Text(
+                        cartItemCount > 99 ? '99+' : '$cartItemCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
