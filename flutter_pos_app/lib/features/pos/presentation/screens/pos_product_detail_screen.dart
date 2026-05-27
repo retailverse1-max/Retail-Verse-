@@ -99,7 +99,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
             children: [
               IconButton(
                 icon: const Icon(Icons.shopping_cart_outlined, color: AppColors.primary),
-                onPressed: () => context.go('/pos'),
+                onPressed: () => context.push('/pos/cart'),
               ),
               if (cartItemCount > 0)
                 Positioned(
@@ -233,7 +233,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
               ],
             ),
           ],
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: p.isInStock ? _addToCart : null,
             icon: const Icon(Icons.add_shopping_cart_rounded),
@@ -253,7 +253,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
           if (cartItemCount > 0) ...[
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () => context.go('/pos'),
+              onPressed: () => context.push('/pos/cart'),
               icon: const Icon(Icons.shopping_bag_outlined),
               label: const Text('Go to Checkout'),
               style: OutlinedButton.styleFrom(
