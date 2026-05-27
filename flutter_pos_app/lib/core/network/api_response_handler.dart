@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants/api_endpoints.dart';
+import '../services/session_service.dart';
 import 'api_exception.dart';
 
 class ApiResponseHandler {
@@ -15,6 +16,8 @@ class ApiResponseHandler {
     return {
       'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      if (SessionService.currentStoreId != null && SessionService.currentStoreId!.isNotEmpty)
+        'x-client-id': SessionService.currentStoreId!,
     };
   }
 

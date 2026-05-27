@@ -7,6 +7,8 @@ import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/widgets/support_dialog.dart';
 import 'package:retail_verse_pos/features/support/presentation/widgets/support_fab.dart';
+import 'package:retail_verse_pos/core/services/session_service.dart';
+import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 
 const _kPrimaryShellRoutes = <_SaRoute>[
   _SaRoute(label: 'Home', path: '/super-admin/dashboard', icon: Icons.space_dashboard_outlined, selectedIcon: Icons.space_dashboard_rounded),
@@ -85,7 +87,13 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
                       title: Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900)),
                       subtitle: const Text('Tap to switch context', style: TextStyle(fontSize: 11)),
                       trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                      onTap: () {
+                      onTap: () async {
+                        final storeId = b['_id']?.toString() ?? b['businessId']?.toString();
+                        if (storeId != null) {
+                          await ref.read(authProvider.notifier).updateLocalUser({'storeId': storeId});
+                          SessionService.currentStoreId = storeId;
+                          invalidateAllDashboardProviders(ref);
+                        }
                         Navigator.pop(ctx);
                         context.go('/dashboard');
                       },

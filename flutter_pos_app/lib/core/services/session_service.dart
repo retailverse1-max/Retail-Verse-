@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists auth after login: [token], [userId], [userName], [userEmail], [userRole] (+ optional [storeId]).
 class SessionService {
+  static String? currentStoreId;
+
   static const String _tokenKey = 'auth_token';
   static const String _userIdKey = 'user_id';
   static const String _userNameKey = 'user_name';
@@ -69,6 +71,7 @@ class SessionService {
     }
     if (storeId != null) {
       await prefs.setString(_storeIdKey, storeId);
+      currentStoreId = storeId;
     }
     if (subscriptionPlan != null) {
       await prefs.setString(_subscriptionPlanKey, subscriptionPlan);
@@ -90,6 +93,7 @@ class SessionService {
   /// One SharedPreferences read for token + user profile (use after cold start or for role checks).
   static Future<Map<String, String?>> readPersistedAuth() async {
     final prefs = await SharedPreferences.getInstance();
+    currentStoreId = prefs.getString(_storeIdKey);
     return {
       persistedTokenKey: prefs.getString(_tokenKey),
       persistedUserIdKey: prefs.getString(_userIdKey),
@@ -97,7 +101,7 @@ class SessionService {
       persistedUserEmailKey: prefs.getString(_userEmailKey),
       persistedUserPhoneKey: prefs.getString(_userPhoneKey),
       persistedUserRoleKey: prefs.getString(_userRoleKey),
-      persistedStoreIdKey: prefs.getString(_storeIdKey),
+      persistedStoreIdKey: currentStoreId,
       persistedSubscriptionPlanKey: prefs.getString(_subscriptionPlanKey),
       persistedSubscriptionStatusKey: prefs.getString(_subscriptionStatusKey),
       persistedSubscriptionExpiryKey: prefs.getString(_subscriptionExpiryKey),
@@ -168,6 +172,7 @@ class SessionService {
     await prefs.remove(_subscriptionPlanKey);
     await prefs.remove(_subscriptionStatusKey);
     await prefs.remove(_subscriptionExpiryKey);
+    currentStoreId = null;
     if (kDebugMode) {
       debugPrint('SessionService: session cleared');
     }
