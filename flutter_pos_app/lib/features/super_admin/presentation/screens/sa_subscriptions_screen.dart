@@ -4,6 +4,7 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
 import 'package:intl/intl.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaSubscriptionsScreen extends StatefulWidget {
   const SaSubscriptionsScreen({super.key});
@@ -74,11 +75,30 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text('Subscriptions', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
-                  Text('Manage revenue and client access', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                  if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: IconButton(
+                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.cardBorder.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                        ),
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Subscriptions', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                      Text('Manage revenue and client access', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                    ],
+                  ),
                 ],
               ),
               IconButton(

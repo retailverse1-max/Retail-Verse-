@@ -4,11 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/common/modern_search_bar.dart';
-import '../../../dashboard/providers/dashboard_providers.dart';
 import '../../../../data/models/customer_model.dart';
+import '../../../dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
-import 'package:retail_verse_pos/routes/app_router.dart';
+import '../../../auth/providers/auth_provider.dart';
 
 class CustomersScreen extends ConsumerStatefulWidget {
   final bool isSelectionMode;
@@ -32,13 +31,6 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   final _searchController = TextEditingController();
   String _selectedStatus = 'All statuses';
 
-  static const List<String> _avatarUrls = [
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-    'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-  ];
-
   @override
   void dispose() {
     _searchController.dispose();
@@ -54,32 +46,31 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     return true;
   }
 
+  /// Slim top header: back button (in selection mode) / menu icon, title, search bar.
   Widget _buildHeader(BuildContext context, bool isPhone, bool isTablet, bool isDesktop) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        isPhone ? 16 : 24,
-        MediaQuery.of(context).padding.top + 16,
-        isPhone ? 16 : 24,
-        24,
+        isPhone ? 12 : 20,
+        MediaQuery.of(context).padding.top + 12,
+        isPhone ? 12 : 20,
+        12,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          )
+          BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // ── Title row ──
           Row(
             children: [
               if (widget.isSelectionMode) ...[
@@ -91,99 +82,54 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       color: AppColors.cardBorder.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: AppColors.textPrimary, size: 18),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
               ] else ...[
                 const ResponsiveMenuButton(),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
               ],
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 14),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'CUSTOMERS',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              fontSize: 11,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      widget.isSelectionMode ? 'Select Customer' : 'Customers',
-                      style: AppTypography.headlineMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Manage your customers and view detailed insights.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
-          ),
-          const SizedBox(height: 16),
-          
-          // overlapping avatar stack
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (int i = 0; i < _avatarUrls.length; i++)
-                Align(
-                  widthFactor: 0.65,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: CircleAvatar(
-                      radius: 13,
-                      backgroundImage: NetworkImage(_avatarUrls[i]),
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDBEAFE),
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 child: Text(
-                  '+12',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: const Color(0xFF1E40AF),
+                  widget.isSelectionMode ? 'Select Customer' : 'Customers',
+                  style: AppTypography.headlineMedium.copyWith(
                     fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    fontSize: isPhone ? 20 : 24,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                'Live Customers',
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.bold,
-                  decoration: TextDecoration.underline,
-                  decorationColor: AppColors.textSecondary.withValues(alpha: 0.5),
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          // ── Search bar ──
+          Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() {}),
+              style: AppTypography.bodyMedium,
+              decoration: InputDecoration(
+                hintText: 'Search customers…',
+                hintStyle: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textTertiary),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textTertiary),
+                        onPressed: () => setState(() => _searchController.clear()),
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
           ),
         ],
       ),
@@ -245,125 +191,91 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     children: [
                       const SizedBox(height: 16),
                       // ── KPI CARDS ──────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          children: [
-                            _buildKpiCard(
-                              title: 'TOTAL CUSTOMERS',
-                              value: totalCount.toString(),
-                              accentColor: const Color(0xFF3B82F6),
-                              icon: Icons.people_outline_rounded,
-                              iconColor: const Color(0xFF2563EB),
-                              iconBgColor: const Color(0xFFEFF6FF),
-                            ),
-                            _buildKpiCard(
-                              title: 'ACTIVE MEMBERS',
-                              value: activeCount.toString(),
-                              accentColor: const Color(0xFF10B981),
-                              icon: Icons.person_outline_rounded,
-                              iconColor: const Color(0xFF059669),
-                              iconBgColor: const Color(0xFFECFDF5),
-                            ),
-                            _buildKpiCard(
-                              title: 'NEW THIS MONTH',
-                              value: newThisMonthCount.toString(),
-                              accentColor: const Color(0xFF8B5CF6),
-                              icon: Icons.person_add_outlined,
-                              iconColor: const Color(0xFF7C3AED),
-                              iconBgColor: const Color(0xFFF5F3FF),
-                            ),
-                            _buildKpiCard(
-                              title: 'CHURN RATE',
-                              value: '${churnRate.toStringAsFixed(1)}%',
-                              accentColor: const Color(0xFFEF4444),
-                              icon: Icons.show_chart_rounded,
-                              iconColor: const Color(0xFFDC2626),
-                              iconBgColor: const Color(0xFFFEF2F2),
-                            ),
-                          ],
+                      if (!(widget.isSelectionMode && ref.watch(authProvider).user?['role'] == 'cashier')) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            children: [
+                              _buildKpiCard(
+                                title: 'TOTAL CUSTOMERS',
+                                value: totalCount.toString(),
+                                accentColor: const Color(0xFF3B82F6),
+                                icon: Icons.people_outline_rounded,
+                                iconColor: const Color(0xFF2563EB),
+                                iconBgColor: const Color(0xFFEFF6FF),
+                              ),
+                              _buildKpiCard(
+                                title: 'ACTIVE MEMBERS',
+                                value: activeCount.toString(),
+                                accentColor: const Color(0xFF10B981),
+                                icon: Icons.person_outline_rounded,
+                                iconColor: const Color(0xFF059669),
+                                iconBgColor: const Color(0xFFECFDF5),
+                              ),
+                              _buildKpiCard(
+                                title: 'NEW THIS MONTH',
+                                value: newThisMonthCount.toString(),
+                                accentColor: const Color(0xFF8B5CF6),
+                                icon: Icons.person_add_outlined,
+                                iconColor: const Color(0xFF7C3AED),
+                                iconBgColor: const Color(0xFFF5F3FF),
+                              ),
+                              _buildKpiCard(
+                                title: 'CHURN RATE',
+                                value: '${churnRate.toStringAsFixed(1)}%',
+                                accentColor: const Color(0xFFEF4444),
+                                icon: Icons.show_chart_rounded,
+                                iconColor: const Color(0xFFDC2626),
+                                iconBgColor: const Color(0xFFFEF2F2),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 24),
+                      ],
 
-                      const SizedBox(height: 24),
-
-                      // ── CUSTOMER DIRECTORY HEADER ───────────────────
+                      // ── STATUS FILTER ─────────────────────────────
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Customer Directory',
-                              style: AppTypography.headlineMedium.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Manage your customer base and their engagement. Active status uses the last 30 days of activity.',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // search field
-                            ModernSearchBar(
-                              controller: _searchController,
-                              hintText: 'Search customers...',
-                              onChanged: (v) => setState(() {}),
-                            ),
-                            
-                            const SizedBox(height: 12),
-
-                            // status filter dropdown
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedStatus,
-                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
-                                  style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
-                                  onChanged: (String? newValue) {
-                                    if (newValue != null) {
-                                      setState(() {
-                                        _selectedStatus = newValue;
-                                      });
-                                    }
-                                  },
-                                  items: <String>['All statuses', 'Active', 'Inactive']
-                                      .map<DropdownMenuItem<String>>((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            value == 'All statuses'
-                                                ? Icons.filter_alt_outlined
-                                                : value == 'Active'
-                                                    ? Icons.check_circle_outline_rounded
-                                                    : Icons.highlight_off_rounded,
-                                            size: 18,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(value),
-                                        ],
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedStatus,
+                              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                              style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                              onChanged: (String? newValue) {
+                                if (newValue != null) setState(() => _selectedStatus = newValue);
+                              },
+                              items: <String>['All statuses', 'Active', 'Inactive']
+                                  .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        value == 'All statuses'
+                                            ? Icons.filter_alt_outlined
+                                            : value == 'Active'
+                                                ? Icons.check_circle_outline_rounded
+                                                : Icons.highlight_off_rounded,
+                                        size: 18,
+                                        color: AppColors.textSecondary,
                                       ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
+                                      const SizedBox(width: 8),
+                                      Text(value),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
                             ),
-                          ],
+                          ),
                         ),
                       ),
 
@@ -501,39 +413,39 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   }
 
   Widget _buildCustomerTable(List<CustomerModel> customers) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        width: 600,
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border.withOpacity(0.5)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.01),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Table Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary.withOpacity(0.3),
-                border: const Border(
-                  bottom: BorderSide(color: AppColors.border, width: 1),
-                ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.01),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary.withOpacity(0.3),
+              border: const Border(
+                bottom: BorderSide(color: AppColors.border, width: 1),
               ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 220,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'CUSTOMER',
                       style: AppTypography.labelSmall.copyWith(
@@ -543,8 +455,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 110,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'TOTAL SPENT',
                       style: AppTypography.labelSmall.copyWith(
@@ -554,8 +470,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 100,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'ORDERS',
                       style: AppTypography.labelSmall.copyWith(
@@ -565,8 +485,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 100,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'STATUS',
                       style: AppTypography.labelSmall.copyWith(
@@ -576,8 +500,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 70,
+                ),
+                Expanded(
+                  flex: 1,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'ACTIONS',
                       style: AppTypography.labelSmall.copyWith(
@@ -587,6 +515,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       ),
                     ),
                   ),
+                ),
                 ],
               ),
             ),
@@ -600,7 +529,6 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -642,8 +570,8 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             child: Row(
               children: [
                 // CUSTOMER COLUMN
-                SizedBox(
-                  width: 220,
+                Expanded(
+                  flex: 3,
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -657,7 +585,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,6 +596,8 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                                 color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w800,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -685,51 +615,62 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                   ),
                 ),
                 // TOTAL SPENT COLUMN
-                SizedBox(
-                  width: 110,
-                  child: Text(
-                    AppFormatters.formatCurrency(customer.totalSpent),
-                    style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      AppFormatters.formatCurrency(customer.totalSpent),
+                      style: AppTypography.titleSmall.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
                 // ORDERS COLUMN
-                SizedBox(
-                  width: 100,
-                  child: Text(
-                    customer.totalOrders == 1 ? '1 order' : '${customer.totalOrders} orders',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      customer.totalOrders == 1 ? '1 order' : '${customer.totalOrders} orders',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
                 // STATUS COLUMN
-                SizedBox(
-                  width: 100,
+                Expanded(
+                  flex: 2,
                   child: Align(
                      alignment: Alignment.centerLeft,
-                     child: Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                       decoration: BoxDecoration(
-                         color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
-                         borderRadius: BorderRadius.circular(8),
-                       ),
-                       child: Text(
-                         isActive ? 'ACTIVE' : 'INACTIVE',
-                         style: AppTypography.caption.copyWith(
-                           color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
-                           fontWeight: FontWeight.w900,
-                           letterSpacing: 0.5,
+                     child: FittedBox(
+                       fit: BoxFit.scaleDown,
+                       child: Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                         decoration: BoxDecoration(
+                           color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+                           borderRadius: BorderRadius.circular(8),
+                         ),
+                         child: Text(
+                           isActive ? 'ACTIVE' : 'INACTIVE',
+                           style: AppTypography.caption.copyWith(
+                             color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
+                             fontWeight: FontWeight.w900,
+                             letterSpacing: 0.5,
+                           ),
                          ),
                        ),
                      ),
                    ),
                 ),
                 // ACTIONS COLUMN
-                SizedBox(
-                  width: 70,
+                Expanded(
+                  flex: 1,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [

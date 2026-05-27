@@ -13,6 +13,7 @@ import 'package:retail_verse_pos/data/models/cart_model.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/features/pos/providers/cart_provider.dart';
 import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
+import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
 
 class POSScreen extends ConsumerStatefulWidget {
@@ -506,16 +507,29 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           return matchesSearch && matchesCat && matchesFilter;
         }).toList();
 
-        return GridView.builder(
-          padding: EdgeInsets.all(isTablet ? 32 : 16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: isTablet ? 3 : 2,
-            mainAxisSpacing: isTablet ? 32 : 16,
-            crossAxisSpacing: isTablet ? 32 : 16,
-            childAspectRatio: isTablet ? 0.85 : 0.75,
-          ),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) => _buildUltraPremiumCard(filtered[index]),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Responsive grid: 1 col per ~180px of available width.
+            // Caps at min 2, so wide screens get more columns automatically.
+            final availableW = constraints.maxWidth;
+            final crossCount = (availableW / 180).floor().clamp(2, 6);
+            final spacing = availableW > 600 ? 20.0 : 12.0;
+            final padding = availableW > 600 ? 24.0 : 12.0;
+            // Aspect ratio: image takes ~55% of height, info 45%
+            const aspectRatio = 0.75;
+
+            return GridView.builder(
+              padding: EdgeInsets.all(padding),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossCount,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                childAspectRatio: aspectRatio,
+              ),
+              itemCount: filtered.length,
+              itemBuilder: (context, index) => _buildUltraPremiumCard(filtered[index]),
+            );
+          },
         );
       },
     );
@@ -531,152 +545,232 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
       onTap: () => context.push('/pos/product', extra: product),
       child: Opacity(
         opacity: isOutOfStock ? 0.6 : 1.0,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Adapt all sizes to the card's actual rendered width
+            final w = constraints.maxWidth;
+            final isNarrow = w < 140;
+            final isMedium = w >= 140 && w < 190;
+
+            // Responsive values
+            final borderR = isNarrow ? 18.0 : 24.0;
+            final infoPad = isNarrow ? 8.0 : (isMedium ? 10.0 : 14.0);
+            final catSize = isNarrow ? 7.0 : 8.0;
+            final nameSize = isNarrow ? 11.0 : (isMedium ? 12.5 : 14.0);
+            final stockLabelSize = isNarrow ? 6.0 : 7.0;
+            final stockValueSize = isNarrow ? 9.0 : 10.0;
+            final btnPad = isNarrow ? 6.0 : (isMedium ? 7.0 : 9.0);
+            final btnIconSize = isNarrow ? 14.0 : (isMedium ? 16.0 : 18.0);
+            final pricePadH = isNarrow ? 6.0 : 10.0;
+            final pricePadV = isNarrow ? 4.0 : 6.0;
+            final priceSize = isNarrow ? 10.0 : 12.0;
+            final gapAfterCat = isNarrow ? 2.0 : 4.0;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(borderR),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── IMAGE HEADER (FULL BLEED) ──
-                Expanded(
-                  flex: 15,
-                  child: Container(
-                    width: double.infinity,
-                    color: const Color(0xFFF1F5F9),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ProductMediaImage(
-                          imageUrl: product.imageUrl,
-                          fit: BoxFit.cover,
-                        ),
-                        if (isOutOfStock)
-                          Container(
-                            color: Colors.black12,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(borderR),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── IMAGE HEADER (FULL BLEED) ──
+                    Expanded(
+                      flex: 55,
+                      child: Container(
+                        width: double.infinity,
+                        color: const Color(0xFFF1F5F9),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ProductMediaImage(
+                              imageUrl: product.imageUrl,
+                              fit: BoxFit.cover,
+                            ),
+                            if (isOutOfStock)
+                              Container(
+                                color: Colors.black12,
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'OUT OF STOCK',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: isNarrow ? 8.0 : 10.0,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: const Text(
-                                  'OUT OF STOCK',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1),
+                              ),
+                            // Floating Price Badge
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: pricePadH, vertical: pricePadV),
+                                decoration: BoxDecoration(
+                                  color: isOutOfStock ? Colors.grey[400] : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6)],
+                                ),
+                                child: Text(
+                                  AppFormatters.formatCurrency(product.price),
+                                  style: TextStyle(
+                                    color: const Color(0xFF1E293B),
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: priceSize,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        // Floating Price
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isOutOfStock ? Colors.grey[400] : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)],
-                            ),
-                            child: Text(
-                              AppFormatters.formatCurrency(product.price),
-                              style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w900, fontSize: 12),
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                // ── INFO & ACTION SECTION ──
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.category.toUpperCase(),
-                        style: TextStyle(color: isOutOfStock ? Colors.grey : AppColors.primary.withOpacity(0.8), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        product.name,
-                        style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: const Color(0xFF0F172A), fontSize: 15),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
+                    // ── INFO & ACTION SECTION ──
+                    Expanded(
+                      flex: 45,
+                      child: Padding(
+                        padding: EdgeInsets.all(infoPad),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Category + Name
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('STOCK', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 7, fontWeight: FontWeight.bold)),
                                 Text(
-                                  '${product.stock - inCartQuantity} units', 
-                                  style: TextStyle(color: isOutOfStock ? Colors.red : const Color(0xFF64748B), fontSize: 10, fontWeight: FontWeight.bold),
+                                  product.category.toUpperCase(),
+                                  style: TextStyle(
+                                    color: isOutOfStock ? Colors.grey : AppColors.primary.withOpacity(0.8),
+                                    fontSize: catSize,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                  ),
                                   maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                ),
+                                SizedBox(height: gapAfterCat),
+                                Text(
+                                  product.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: const Color(0xFF0F172A),
+                                    fontSize: nameSize,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Bounceable(
-                            onTap: () {
-                              if (isOutOfStock) {
-                                HapticFeedback.heavyImpact();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Manager notified about ${product.name} stock.'),
-                                    backgroundColor: AppColors.primary,
-                                    behavior: SnackBarBehavior.floating,
+
+                            // Stock + Add button
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'STOCK',
+                                        style: TextStyle(
+                                          color: const Color(0xFF94A3B8),
+                                          fontSize: stockLabelSize,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${product.stock - inCartQuantity} left',
+                                        style: TextStyle(
+                                          color: isOutOfStock ? Colors.red : const Color(0xFF64748B),
+                                          fontSize: stockValueSize,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                );
-                              } else {
-                                ref.read(cartProvider.notifier).addItem(product);
-                                final isTablet = MediaQuery.of(context).size.width >= 900;
-                                if (!isTablet) {
-                                  _posScaffoldKey.currentState?.openEndDrawer();
-                                }
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isOutOfStock ? Colors.amber : AppColors.primary,
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [BoxShadow(color: (isOutOfStock ? Colors.amber : AppColors.primary).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
-                              ),
-                              child: Icon(
-                                isOutOfStock ? Icons.notifications_active_rounded : Icons.add_rounded, 
-                                color: isOutOfStock ? Colors.black : Colors.white, 
-                                size: 18,
-                              ),
+                                ),
+                                const SizedBox(width: 4),
+                                Bounceable(
+                                  onTap: () {
+                                    if (isOutOfStock) {
+                                      ref.read(notificationProvider.notifier).requestRestock(product.id, product.name).then((success) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(success
+                                                  ? 'Manager notified about ${product.name} stock.'
+                                                  : 'Failed to notify manager.'),
+                                              backgroundColor: success ? AppColors.primary : AppColors.error,
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      });
+                                    } else {
+                                      ref.read(cartProvider.notifier).addItem(product);
+                                      final isTabletW = MediaQuery.of(context).size.width >= 900;
+                                      if (!isTabletW) {
+                                        _posScaffoldKey.currentState?.openEndDrawer();
+                                      }
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(btnPad),
+                                    decoration: BoxDecoration(
+                                      color: isOutOfStock ? Colors.amber : AppColors.primary,
+                                      borderRadius: BorderRadius.circular(isNarrow ? 8.0 : 10.0),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (isOutOfStock ? Colors.amber : AppColors.primary).withOpacity(0.3),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 3),
+                                        )
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      isOutOfStock ? Icons.notifications_active_rounded : Icons.add_rounded,
+                                      color: isOutOfStock ? Colors.black : Colors.white,
+                                      size: btnIconSize,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

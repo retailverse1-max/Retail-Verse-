@@ -1070,8 +1070,11 @@ class _StorePickerSheetState extends State<_StorePickerSheet> {
                         ),
                         child: ListTile(
                           onTap: () {
+                            final id = b['id']?.toString() ?? b['_id']?.toString() ?? '';
                             Navigator.pop(context);
-                            context.go('/dashboard'); 
+                            if (id.isNotEmpty) {
+                              context.push('/super-admin/businesses/$id');
+                            }
                           },
                           contentPadding: const EdgeInsets.all(12),
                           leading: Container(

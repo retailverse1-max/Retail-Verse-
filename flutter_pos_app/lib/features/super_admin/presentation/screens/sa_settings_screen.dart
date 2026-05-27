@@ -8,6 +8,7 @@ import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboa
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaSettingsScreen extends ConsumerWidget {
   const SaSettingsScreen({super.key});
@@ -142,7 +143,20 @@ class SaSettingsScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Platform Settings', style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                    const ResponsiveMenuButton(isSuperAdmin: true, color: Colors.white),
+                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                      IconButton(
+                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                        ),
+                      )
+                    else
+                      const ResponsiveMenuButton(isSuperAdmin: true, color: Colors.white),
                   ],
                 ),
                 const SizedBox(height: 24),

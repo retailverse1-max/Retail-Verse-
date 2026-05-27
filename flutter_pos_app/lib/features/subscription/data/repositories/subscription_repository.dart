@@ -36,7 +36,48 @@ class SubscriptionRepository {
         } else if (decoded is Map && decoded.containsKey('plans')) {
           data = decoded['plans'];
         }
-        return data.map((e) => SubscriptionPlan.fromJson(e)).toList();
+        List<SubscriptionPlan> plans = data.map((e) => SubscriptionPlan.fromJson(e)).toList();
+        
+        // Inject fallbacks if backend is missing them
+        final planNames = plans.map((p) => p.name.toLowerCase()).toSet();
+        if (!planNames.contains('basic')) {
+          plans.add(SubscriptionPlan(
+            id: 'basic_fallback',
+            name: 'Basic',
+            price: 999,
+            billingCycle: 'monthly',
+            features: const ["Up to 100 Products", "3 Admin Users", "Basic POS", "Email Support"],
+            maxProducts: 100,
+            maxUsers: 3,
+          ));
+        }
+        if (!planNames.contains('plus')) {
+          plans.add(SubscriptionPlan(
+            id: 'plus_fallback',
+            name: 'Plus',
+            price: 1999,
+            billingCycle: 'monthly',
+            features: const ["Unlimited Products", "10 Admin Users", "Advanced POS & Inventory", "Priority Support", "Analytics"],
+            maxProducts: 999999,
+            maxUsers: 10,
+          ));
+        }
+        if (!planNames.contains('premium')) {
+          plans.add(SubscriptionPlan(
+            id: 'premium_fallback',
+            name: 'Premium',
+            price: 4999,
+            billingCycle: 'monthly',
+            features: const ["Unlimited Everything", "Custom Domain", "Dedicated Account Manager", "Custom Integrations", "24/7 Support"],
+            maxProducts: 9999999,
+            maxUsers: 999,
+          ));
+        }
+
+        // Sort by price ascending
+        plans.sort((a, b) => a.price.compareTo(b.price));
+
+        return plans;
       } else {
         throw Exception('Failed to load plans: ${response.statusCode}');
       }

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaLogsScreen extends StatefulWidget {
   const SaLogsScreen({super.key});
@@ -102,12 +103,31 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Text('PLATFORM SECURITY', style: AppTypography.labelSmall.copyWith(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 1.5)),
-                    const SizedBox(height: 4),
-                    Text('Audit Logs', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
+                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: IconButton(
+                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('PLATFORM SECURITY', style: AppTypography.labelSmall.copyWith(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 1.5)),
+                        const SizedBox(height: 4),
+                        Text('Audit Logs', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
+                      ],
+                    ),
                   ],
                 ),
                 _Bounceable(

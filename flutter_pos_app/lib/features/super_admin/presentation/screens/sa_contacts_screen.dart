@@ -7,6 +7,7 @@ import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/models/support_ticket_model.dart';
 import 'package:retail_verse_pos/features/support/providers/support_providers.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 // Unified class for contact messages and support tickets in frontend representation
 class ContactSubmission {
@@ -582,31 +583,50 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Row(
+                  if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: IconButton(
+                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.cardBorder.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                        ),
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.trending_up, color: AppColors.primary, size: 14),
-                      const SizedBox(width: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.trending_up, color: AppColors.primary, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            'CONTACT MESSAGES',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        'CONTACT MESSAGES',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          fontSize: 11,
+                        'Contact Messages',
+                        style: AppTypography.headlineMedium.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Contact Messages',
-                    style: AppTypography.headlineMedium.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
                   ),
                 ],
               ),

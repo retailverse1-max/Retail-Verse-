@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaSupportChatScreen extends StatefulWidget {
   final String ticketSubject;
@@ -94,6 +95,25 @@ class _SaSupportChatScreenState extends State<SaSupportChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+        leading: (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+            ? Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: IconButton(
+                  onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBorder.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                  ),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Row(
           children: [
             Stack(

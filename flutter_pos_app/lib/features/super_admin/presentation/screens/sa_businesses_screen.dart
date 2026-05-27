@@ -5,6 +5,7 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaBusinessesScreen extends StatefulWidget {
   const SaBusinessesScreen({super.key});
@@ -96,7 +97,26 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Clients', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                Row(
+                  children: [
+                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: IconButton(
+                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBorder.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                          ),
+                        ),
+                      ),
+                    Text('Clients', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Container(
                   height: 52,

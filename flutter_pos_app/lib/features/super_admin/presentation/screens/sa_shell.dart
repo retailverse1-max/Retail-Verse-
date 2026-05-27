@@ -6,6 +6,7 @@ import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/widgets/support_dialog.dart';
+import 'package:retail_verse_pos/features/support/presentation/widgets/support_fab.dart';
 
 const _kPrimaryShellRoutes = <_SaRoute>[
   _SaRoute(label: 'Home', path: '/super-admin/dashboard', icon: Icons.space_dashboard_outlined, selectedIcon: Icons.space_dashboard_rounded),
@@ -13,7 +14,7 @@ const _kPrimaryShellRoutes = <_SaRoute>[
   _SaRoute(label: 'User & Role', path: '/super-admin/users', icon: Icons.groups_outlined, selectedIcon: Icons.groups_rounded),
   _SaRoute(label: 'Customers', path: '/super-admin/customers', icon: Icons.people_outline, selectedIcon: Icons.people_rounded),
   _SaRoute(label: 'Contact Form', path: '/super-admin/contacts', icon: Icons.contact_mail_outlined, selectedIcon: Icons.contact_mail_rounded),
-  _SaRoute(label: 'Invoice & Quotes', path: '/orders', icon: Icons.receipt_long_outlined, selectedIcon: Icons.receipt_long_rounded),
+  _SaRoute(label: 'Invoice & Quotes', path: '/super-admin/orders', icon: Icons.receipt_long_outlined, selectedIcon: Icons.receipt_long_rounded),
 ];
 
 const _kSecondaryShellRoutes = <_SaRoute>[
@@ -118,7 +119,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
       drawer: showPinnedSidebar ? null : _SuperAdminDrawer(
         email: email, 
         onStore: () => _openClientStorePicker(context), 
-        onPick: (p) => context.go(p),
+        onPick: (p) => context.push(p),
         canPin: canPinSidebar,
         isPinned: isPinned,
         onTogglePin: () {
@@ -131,7 +132,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
         },
       ),
       // Screens provide their own headers
-      floatingActionButton: const _BlinkingSupportFAB(),
+      floatingActionButton: const BlinkingSupportFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Row(
         children: [
@@ -139,7 +140,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
             _SuperAdminDrawer(
               email: email,
               onStore: () => _openClientStorePicker(context),
-              onPick: (p) => context.go(p),
+              onPick: (p) => context.push(p),
               isDrawer: false,
               canPin: canPinSidebar,
               isPinned: isPinned,
@@ -440,49 +441,3 @@ class _SaRoute {
   const _SaRoute({required this.label, required this.path, required this.icon, required this.selectedIcon});
 }
 
-class _BlinkingSupportFAB extends StatefulWidget {
-  const _BlinkingSupportFAB();
-
-  @override
-  State<_BlinkingSupportFAB> createState() => _BlinkingSupportFABState();
-}
-
-class _BlinkingSupportFABState extends State<_BlinkingSupportFAB> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 80), // Offset to not overlap with nav bar
-      child: FadeTransition(
-        opacity: _controller,
-        child: FloatingActionButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => const SupportDialog(),
-            );
-          },
-          backgroundColor: AppColors.warning,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 28),
-        ),
-      ),
-    );
-  }
-}

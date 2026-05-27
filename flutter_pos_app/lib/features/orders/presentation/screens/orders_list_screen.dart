@@ -12,6 +12,7 @@ import 'package:retail_verse_pos/features/orders/presentation/widgets/create_quo
 import 'package:retail_verse_pos/features/orders/presentation/widgets/invoice_details_modal.dart';
 import 'package:retail_verse_pos/features/orders/presentation/widgets/quote_details_modal.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class OrdersListScreen extends ConsumerStatefulWidget {
   final String initialFilter;
@@ -80,7 +81,23 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const ResponsiveMenuButton(),
+                            if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: IconButton(
+                                  onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                                  icon: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.cardBorder.withOpacity(0.5),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                                  ),
+                                ),
+                              )
+                            else
+                              const ResponsiveMenuButton(),
                             const SizedBox(width: 4),
                             Text(
                               'Quotes & Invoices',

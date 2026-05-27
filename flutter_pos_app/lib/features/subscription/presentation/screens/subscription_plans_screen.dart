@@ -236,7 +236,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
 
   Widget _buildPlanCard(SubscriptionPlan plan) {
     final isSelected = _selectedPlan?.id == plan.id;
-    final isPro = plan.name.toLowerCase() == 'pro';
+    final isPro = plan.name.toLowerCase() == 'plus';
 
     return GestureDetector(
       onTap: () => setState(() => _selectedPlan = plan),

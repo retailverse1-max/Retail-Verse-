@@ -87,6 +87,9 @@ bool isRouteAllowedForShell(String location, String role) {
       return true;
     case 'cashier':
     case 'unknown':
+      if (location == '/dashboard' || location.startsWith('/dashboard/')) {
+        return false;
+      }
       if (location == '/inventory' || location.startsWith('/inventory/')) {
         return false;
       }
@@ -209,7 +212,7 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
       return [dash, pos, billing, allProducts, inv, support, customDomain, userRole];
     case 'cashier':
     case 'unknown':
-      return [dash, pos, orders, support];
+      return [pos, orders, support];
     case 'inventory_manager':
       return [dash, pos, allProducts, inv, support];
     case 'seo_manager':
@@ -362,7 +365,7 @@ List<DrawerNavItem> drawerNavItemsForRole(String role) {
       ];
     case 'cashier':
     case 'unknown':
-      return [dash, sales, reports, support, settings];
+      return [sales, reports, support, settings];
     case 'inventory_manager':
       return [dash, sales, allProducts, products, support, settings];
     case 'seo_manager':

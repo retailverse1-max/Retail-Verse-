@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/super_admin_service.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaUsersScreen extends StatefulWidget {
   const SaUsersScreen({super.key});
@@ -51,11 +52,30 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        Text('User & Access', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
-                        Text('Manage platform staff & roles', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: IconButton(
+                              onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                              icon: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardBorder.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                              ),
+                            ),
+                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('User & Access', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                            Text('Manage platform staff & roles', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                          ],
+                        ),
                       ],
                     ),
                     FilledButton.icon(

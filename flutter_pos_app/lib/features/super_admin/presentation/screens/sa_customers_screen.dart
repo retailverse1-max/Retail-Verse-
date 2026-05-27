@@ -7,6 +7,7 @@ import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/core/widgets/common/modern_search_bar.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/data/models/customer_model.dart';
+import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaCustomersScreen extends ConsumerStatefulWidget {
   const SaCustomersScreen({super.key});
@@ -64,31 +65,50 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Row(
+                  if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: IconButton(
+                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.cardBorder.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                        ),
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 14),
-                      const SizedBox(width: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            'CUSTOMERS',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        'CUSTOMERS',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          fontSize: 11,
+                        'Customers',
+                        style: AppTypography.headlineSmall.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Customers',
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
                   ),
                 ],
               ),
@@ -459,34 +479,34 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
   }
 
   Widget _buildCustomerTable(List<CustomerModel> customers) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        width: 600,
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.cardBorder.withOpacity(0.8)),
-          boxShadow: AppColors.shadowSubtle,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Table Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary.withOpacity(0.3),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                border: const Border(
-                  bottom: BorderSide(color: AppColors.cardBorder, width: 1),
-                ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: AppColors.shadowSubtle,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary.withOpacity(0.3),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: const Border(
+                bottom: BorderSide(color: AppColors.cardBorder, width: 1),
               ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 220,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'CUSTOMER',
                       style: AppTypography.labelSmall.copyWith(
@@ -496,8 +516,12 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 110,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'TOTAL SPENT',
                       style: AppTypography.labelSmall.copyWith(
@@ -507,8 +531,12 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 100,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'ORDERS',
                       style: AppTypography.labelSmall.copyWith(
@@ -518,8 +546,12 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 100,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'STATUS',
                       style: AppTypography.labelSmall.copyWith(
@@ -529,8 +561,12 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 70,
+                ),
+                Expanded(
+                  flex: 1,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       'ACTIONS',
                       style: AppTypography.labelSmall.copyWith(
@@ -540,19 +576,19 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            // Table Rows
-            Column(
-              children: customers.asMap().entries.map((entry) {
-                final index = entry.key;
-                final customer = entry.value;
-                return _buildCustomerTableRow(customer, index, index == customers.length - 1);
-              }).toList(),
-            ),
-          ],
-        ),
+          ),
+          // Table Rows
+          Column(
+            children: customers.asMap().entries.map((entry) {
+              final index = entry.key;
+              final customer = entry.value;
+              return _buildCustomerTableRow(customer, index, index == customers.length - 1);
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -596,8 +632,8 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
             child: Row(
               children: [
                 // CUSTOMER COLUMN
-                SizedBox(
-                  width: 220,
+                Expanded(
+                  flex: 3,
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -611,7 +647,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,13 +658,14 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                                 color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w800,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
                             Text(
                               email,
-                              style: AppTypography.bodySmall.copyWith(
+                              style: AppTypography.caption.copyWith(
                                 color: AppColors.textSecondary,
-                                fontSize: 11,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -640,52 +677,62 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                   ),
                 ),
                 // TOTAL SPENT COLUMN
-                SizedBox(
-                  width: 110,
-                  child: Text(
-                    AppFormatters.formatCurrency(customer.totalSpent),
-                    style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      AppFormatters.formatCurrency(customer.totalSpent),
+                      style: AppTypography.titleSmall.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
                 // ORDERS COLUMN
-                SizedBox(
-                  width: 100,
-                  child: Text(
-                    customer.totalOrders == 1 ? '1 order' : '${customer.totalOrders} orders',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                Expanded(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      customer.totalOrders == 1 ? '1 order' : '${customer.totalOrders} orders',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
                 // STATUS COLUMN
-                SizedBox(
-                  width: 100,
+                Expanded(
+                  flex: 2,
                   child: Align(
                      alignment: Alignment.centerLeft,
-                     child: Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                       decoration: BoxDecoration(
-                         color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
-                         borderRadius: BorderRadius.circular(8),
-                       ),
-                       child: Text(
-                         isActive ? 'ACTIVE' : 'INACTIVE',
-                         style: AppTypography.bodySmall.copyWith(
-                           color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
-                           fontWeight: FontWeight.w900,
-                           fontSize: 10,
-                           letterSpacing: 0.5,
+                     child: FittedBox(
+                       fit: BoxFit.scaleDown,
+                       child: Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                         decoration: BoxDecoration(
+                           color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+                           borderRadius: BorderRadius.circular(8),
+                         ),
+                         child: Text(
+                           isActive ? 'ACTIVE' : 'INACTIVE',
+                           style: AppTypography.caption.copyWith(
+                             color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
+                             fontWeight: FontWeight.w900,
+                             letterSpacing: 0.5,
+                           ),
                          ),
                        ),
                      ),
                    ),
                 ),
                 // ACTIONS COLUMN
-                SizedBox(
-                  width: 70,
+                Expanded(
+                  flex: 1,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [

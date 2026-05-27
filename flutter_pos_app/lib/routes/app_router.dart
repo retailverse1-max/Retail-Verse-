@@ -12,6 +12,7 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/signup_screen.dart';
 import 'package:retail_verse_pos/features/auth/presentation/screens/onboarding_screen.dart';
 import '../features/billing/presentation/screens/subscription_expired_screen.dart';
+import '../features/dashboard/providers/dashboard_providers.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../features/inventory/presentation/screens/all_products_screen.dart';
 import '../data/models/product_model.dart';
@@ -31,7 +32,9 @@ import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/account/presentation/screens/account_screen.dart';
 import '../features/customers/presentation/screens/customers_screen.dart';
 import '../features/admin/presentation/admin_staff_screen.dart';
-import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
+import '../features/super_admin/presentation/screens/sa_shell.dart';
+import '../features/support/presentation/widgets/support_fab.dart';
+import '../features/super_admin/presentation/widgets/support_dialog.dart';
 import '../features/super_admin/presentation/screens/sa_dashboard_screen.dart';
 import '../features/super_admin/presentation/screens/sa_businesses_screen.dart';
 import '../features/super_admin/presentation/screens/sa_custom_domains_screen.dart';
@@ -146,6 +149,10 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/super-admin/logs',
           builder: (context, state) => const SaLogsScreen(),
+        ),
+        GoRoute(
+          path: '/super-admin/orders',
+          builder: (context, state) => const OrdersListScreen(),
         ),
         GoRoute(
           path: '/super-admin/stores-performance',
@@ -648,8 +655,18 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   void _onItemTapped(int index, List<ShellNavItem> items) {
     if (index < 0 || index >= items.length) return;
+    
+    final item = items[index];
+    if (item.path == '/support') {
+      final role = effectiveUserRole(ref.read(authProvider).user);
+      if (role != 'admin' && role != 'super_admin') {
+        showDialog(context: context, builder: (c) => const SupportDialog());
+        return;
+      }
+    }
+    
     setState(() => _selectedIndex = index);
-    context.go(items[index].path);
+    context.go(item.path);
   }
 
   @override
@@ -707,6 +724,15 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       userEmail: userEmail,
     );
 
+    final statsAsync = ref.watch(dashboardStatsProvider);
+    final productsAsync = ref.watch(dashboardProductsProvider);
+    final ordersAsync = ref.watch(dashboardOrdersProvider);
+    final isInitialLoading = (statsAsync.isLoading && !statsAsync.hasValue) ||
+                             (productsAsync.isLoading && !productsAsync.hasValue) ||
+                             (ordersAsync.isLoading && !ordersAsync.hasValue);
+
+    final showFab = !(path == '/dashboard' && isInitialLoading);
+
     final body = Scaffold(
       key: scaffoldNavigationKey,
       drawer: showPinnedSidebar ? null : Drawer(
@@ -716,6 +742,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         child: sidebar,
       ),
       extendBody: true,
+      floatingActionButton: showFab ? const BlinkingSupportFAB() : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Stack(
         children: [
           Row(
