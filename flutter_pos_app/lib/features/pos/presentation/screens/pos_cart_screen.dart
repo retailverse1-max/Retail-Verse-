@@ -16,6 +16,7 @@ import 'package:retail_verse_pos/features/pos/providers/order_providers.dart';
 import 'package:retail_verse_pos/features/pos/providers/pos_held_cart_provider.dart';
 import 'package:retail_verse_pos/features/pos/presentation/widgets/invoice_dialog.dart';
 import 'package:retail_verse_pos/features/pos/presentation/widgets/pos_cart_line_tile.dart';
+import 'package:retail_verse_pos/features/pos/presentation/widgets/card_payment_simulation_dialog.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/data/models/customer_model.dart';
 
@@ -300,6 +301,15 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
         setState(() => _isProcessingRazorpay = false);
       }
       return;
+    }
+
+    if (_paymentMethod == 'Card') {
+      final cardOk = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => CardPaymentSimulationDialog(amount: updated.total),
+      );
+      if (cardOk != true || !mounted) return;
     }
 
     await _executeOrderPlacement();
