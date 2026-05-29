@@ -13,6 +13,7 @@ import 'package:retail_verse_pos/core/services/session_service.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
 import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
+import 'package:retail_verse_pos/features/notifications/data/models/notification_model.dart';
 
 class SaDashboardScreen extends ConsumerStatefulWidget {
   const SaDashboardScreen({super.key});
@@ -71,7 +72,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
     final isTablet = width >= 600;
     final isPhone = width < 600;
 
-    final unreadCount = ref.watch(notificationProvider).notifications.where((n) => !n.isRead).length;
+    final unreadCount = ref.watch(notificationProvider).notifications.length;
 
     int gridCrossAxisCount;
     double gridChildAspectRatio;
