@@ -1008,7 +1008,7 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
     }).toList();
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
+      height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
@@ -1108,7 +1108,7 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
                     },
                   ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MediaQuery.paddingOf(context).bottom + 24),
         ],
       ),
     );
