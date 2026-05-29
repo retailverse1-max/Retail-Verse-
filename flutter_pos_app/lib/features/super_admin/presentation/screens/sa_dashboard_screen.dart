@@ -26,10 +26,40 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
   final _svc = SuperAdminService();
   late Future<Map<String, dynamic>> _f;
 
+  bool _isSearchExpanded = false;
+  final _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+
+  final List<Map<String, dynamic>> _searchItems = [
+    {'name': 'Quick Access', 'route': '/super-admin', 'icon': Icons.flash_on_rounded},
+    {'name': 'Add Store', 'route': '/super-admin/businesses', 'icon': Icons.add_business_rounded},
+    {'name': 'Audit Log', 'route': '/super-admin/audit-logs', 'icon': Icons.history_rounded},
+    {'name': 'Settings', 'route': '/super-admin/settings', 'icon': Icons.settings_rounded},
+    {'name': 'Subscription Plan', 'route': '/super-admin/subscriptions', 'icon': Icons.card_membership_rounded},
+    {'name': 'Domain', 'route': '/super-admin/domain', 'icon': Icons.language_rounded},
+    {'name': 'Logs', 'route': '/super-admin/logs', 'icon': Icons.receipt_long_rounded},
+    {'name': 'Support', 'route': '/super-admin/support', 'icon': Icons.support_agent_rounded},
+    {'name': 'Analytics', 'route': '/super-admin', 'icon': Icons.analytics_rounded},
+    {'name': 'Revenue Growth', 'route': '/super-admin', 'icon': Icons.trending_up_rounded},
+    {'name': 'Top Performing Store', 'route': '/super-admin', 'icon': Icons.star_rounded},
+    {'name': 'System Health', 'route': '/super-admin', 'icon': Icons.monitor_heart_rounded},
+    {'name': 'User & Client', 'route': '/super-admin/users', 'icon': Icons.people_rounded},
+    {'name': 'Customers', 'route': '/super-admin/customers', 'icon': Icons.groups_rounded},
+    {'name': 'Contact Form', 'route': '/super-admin/contact', 'icon': Icons.contact_page_rounded},
+    {'name': 'Invoice & Quote', 'route': '/super-admin/invoices', 'icon': Icons.request_quote_rounded},
+  ];
+
   @override
   void initState() {
     super.initState();
     _f = _svc.getAnalyticsSummary();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   static num _n(dynamic v) {
@@ -48,12 +78,10 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
   }
 
   void _showGlobalSearchSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _GlobalSearchSheet(),
-    );
+    setState(() {
+      _isSearchExpanded = true;
+    });
+    _searchFocusNode.requestFocus();
   }
 
   void _showNotificationSheet() {
@@ -136,96 +164,135 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: MediaQuery.viewPaddingOf(context).top + 20),
-                        isPhone 
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                        AnimatedCrossFade(
+                          duration: const Duration(milliseconds: 300),
+                          crossFadeState: _isSearchExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                          firstChild: isPhone
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 12),
-                                        child: IconButton(
-                                          onPressed: () => Scaffold.of(context).openDrawer(),
-                                          icon: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(12),
+                                    Row(
+                                      children: [
+                                        if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
+                                          Padding(
+                                            padding: const EdgeInsets.only(right: 12),
+                                            child: IconButton(
+                                              onPressed: () => Scaffold.of(context).openDrawer(),
+                                              icon: Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                                              ),
                                             ),
-                                            child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                                          ),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, letterSpacing: 2, fontWeight: FontWeight.w900)),
+                                              const SizedBox(height: 4),
+                                              Text('Super Admin', style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                            ],
                                           ),
                                         ),
-                                      ),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const BouncingScrollPhysics(),
+                                      child: Row(
                                         children: [
-                                          Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, letterSpacing: 2, fontWeight: FontWeight.w900)),
-                                          const SizedBox(height: 4),
-                                          Text('Super Admin', style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                          _buildHeaderAction(Icons.search_rounded, () => _showGlobalSearchSheet()),
+                                          const SizedBox(width: 8),
+                                          _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
+                                          const SizedBox(width: 8),
+                                          _buildStorePickerButton(),
                                         ],
                                       ),
                                     ),
                                   ],
-                                ),
-                                const SizedBox(height: 16),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const BouncingScrollPhysics(),
-                                  child: Row(
-                                    children: [
-                                      _buildHeaderAction(Icons.search_rounded, () => _showGlobalSearchSheet()),
-                                      const SizedBox(width: 8),
-                                      _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
-                                      const SizedBox(width: 8),
-                                      _buildStorePickerButton(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 12),
-                                        child: IconButton(
-                                          onPressed: () => Scaffold.of(context).openDrawer(),
-                                          icon: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
-                                          ),
-                                        ),
-                                      ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    Row(
                                       children: [
-                                        Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, letterSpacing: 2, fontWeight: FontWeight.w900)),
-                                        const SizedBox(height: 4),
-                                        Text('Super Admin', style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                        if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
+                                          Padding(
+                                            padding: const EdgeInsets.only(right: 12),
+                                            child: IconButton(
+                                              onPressed: () => Scaffold.of(context).openDrawer(),
+                                              icon: Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                                              ),
+                                            ),
+                                          ),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, letterSpacing: 2, fontWeight: FontWeight.w900)),
+                                            const SizedBox(height: 4),
+                                            Text('Super Admin', style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        _buildHeaderAction(Icons.search_rounded, () => _showGlobalSearchSheet()),
+                                        const SizedBox(width: 8),
+                                        _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
+                                        const SizedBox(width: 12),
+                                        _buildStorePickerButton(),
                                       ],
                                     ),
                                   ],
                                 ),
-                                Row(
-                                  children: [
-                                    _buildHeaderAction(Icons.search_rounded, () => _showGlobalSearchSheet()),
-                                    const SizedBox(width: 8),
-                                    _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
-                                    const SizedBox(width: 12),
-                                    _buildStorePickerButton(),
-                                  ],
+                          secondChild: Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    style: const TextStyle(color: Colors.white),
+                                    onChanged: (v) => setState(() {}),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search modules...',
+                                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                                      prefixIcon: const Icon(Icons.search_rounded, color: Colors.white),
+                                      suffixIcon: IconButton(
+                                        icon: const Icon(Icons.close_rounded, color: Colors.white),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _isSearchExpanded = false);
+                                        },
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    ),
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 12),
+                              _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 40),
                         Container(
                           padding: const EdgeInsets.all(24),
@@ -249,8 +316,81 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                   ),
                 ),
 
-                // ── 2. QUICK ACCESS ───────────────────────────
-                SliverToBoxAdapter(
+                // ── 2. SEARCH RESULTS OR DASHBOARD ────────────
+                if (_isSearchExpanded && _searchController.text.trim().isNotEmpty)
+                  SliverPadding(
+                    padding: const EdgeInsets.all(24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final query = _searchController.text.trim().toLowerCase();
+                          final results = _searchItems.where((item) => item['name'].toString().toLowerCase().contains(query)).toList();
+                          
+                          if (results.isEmpty) {
+                            if (index == 0) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 40),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.search_off_rounded, size: 64, color: AppColors.textTertiary.withOpacity(0.3)),
+                                      const SizedBox(height: 16),
+                                      Text('No modules found matching "$query"', style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary)),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          }
+
+                          if (index >= results.length) return const SizedBox.shrink();
+                          final item = results[index];
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  _searchController.clear();
+                                  setState(() => _isSearchExpanded = false);
+                                  context.go(item['route']);
+                                },
+                                borderRadius: BorderRadius.circular(24),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                                        child: Icon(item['icon'], color: AppColors.primary, size: 20),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(item['name'], style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                      ),
+                                      const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textTertiary),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        childCount: _searchItems.where((item) => item['name'].toString().toLowerCase().contains(_searchController.text.trim().toLowerCase())).isEmpty ? 1 : _searchItems.where((item) => item['name'].toString().toLowerCase().contains(_searchController.text.trim().toLowerCase())).length,
+                      ),
+                    ),
+                  )
+                else ...[
+                  // ── 2. QUICK ACCESS ───────────────────────────
+                  SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 0, 0),
                     child: Column(
@@ -462,7 +602,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         );
       },
