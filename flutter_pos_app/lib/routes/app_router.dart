@@ -670,7 +670,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
     
     setState(() => _selectedIndex = index);
-    context.go(item.path);
+    context.push(item.path);
   }
 
   @override

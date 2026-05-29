@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
@@ -64,9 +65,41 @@ class DashboardScreen extends ConsumerWidget {
     final width = MediaQuery.of(context).size.width;
     final isTablet = width >= 600;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: RefreshIndicator(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Exit App', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+            content: Text('Do you want to leave the app?', style: AppTypography.bodyMedium),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('No', style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Yes'),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardStatsProvider);
           ref.invalidate(dashboardProductsProvider);
@@ -117,7 +150,7 @@ class DashboardScreen extends ConsumerWidget {
                                     children: [
                                       Text('Featured Products', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
                                       TextButton(
-                                        onPressed: () => context.go('/pos'),
+                                        onPressed: () => context.push('/pos'),
                                         child: Text('See All', style: AppTypography.labelLarge.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
                                       ),
                                     ],
@@ -133,7 +166,7 @@ class DashboardScreen extends ConsumerWidget {
                                           backgroundColor: AppColors.error.withOpacity(0.08),
                                           side: BorderSide(color: AppColors.error.withOpacity(0.2)),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                          onPressed: () => context.go('/pos?filter=low_stock'),
+                                          onPressed: () => context.push('/pos?filter=low_stock'),
                                         ),
                                         const SizedBox(width: 8),
                                         ActionChip(
@@ -142,7 +175,7 @@ class DashboardScreen extends ConsumerWidget {
                                           backgroundColor: AppColors.success.withOpacity(0.08),
                                           side: BorderSide(color: AppColors.success.withOpacity(0.2)),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                          onPressed: () => context.go('/pos?filter=best_sellers'),
+                                          onPressed: () => context.push('/pos?filter=best_sellers'),
                                         ),
                                       ],
                                     ),
@@ -155,17 +188,17 @@ class DashboardScreen extends ConsumerWidget {
                                   Text('Featured Products', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
                                   const Spacer(),
                                   TextButton.icon(
-                                    onPressed: () => context.go('/pos?filter=low_stock'),
+                                    onPressed: () => context.push('/pos?filter=low_stock'),
                                     icon: const Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.error),
                                     label: Text('Low Stock', style: AppTypography.labelSmall.copyWith(color: AppColors.error, fontWeight: FontWeight.bold)),
                                   ),
                                   TextButton.icon(
-                                    onPressed: () => context.go('/pos?filter=best_sellers'),
+                                    onPressed: () => context.push('/pos?filter=best_sellers'),
                                     icon: const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.success),
                                     label: Text('Best Sellers', style: AppTypography.labelSmall.copyWith(color: AppColors.success, fontWeight: FontWeight.bold)),
                                   ),
                                   TextButton(
-                                    onPressed: () => context.go('/pos'),
+                                    onPressed: () => context.push('/pos'),
                                     child: Text('See All', style: AppTypography.labelLarge.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
@@ -454,7 +487,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: 'Stock Valuation',
                       icon: Icons.account_balance_wallet_rounded,
                       accentColor: AppColors.success,
-                      onTap: () => context.go('/inventory'),
+                      onTap: () => context.push('/inventory'),
                     ),
                     _buildGridKPI(
                       title: 'Total Products',
@@ -462,7 +495,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: 'In Inventory',
                       icon: Icons.inventory_rounded,
                       accentColor: AppColors.info,
-                      onTap: () => context.go('/inventory'),
+                      onTap: () => context.push('/inventory'),
                     ),
                     _buildGridKPI(
                       title: 'Total Sales',
@@ -478,7 +511,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: 'Live Now',
                       icon: Icons.receipt_long_rounded,
                       accentColor: AppColors.success,
-                      onTap: () => context.go('/orders'),
+                      onTap: () => context.push('/orders'),
                     ),
                     _buildGridKPI(
                       title: 'Low Stock',
@@ -486,7 +519,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: 'Needs restock',
                       icon: Icons.inventory_2_rounded,
                       accentColor: AppColors.info,
-                      onTap: () => context.go('/inventory'),
+                      onTap: () => context.push('/inventory'),
                     ),
                     _buildGridKPI(
                       title: 'Customers',
@@ -494,7 +527,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: 'Registered',
                       icon: Icons.people_alt_rounded,
                       accentColor: AppColors.warning,
-                      onTap: () => context.go('/customers'),
+                      onTap: () => context.push('/customers'),
                     ),
                   ]),
                 ),
