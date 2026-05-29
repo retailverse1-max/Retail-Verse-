@@ -42,7 +42,7 @@ class AccountScreen extends ConsumerWidget {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.paddingOf(context).bottom + 40),
         children: [
           Container(
             padding: const EdgeInsets.all(24),

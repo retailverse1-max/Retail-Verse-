@@ -466,7 +466,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxW),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.paddingOf(context).bottom + 120),
                   children: [
                     _CheckoutHero(totalLabel: AppFormatters.formatCurrency(cart.total)),
                     const SizedBox(height: 16),

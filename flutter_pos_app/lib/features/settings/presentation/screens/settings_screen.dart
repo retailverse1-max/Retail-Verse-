@@ -97,7 +97,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.paddingOf(context).bottom + 120),
               children: [
                 _buildPremiumUserCard(userName, userEmail, userRole),
                 const SizedBox(height: 24),
