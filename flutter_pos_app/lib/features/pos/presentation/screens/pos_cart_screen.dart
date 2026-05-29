@@ -20,6 +20,8 @@ import 'package:retail_verse_pos/features/pos/presentation/widgets/card_payment_
 import 'package:retail_verse_pos/features/pos/presentation/widgets/upi_payment_simulation_dialog.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/data/models/customer_model.dart';
+import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:retail_verse_pos/core/services/push_notification_service.dart';
 
 /// Full checkout: lines, totals, customer, payment, place order.
 class PosCartScreen extends ConsumerStatefulWidget {
@@ -364,6 +366,15 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
       ref.read(cartProvider.notifier).clearCart();
       setState(() => _controllersBound = false);
       
+      final settings = ref.read(posSettingsProvider);
+      if (settings.notifyOrderSuccess) {
+        PushNotificationService.showLocalNotification(
+          id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          title: 'Order Placed',
+          body: 'Your order has been successfully placed!',
+        );
+      }
+
       final createdOrder = ref.read(orderCreationProvider).createdOrder;
       if (createdOrder != null) {
         if (createdOrder.customerPhone != null && createdOrder.customerPhone!.isNotEmpty) {

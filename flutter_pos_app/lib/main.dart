@@ -11,14 +11,17 @@ import 'core/utils/error_detector.dart';
 import 'features/settings/providers/pos_settings_provider.dart';
 import 'routes/app_router.dart';
 
+import 'core/services/push_notification_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Firebase
   try {
     await Firebase.initializeApp();
+    await PushNotificationService.initialize();
   } catch (e) {
-    debugPrint('Firebase initialization error: $e');
+    debugPrint('Firebase/Notification initialization error: $e');
   }
 
   await ApiEndpoints.initialize();
