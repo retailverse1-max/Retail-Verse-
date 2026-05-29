@@ -12,6 +12,7 @@ import 'package:retail_verse_pos/data/models/product_model.dart';
 import 'package:retail_verse_pos/data/models/cart_model.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/features/pos/providers/cart_provider.dart';
+import 'package:retail_verse_pos/features/pos/providers/pos_held_cart_provider.dart';
 import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
 import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
@@ -86,12 +87,49 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     }
   }
 
+  Future<void> _promptRecallHold(BuildContext context, CartState current, CartState held) async {
+    if (current.items.isNotEmpty) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Current cart not empty'),
+          content: const Text('You have items in your current cart. Do you want to replace it with the held sale? The current items will be lost.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Replace Cart'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+    
+    ref.read(cartProvider.notifier).replaceWith(held);
+    ref.read(posHeldCartProvider.notifier).discard();
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Held sale recalled successfully.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
     final count = cart.itemCount;
     final totalValue = cart.total;
     final isTablet = MediaQuery.of(context).size.width >= 900;
+    final heldCart = ref.watch(posHeldCartProvider);
 
     return Scaffold(
       key: _posScaffoldKey,
@@ -134,6 +172,33 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                             Expanded(
                               child: _buildInlineSearchBar(),
                             ),
+                            if (heldCart != null) ...[
+                              const SizedBox(width: 8),
+                              Bounceable(
+                                onTap: () => _promptRecallHold(context, cart, heldCart),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.amazonOrange.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.amazonOrange.withValues(alpha: 0.5)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.play_circle_outline_rounded, size: 18, color: AppColors.amazonOrange),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Recall Hold',
+                                        style: AppTypography.labelMedium.copyWith(
+                                          color: AppColors.amazonOrange,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(width: 8),
                             Bounceable(
                               onTap: () {
