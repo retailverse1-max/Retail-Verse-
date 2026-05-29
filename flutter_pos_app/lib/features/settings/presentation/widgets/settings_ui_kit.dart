@@ -232,6 +232,8 @@ class SettingsValueTile extends StatelessWidget {
           Flexible(
             child: Text(
               valueLabel,
+              maxLines: 1,
+              softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.labelLarge.copyWith(
                 color: AppColors.primary,
