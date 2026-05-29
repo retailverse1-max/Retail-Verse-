@@ -49,7 +49,13 @@ class _SaAddBusinessScreenState extends State<SaAddBusinessScreen> {
         businessType: _type.text,
         notes: _notes.text,
       );
-      if (mounted) context.pop(true);
+      if (mounted) {
+        if (context.canPop()) {
+          context.pop(true);
+        } else {
+          context.go('/super-admin/businesses');
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -74,7 +80,13 @@ class _SaAddBusinessScreenState extends State<SaAddBusinessScreen> {
         title: Text('Register New Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/super-admin/dashboard');
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
