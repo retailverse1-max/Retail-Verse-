@@ -209,16 +209,16 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
     case 'super_admin':
       return [dash, pos, billing, allProducts, inv, platform, support, customDomain, userRole, settings];
     case 'admin':
-      return [dash, pos, billing, allProducts, inv, support, customDomain, userRole];
+      return [dash, pos, billing, allProducts, inv, support, customDomain, userRole, settings];
     case 'cashier':
     case 'unknown':
-      return [pos, orders, support];
+      return [pos, orders, support, settings];
     case 'inventory_manager':
-      return [dash, pos, allProducts, inv, support];
+      return [dash, pos, allProducts, inv, support, settings];
     case 'seo_manager':
-      return [dash, pos, allProducts, inv, support];
+      return [dash, pos, allProducts, inv, support, settings];
     default:
-      return [dash, pos, orders];
+      return [dash, pos, orders, settings];
   }
 }
 
