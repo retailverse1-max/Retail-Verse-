@@ -12,15 +12,16 @@ import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/core/services/session_service.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
+import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
 
-class SaDashboardScreen extends StatefulWidget {
+class SaDashboardScreen extends ConsumerStatefulWidget {
   const SaDashboardScreen({super.key});
 
   @override
-  State<SaDashboardScreen> createState() => _SaDashboardScreenState();
+  ConsumerState<SaDashboardScreen> createState() => _SaDashboardScreenState();
 }
 
-class _SaDashboardScreenState extends State<SaDashboardScreen> {
+class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
   final _svc = SuperAdminService();
   late Future<Map<String, dynamic>> _f;
 
@@ -69,6 +70,8 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
     final width = MediaQuery.of(context).size.width;
     final isTablet = width >= 600;
     final isPhone = width < 600;
+
+    final unreadCount = ref.watch(notificationProvider).notifications.where((n) => !n.isRead).length;
 
     int gridCrossAxisCount;
     double gridChildAspectRatio;
@@ -173,7 +176,7 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
                                     children: [
                                       _buildHeaderAction(Icons.search_rounded, () => _showGlobalSearchSheet()),
                                       const SizedBox(width: 8),
-                                      _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet()),
+                                      _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
                                       const SizedBox(width: 8),
                                       _buildStorePickerButton(),
                                     ],
@@ -215,7 +218,7 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
                                   children: [
                                     _buildHeaderAction(Icons.search_rounded, () => _showGlobalSearchSheet()),
                                     const SizedBox(width: 8),
-                                    _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet()),
+                                    _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
                                     const SizedBox(width: 12),
                                     _buildStorePickerButton(),
                                   ],
@@ -469,7 +472,7 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
 
 
 
-  Widget _buildHeaderAction(IconData icon, VoidCallback onTap) {
+  Widget _buildHeaderAction(IconData icon, VoidCallback onTap, {int? badgeCount}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -479,7 +482,12 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
           color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: Colors.white, size: 22),
+        child: badgeCount != null && badgeCount > 0
+            ? Badge(
+                label: Text(badgeCount.toString()),
+                child: Icon(icon, color: Colors.white, size: 22),
+              )
+            : Icon(icon, color: Colors.white, size: 22),
       ),
     );
   }
@@ -1600,41 +1608,13 @@ class _GlobalSearchSheetState extends State<_GlobalSearchSheet> {
   }
 }
 
-class _NotificationSheet extends StatelessWidget {
+class _NotificationSheet extends ConsumerWidget {
   const _NotificationSheet();
 
   @override
-  Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> notifications = [
-      {
-        'title': 'CRITICAL: Server Overload',
-        'desc': 'System CPU usage exceeded 95% on Asian Node. Scaled up automatically.',
-        'time': '2 mins ago',
-        'type': 'error',
-        'icon': Icons.warning_amber_rounded,
-      },
-      {
-        'title': 'New Business Signup',
-        'desc': '"Fashion Point" just registered on the Pro Plan.',
-        'time': '15 mins ago',
-        'type': 'success',
-        'icon': Icons.person_add_alt_1_rounded,
-      },
-      {
-        'title': 'Subscription Expiring',
-        'desc': '3 Businesses have subscriptions expiring in less than 48 hours.',
-        'time': '1 hour ago',
-        'type': 'warning',
-        'icon': Icons.hourglass_empty_rounded,
-      },
-      {
-        'title': 'Domain Verified',
-        'desc': 'custom.retailverse.com has been successfully verified.',
-        'time': '3 hours ago',
-        'type': 'info',
-        'icon': Icons.language_rounded,
-      },
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notificationState = ref.watch(notificationProvider);
+    final notifications = notificationState.notifications;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -1653,31 +1633,51 @@ class _NotificationSheet extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Notifications', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
-                TextButton(onPressed: () {}, child: const Text('Mark all as read')),
+                TextButton(
+                  onPressed: () => ref.read(notificationProvider.notifier).markAsRead(),
+                  child: const Text('Mark all as read'),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              itemCount: notifications.length,
-              itemBuilder: (context, i) => _buildNotificationItem(context, notifications[i]),
-            ),
+            child: notifications.isEmpty
+                ? Center(
+                    child: Text(
+                      "No notifications yet.",
+                      style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    itemCount: notifications.length,
+                    itemBuilder: (context, i) => _buildNotificationItem(context, notifications[i]),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationItem(BuildContext context, Map<String, dynamic> n) {
-    final Color color = n['type'] == 'error'
+  Widget _buildNotificationItem(BuildContext context, AppNotification n) {
+    final Color color = n.type == 'error' || n.type == 'low_stock'
         ? AppColors.error
-        : n['type'] == 'success'
+        : n.type == 'success'
             ? AppColors.success
-            : n['type'] == 'warning'
+            : n.type == 'warning'
                 ? AppColors.warning
                 : AppColors.primary;
+
+    final IconData icon = n.type == 'error'
+        ? Icons.warning_amber_rounded
+        : n.type == 'success'
+            ? Icons.check_circle_outline_rounded
+            : n.type == 'warning'
+                ? Icons.hourglass_empty_rounded
+                : n.type == 'low_stock'
+                    ? Icons.inventory_2_rounded
+                    : Icons.notifications_none_rounded;
 
     return Material(
       color: Colors.transparent,
@@ -1686,7 +1686,7 @@ class _NotificationSheet extends StatelessWidget {
           context.pop(); // Close sheet
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Opening details for: ${n['title']}'),
+              content: Text('Opening details for: ${n.title}'),
               behavior: SnackBarBehavior.floating,
               backgroundColor: color,
             ),
@@ -1705,7 +1705,7 @@ class _NotificationSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-                child: Icon(n['icon'], color: color, size: 24),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1715,12 +1715,12 @@ class _NotificationSheet extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(child: Text(n['title'], style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900, color: color))),
-                        Text(n['time'], style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary)),
+                        Expanded(child: Text(n.title, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900, color: color))),
+                        Text("${n.createdAt.hour}:${n.createdAt.minute.toString().padLeft(2, '0')}", style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary)),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(n['desc'], style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                    Text(n.message, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                   ],
                 ),
               ),
