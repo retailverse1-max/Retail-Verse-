@@ -1242,7 +1242,7 @@ class PremiumAdminSidebar extends ConsumerWidget {
               ),
             ),
           ),
-          SizedBox(height: MediaQuery.paddingOf(context).bottom + 80),
+          SizedBox(height: MediaQuery.paddingOf(context).bottom + 20),
         ],
       ),
     );

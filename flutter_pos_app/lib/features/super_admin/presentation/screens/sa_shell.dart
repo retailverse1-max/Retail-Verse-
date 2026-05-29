@@ -266,15 +266,19 @@ class _SuperAdminDrawer extends ConsumerWidget {
         _buildHeader(context),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(
+              24, 24, 24, 
+              MediaQuery.paddingOf(context).bottom + 24
+            ),
             children: [
               _buildDrawerSection(context, 'CORE MODULES', _kPrimaryShellRoutes),
               const SizedBox(height: 32),
               _buildDrawerSection(context, 'MORE TOOLS', _kSecondaryShellRoutes),
+              const SizedBox(height: 32),
+              _buildFooter(context, ref),
             ],
           ),
         ),
-        _buildFooter(context, ref),
       ],
     );
 
@@ -299,7 +303,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
@@ -396,7 +400,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
 
   Widget _buildFooter(BuildContext context, WidgetRef ref) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.only(top: 24),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border.withOpacity(0.5))),
       ),
