@@ -203,8 +203,6 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                                   physics: const BouncingScrollPhysics(),
                                   child: Row(
                                     children: [
-                                      _buildSearchBar(isPhone),
-                                      const SizedBox(width: 8),
                                       _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
                                       const SizedBox(width: 8),
                                       _buildStorePickerButton(),
@@ -245,8 +243,6 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                                 ),
                                 Row(
                                   children: [
-                                    _buildSearchBar(isPhone),
-                                    const SizedBox(width: 8),
                                     _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
                                     const SizedBox(width: 12),
                                     _buildStorePickerButton(),
@@ -277,101 +273,41 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                   ),
                 ),
 
-                // ── 2. SEARCH RESULTS OR DASHBOARD ────────────
-                if (_isSearchExpanded && _searchController.text.trim().isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.all(24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final query = _searchController.text.trim().toLowerCase();
-                          final results = _searchItems.where((item) => item['name'].toString().toLowerCase().contains(query)).toList();
-                          
-                          if (results.isEmpty) {
-                            if (index == 0) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 40),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(Icons.search_off_rounded, size: 64, color: AppColors.textTertiary.withOpacity(0.3)),
-                                      const SizedBox(height: 16),
-                                      Text('No modules found matching "$query"', style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary)),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          }
-
-                          if (index >= results.length) return const SizedBox.shrink();
-                          final item = results[index];
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  _searchController.clear();
-                                  setState(() => _isSearchExpanded = false);
-                                  context.go(item['route']);
-                                },
-                                borderRadius: BorderRadius.circular(24),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
-                                        child: Icon(item['icon'], color: AppColors.primary, size: 20),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Text(item['name'], style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                                      ),
-                                      const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textTertiary),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                        childCount: _searchItems.where((item) => item['name'].toString().toLowerCase().contains(_searchController.text.trim().toLowerCase())).isEmpty ? 1 : _searchItems.where((item) => item['name'].toString().toLowerCase().contains(_searchController.text.trim().toLowerCase())).length,
-                      ),
-                    ),
-                  )
-                else ...[
-                  // ── 2. QUICK ACCESS ───────────────────────────
-                  SliverToBoxAdapter(
+                // ── 2. QUICK ACCESS & SEARCH ───────────────────────────
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 0, 0),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Quick Access', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900)),
+                        Row(
+                          children: [
+                            if (!_isSearchExpanded)
+                              Expanded(
+                                child: Text('Quick Access', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900)),
+                              )
+                            else
+                              const Spacer(),
+                            _buildDashboardSearchBar(isPhone),
+                          ],
+                        ),
                         const SizedBox(height: 16),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.only(right: 24),
-                          child: Row(
-                            children: [
+                        if (_isSearchExpanded && _searchController.text.trim().isNotEmpty)
+                          _buildSearchResults()
+                        else
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            clipBehavior: Clip.none,
+                            child: Row(
+                              children: [
                                 _QuickActionButton(icon: Icons.add_business_rounded, label: 'Add Store', color: AppColors.primary, onTap: () => context.go('/super-admin/businesses/add')),
                                 _QuickActionButton(icon: Icons.subscript_rounded, label: 'Subscription Plan', color: AppColors.info, onTap: () => context.go('/super-admin/subscriptions')),
                                 _QuickActionButton(icon: Icons.domain_rounded, label: 'Domain', color: const Color(0xFF8B5CF6), onTap: () => context.go('/super-admin/custom-domains')),
                                 _QuickActionButton(icon: Icons.security_rounded, label: 'Logs', color: AppColors.warning, onTap: () => context.go('/super-admin/logs')),
                                 _QuickActionButton(icon: Icons.support_agent_rounded, label: 'Support', color: AppColors.success, onTap: () => context.push('/super-admin/support-chat')),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -595,14 +531,16 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
     );
   }
 
-  Widget _buildSearchBar(bool isPhone) {
+  Widget _buildDashboardSearchBar(bool isPhone) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      width: _isSearchExpanded ? (isPhone ? MediaQuery.of(context).size.width - 150 : 300) : 46,
-      height: 46,
+      width: _isSearchExpanded ? (isPhone ? MediaQuery.of(context).size.width - 48 : 400) : 48,
+      height: 48,
       decoration: BoxDecoration(
-        color: _isSearchExpanded ? Colors.white : Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(23),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _isSearchExpanded ? AppColors.shadowSubtle : null,
+        border: Border.all(color: AppColors.cardBorder.withOpacity(_isSearchExpanded ? 1.0 : 0.0)),
       ),
       child: _isSearchExpanded
           ? TextField(
@@ -636,9 +574,82 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                 setState(() => _isSearchExpanded = true);
                 _searchFocusNode.requestFocus();
               },
-              borderRadius: BorderRadius.circular(23),
-              child: const Icon(Icons.search_rounded, color: Colors.white, size: 22),
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: AppColors.shadowSubtle,
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 22),
+              ),
             ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    final query = _searchController.text.trim().toLowerCase();
+    final results = _searchItems.where((item) => item['name'].toString().toLowerCase().contains(query)).toList();
+
+    if (results.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 40, bottom: 40),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.search_off_rounded, size: 64, color: AppColors.textTertiary.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text('No modules found matching "$query"', style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final item = results[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                _searchController.clear();
+                setState(() => _isSearchExpanded = false);
+                context.go(item['route']);
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                      child: Icon(item['icon'], color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(item['name'], style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textTertiary),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
