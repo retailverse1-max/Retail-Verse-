@@ -1635,7 +1635,10 @@ class _NotificationSheet extends ConsumerWidget {
               children: [
                 Text('Notifications', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
                 TextButton(
-                  onPressed: () => ref.read(notificationProvider.notifier).markAsRead(),
+                  onPressed: () {
+                    ref.read(notificationProvider.notifier).markAsRead();
+                    context.pop();
+                  },
                   child: const Text('Mark all as read'),
                 ),
               ],
