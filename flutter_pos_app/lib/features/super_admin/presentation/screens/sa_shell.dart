@@ -52,7 +52,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: const BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.paddingOf(context).bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +62,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
             Text('Switch control to a specific client store', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 20),
             ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
               child: ListView.builder(
                 shrinkWrap: true,
                 itemCount: items.length,
