@@ -177,17 +177,25 @@ class SettingsNavTile extends StatelessWidget {
         subtitle,
         style: AppTypography.bodySmall.copyWith(color: muted),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailingLabel != null)
-            Text(
-              trailingLabel!,
-              style: AppTypography.labelMedium.copyWith(color: muted),
-            ),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, color: muted),
-        ],
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 150),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (trailingLabel != null)
+              Flexible(
+                child: Text(
+                  trailingLabel!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelMedium.copyWith(color: muted),
+                ),
+              ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded, color: muted),
+          ],
+        ),
       ),
       onTap: onTap,
     );
@@ -226,23 +234,27 @@ class SettingsValueTile extends StatelessWidget {
         subtitle,
         style: AppTypography.bodySmall.copyWith(color: muted),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              valueLabel,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 150),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Text(
+                valueLabel,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelLarge.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: muted),
-        ],
+            Icon(Icons.chevron_right_rounded, color: muted),
+          ],
+        ),
       ),
       onTap: onTap,
     );
