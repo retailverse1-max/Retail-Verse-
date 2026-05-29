@@ -72,7 +72,7 @@ class DashboardScreen extends ConsumerWidget {
         final shouldExit = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: AppColors.surface,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text('Exit App', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
             content: Text('Do you want to leave the app?', style: AppTypography.bodyMedium),
@@ -536,6 +536,7 @@ class DashboardScreen extends ConsumerWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
+        ),
       ),
     );
   }
