@@ -511,7 +511,7 @@ class _AddBusinessSheetState extends State<_AddBusinessSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + MediaQuery.paddingOf(context).bottom + 24),
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -614,7 +614,7 @@ class _EditBusinessSheetState extends State<_EditBusinessSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + MediaQuery.paddingOf(context).bottom + 24),
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
