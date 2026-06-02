@@ -38,7 +38,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
     super.dispose();
   }
 
-  void _showError(String message) {
+  void _showError(String message, {Duration duration = const Duration(seconds: 4)}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -51,6 +51,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
+          duration: duration,
         ),
       );
     }
@@ -143,7 +144,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
 
   void _handlePaymentError(PaymentFailureResponse response) {
     debugPrint('❌ Razorpay Error: ${response.message}');
-    _showError('Payment failed: ${response.message}');
+    _showError('Payment Cancelled', duration: const Duration(seconds: 2));
     setState(() => _isProcessing = false);
   }
 
@@ -170,62 +171,66 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (plans) {
-          return Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.rocket_launch_rounded, color: AppColors.primary, size: 48),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Upgrade Your RetailVerse',
-                    style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.w900),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Choose a plan that scales with your business.',
-                    style: AppTypography.bodyLarge.copyWith(color: AppColors.textSecondary),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Plans Row / Column
-                  Wrap(
-                    spacing: 24,
-                    runSpacing: 24,
-                    alignment: WrapAlignment.center,
-                    children: plans.map((plan) => _buildPlanCard(plan)).toList(),
-                  ),
-                  
-                  const SizedBox(height: 48),
-                  if (_isProcessing)
-                    const CircularProgressIndicator()
-                  else
-                    SizedBox(
-                      width: 300,
-                      height: 56,
-                      child: FilledButton(
-                        onPressed: _selectedPlan == null ? null : () => _startRazorpayPayment(_selectedPlan!),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: Text(
-                          _selectedPlan == null ? 'Select a Plan' : 'Proceed to Payment',
-                          style: AppTypography.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
+          return SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
+                      child: const Icon(Icons.rocket_launch_rounded, color: AppColors.primary, size: 48),
                     ),
-                ],
+                    const SizedBox(height: 24),
+                    Text(
+                      'Upgrade Your RetailVerse',
+                      style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.w900),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Choose a plan that scales with your business.',
+                      style: AppTypography.bodyLarge.copyWith(color: AppColors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 48),
+            
+                    // Plans Row (Horizontally Scrollable)
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          clipBehavior: Clip.none,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                            child: IntrinsicHeight(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: plans.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final plan = entry.value;
+                                  return Padding(
+                                    padding: EdgeInsets.only(right: index == plans.length - 1 ? 0 : 24.0),
+                                    child: _buildPlanCard(plan),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Removed global button as per user request
+                    SizedBox(height: MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 40),
+                  ],
+                ),
               ),
             ),
           );
@@ -262,8 +267,12 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isPro)
-              Container(
+            Visibility(
+              visible: isPro,
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -275,6 +284,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                   style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
                 ),
               ),
+            ),
             Text(
               plan.name.toUpperCase(),
               style: TextStyle(
@@ -319,6 +329,39 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                     ],
                   ),
                 )),
+            const Spacer(),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton(
+                onPressed: _isProcessing
+                    ? null
+                    : () {
+                        setState(() => _selectedPlan = plan);
+                        _startRazorpayPayment(plan);
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: isSelected ? AppColors.primary : AppColors.cardBorder,
+                  foregroundColor: isSelected ? Colors.white : AppColors.textPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: _isProcessing && isSelected
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(
+                        'Select Plan',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
           ],
         ),
       ),

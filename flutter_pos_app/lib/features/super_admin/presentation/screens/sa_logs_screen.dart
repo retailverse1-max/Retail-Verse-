@@ -35,9 +35,32 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+            ? IconButton(
+                icon: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary),
+                onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+              )
+            : null,
+        title: Text(
+          'Audit Logs',
+          style: AppTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
+            onPressed: () => setState(() => _f = _svc.listAuditLogs(limit: 100)),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
-          _buildHeader(),
           _buildFilterTabs(),
           SliverFillRemaining(
             hasScrollBody: true,
@@ -81,67 +104,6 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return SliverToBoxAdapter(
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: IconButton(
-                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                          icon: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white12,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
-                          ),
-                        ),
-                      ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('PLATFORM SECURITY', style: AppTypography.labelSmall.copyWith(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 1.5)),
-                        const SizedBox(height: 4),
-                        Text('Audit Logs', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
-                      ],
-                    ),
-                  ],
-                ),
-                _Bounceable(
-                  onTap: () => setState(() => _f = _svc.listAuditLogs(limit: 100)),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(14)),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

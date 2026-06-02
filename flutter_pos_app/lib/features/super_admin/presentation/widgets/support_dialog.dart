@@ -53,7 +53,7 @@ class _SupportDialogState extends ConsumerState<SupportDialog> {
 
       Navigator.pop(context);
       
-      if (userRole == 'super_admin') {
+      if (userRole == 'super_admin' || userRole == 'cashier') {
         // Navigate to chat screen
         router.push('/super-admin/support-chat', extra: {
           'subject': subjectStr,

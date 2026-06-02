@@ -8,7 +8,9 @@ import 'package:retail_verse_pos/core/widgets/product_media_image.dart';
 import 'package:retail_verse_pos/data/models/dashboard_stats_model.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/widgets/support_dialog.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
-import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
+import '../../../pos/providers/product_providers.dart';
+import '../../../notifications/providers/notification_provider.dart';
+import '../../providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/trial_banner.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
@@ -61,40 +63,46 @@ class DashboardScreen extends ConsumerWidget {
 
     final userName = user?['name'] ?? 'Admin';
     final stats = statsAsync.asData?.value ?? DashboardStatsModel.empty;
+    final searchQuery = ref.watch(dashboardSearchQueryProvider);
 
     final width = MediaQuery.of(context).size.width;
     final isTablet = width >= 600;
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
+      // Intercept back navigation. If there is a previous route, pop it; otherwise, show exit confirmation.
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
         if (didPop) return;
-        final shouldExit = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text('Exit App', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
-            content: Text('Do you want to leave the app?', style: AppTypography.bodyMedium),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('No', style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            builder: (c) => AlertDialog(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('Exit App', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+              content: Text('Do you want to leave the app?', style: AppTypography.bodyMedium),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(c).pop(false),
+                  child: Text('No', style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
                 ),
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Yes'),
-              ),
-            ],
-          ),
-        );
-        if (shouldExit == true) {
-          SystemNavigator.pop();
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => Navigator.of(c).pop(true),
+                  child: const Text('Yes'),
+                ),
+              ],
+            ),
+          );
+          if (shouldExit == true) {
+            SystemNavigator.pop();
+          }
         }
       },
       child: Scaffold(
@@ -125,11 +133,31 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
 
-              // ── 2. TRIAL BANNER ────────────────────────────
-              if (user != null)
-                TrialBanner(user: user),
+              // ── 2. SEARCH NOT FOUND UI ───────────────────────
+              if (searchQuery != null)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off_rounded, size: 80, color: AppColors.textTertiary.withOpacity(0.3)),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No products found matching "$searchQuery"',
+                          style: AppTypography.titleMedium.copyWith(color: AppColors.textTertiary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                // ── 3. TRIAL BANNER ────────────────────────────
+                if (user != null)
+                  TrialBanner(user: user),
 
-              // ── 3. TOP FEATURED PRODUCTS (HORIZONTAL) ─────
+                // ── 4. TOP FEATURED PRODUCTS (HORIZONTAL) ─────
               productsAsync.when(
                 data: (products) {
                   if (products.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -291,7 +319,41 @@ class DashboardScreen extends ConsumerWidget {
               // ── 3. LOW STOCK ALERTS (HORIZONTAL) ──────────
               ref.watch(dashboardLowStockProvider).when(
                 data: (lowStock) {
-                  if (lowStock.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  if (lowStock.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppColors.success.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), shape: BoxShape.circle),
+                                child: const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 28),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Stock Levels Healthy', style: AppTypography.titleMedium.copyWith(color: AppColors.success, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Text('No products are currently running low on stock.', style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
                   
                   return SliverToBoxAdapter(
                     child: Column(
@@ -374,15 +436,18 @@ class DashboardScreen extends ConsumerWidget {
                                               Text('Only ${p.stock} remaining', style: TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold)),
                                               const SizedBox(height: 8),
                                               GestureDetector(
-                                                onTap: () {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text('Notification sent to Admin for ${p.name}'),
-                                                      backgroundColor: AppColors.primary,
-                                                      behavior: SnackBarBehavior.floating,
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                    ),
-                                                  );
+                                                onTap: () async {
+                                                  final success = await ref.read(notificationProvider.notifier).requestRestock(p.id, p.name);
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(success ? 'Notification sent to Admin for ${p.name}' : 'Failed to send notification'),
+                                                        backgroundColor: success ? AppColors.primary : AppColors.error,
+                                                        behavior: SnackBarBehavior.floating,
+                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                      ),
+                                                    );
+                                                  }
                                                 },
                                                 child: Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -495,7 +560,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: 'In Inventory',
                       icon: Icons.inventory_rounded,
                       accentColor: AppColors.info,
-                      onTap: () => context.push('/inventory'),
+                      onTap: () => context.push('/products'),
                     ),
                     _buildGridKPI(
                       title: 'Total Sales',
@@ -503,7 +568,7 @@ class DashboardScreen extends ConsumerWidget {
                       subtitle: '+12.5%',
                       icon: Icons.payments_rounded,
                       accentColor: AppColors.primary,
-                      onTap: () => context.push('/dashboard/sales'),
+                      onTap: () => context.push('/sales-details'),
                     ),
                     _buildGridKPI(
                       title: 'Orders',
@@ -534,6 +599,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
               
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
             ],
           ),
         ),

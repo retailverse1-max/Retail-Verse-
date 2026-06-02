@@ -39,7 +39,6 @@ const businessSchema = new mongoose.Schema(
     },
     subscriptionPlan: {
       type: String,
-      enum: ["free", "basic", "pro", "trial"],
       default: "trial",
     },
     subscriptionStatus: {

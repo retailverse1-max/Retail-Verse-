@@ -230,8 +230,28 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
+    let clientId = req.body.clientId;
     if (req.user && req.user.role !== "super_admin") {
-      req.body.clientId = req.user.clientId;
+      clientId = req.user.clientId;
+      req.body.clientId = clientId;
+    }
+    
+    // Enforce User Limit based on Subscription
+    if (clientId) {
+      const business = await Business.findById(clientId);
+      if (business) {
+        const planName = business.subscriptionPlan || "Basic";
+        const plan = await SubscriptionPlan.findOne({ name: planName });
+        const maxUsers = plan ? plan.maxUsers : 3;
+
+        const currentUsers = await User.countDocuments({ clientId });
+        if (currentUsers >= maxUsers) {
+          return res.status(403).json({ 
+            success: false, 
+            message: `User limit reached for ${planName} plan. Please upgrade to add more users.` 
+          });
+        }
+      }
     }
     
     // Hash password before saving
@@ -371,10 +391,10 @@ exports.getTopPerformanceStores = async (req, res) => {
       },
       {
         $group: {
-          _id: "$businessId",
+          _id: "$clientId",
           totalRevenue: { $sum: "$total" },
-          totalOrders: { $count: {} },
-          uniqueCustomers: { $addToSet: "$customerId" }
+          totalOrders: { $sum: 1 },
+          uniqueCustomers: { $addToSet: "$customerPhone" }
         }
       },
       {
@@ -389,7 +409,7 @@ exports.getTopPerformanceStores = async (req, res) => {
       {
         $project: {
           _id: 1,
-          name: "$businessInfo.name",
+          name: "$businessInfo.businessName",
           revenue: "$totalRevenue",
           orders: "$totalOrders",
           customers: { $size: "$uniqueCustomers" },

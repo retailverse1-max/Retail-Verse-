@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/core/utils/formatters.dart';
@@ -55,7 +54,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
             top: 8,
             right: 8,
             child: IconButton(
-              onPressed: () => context.pop(),
+              onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
               tooltip: 'Close',
             ),

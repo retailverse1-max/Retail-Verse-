@@ -24,11 +24,15 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
 
   void _generateQuote() async {
     if (_selectedItems.isEmpty) {
-      setState(() => _errorMessage = 'Please add at least one product.');
+      setState(() {
+      _errorMessage = 'Please add at least one product.';
+    });
       return;
     }
 
-    setState(() => _errorMessage = null);
+    setState(() {
+      _errorMessage = null;
+    });
 
     final success = await ref.read(orderCreationProvider.notifier).createOrder(
           cartItems: _selectedItems,
@@ -43,7 +47,7 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Quotation created successfully!')),
       );
-      context.pop();
+      Navigator.of(context).pop();
     } else if (mounted) {
       setState(() {
         _errorMessage = ref.read(orderCreationProvider).error ?? 'Failed to create quote. Please try again.';
@@ -69,51 +73,30 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── HEADER ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double width = constraints.maxWidth > 800 ? 600.0 : constraints.maxWidth * 0.9;
+          return SizedBox(
+            width: width,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 24),
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Create Quotation', style: AppTypography.titleLarge),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Create New Quotation', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 2),
-                        Text('Fill in the details to generate a quote', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(Icons.close_rounded, color: AppColors.textTertiary),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.divider),
-            
-            // ── BODY ──
-            Flexible(
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                shrinkWrap: true,
-                children: [
+                  const SizedBox(height: 24),
+
                   // Customer Name
                   _buildSectionTitle('CUSTOMER NAME'),
                   const SizedBox(height: 8),
@@ -334,17 +317,6 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            
-            // ── FOOTER ACTIONS ──
-            const Divider(height: 1, color: AppColors.divider),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
                   if (_errorMessage != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
@@ -389,21 +361,22 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: () => context.pop(),
+                    onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     child: Text('Cancel', style: AppTypography.titleMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                   ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
-  }
+  }, // close builder function
+), // close LayoutBuilder
+); // close Dialog
+}
+
 
   Widget _buildSectionTitle(String title) {
     return Text(

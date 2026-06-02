@@ -156,39 +156,54 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Segmented Tabs
-                  _buildSegmentedTab(),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
 
-            // Statistics Cards
-            ordersAsync.when(
-              loading: () => const SizedBox(height: 100),
-              error: (_, __) => const SizedBox(),
-              data: (orders) => _buildStatsRow(orders),
-            ),
-
-            const SizedBox(height: 12),
-
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => ref.refresh(ordersListProvider.future),
-                child: ordersAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                  data: (orders) {
-                    final list = _filtered(orders);
-                    if (list.isEmpty) return _buildEmptyState();
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            _buildSegmentedTab(),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: ordersAsync.when(
+                        loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+                        error: (e, _) => Center(child: Text('Error: $e')),
+                        data: (orders) => _buildStatsRow(orders),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    ordersAsync.when(
+                      loading: () => const SliverToBoxAdapter(child: SizedBox()),
+                      error: (e, _) => const SliverToBoxAdapter(child: SizedBox()),
+                      data: (orders) {
+                        final list = _filtered(orders);
+                        if (list.isEmpty) return SliverToBoxAdapter(child: _buildEmptyState());
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      itemCount: list.length,
-                      itemBuilder: (context, index) => _buildOrderCard(list[index]),
-                    );
-                  },
+                        return SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildOrderCard(list[index]),
+                              childCount: list.length,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -21,6 +21,8 @@ final httpClientProvider = Provider<http.Client>((ref) {
   return http.Client();
 });
 
+final dashboardSearchQueryProvider = StateProvider<String?>((ref) => null);
+
 final dashboardRemoteDataSourceProvider = Provider<DashboardRemoteDataSource>((
   ref,
 ) {

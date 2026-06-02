@@ -223,13 +223,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
 
     final updated = ref.read(cartProvider);
 
-    if (_paymentMethod == 'Cash') {
-      final received = double.tryParse(_cashReceivedCtrl.text.trim()) ?? 0;
-      if (received < updated.total) {
-        _showError('Received amount must be at least ${AppFormatters.formatCurrency(updated.total)}');
-        return;
-      }
-    }
+    // Check removed to allow partial/any amount to proceed
 
     // Direct UPI Flow
     if (_paymentMethod == 'UPI') {
@@ -435,12 +429,6 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     ref.read(cartProvider.notifier).clearCart();
     setState(() => _controllersBound = false);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sale held — recall from the billing screen'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
       context.pop();
     }
   }
@@ -748,6 +736,8 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _cashReceivedCtrl,
+                              readOnly: true,
+                              showCursor: true,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                 decimal: true,
@@ -891,7 +881,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                             style: OutlinedButton.styleFrom(
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text('Continue shopping'),
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Continue shopping')),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -901,7 +891,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                             style: OutlinedButton.styleFrom(
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text('Clear cart'),
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Clear cart')),
                           ),
                         ),
                       ],
@@ -1047,6 +1037,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: EdgeInsets.only(
@@ -1207,7 +1198,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                   child: const Text('Save Customer Details', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12 + MediaQuery.of(context).padding.bottom),
             ],
           ),
         ),

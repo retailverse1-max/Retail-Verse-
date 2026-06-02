@@ -241,11 +241,6 @@ class SupportScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            'Manage your support and view detailed insights.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
-          ),
-          const SizedBox(height: 12),
           Container(
   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
   decoration: BoxDecoration(

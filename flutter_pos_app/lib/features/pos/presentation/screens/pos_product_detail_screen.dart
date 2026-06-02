@@ -57,17 +57,6 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
     } else {
       ref.read(cartProvider.notifier).addProductWithQuantity(p, _qty);
     }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          billing != null
-              ? '${p.name} × $_qty added to order'
-              : '${p.name} × $_qty added to cart',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override
@@ -76,6 +65,10 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
     final desc = p.description?.trim();
     final cartState = ref.watch(cartProvider);
     final cartItemCount = cartState.itemCount;
+    
+    final int currentCartQty = cartState.getItemQuantity(p.id);
+    final bool inCart = currentCartQty > 0;
+    final int displayQty = inCart && widget.onAddToBilling == null ? currentCartQty : _qty;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
@@ -131,10 +124,12 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
           const SizedBox(width: 8),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        children: [
-          ClipRRect(
+      body: SafeArea(
+        bottom: true,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
+          children: [
+            ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: AspectRatio(
               aspectRatio: 1.8,
@@ -197,7 +192,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
           ],
           if (p.isInStock) ...[
             Text(
-              'Quantity',
+              inCart ? 'Quantity in Cart' : 'Quantity to Add',
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -207,12 +202,22 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
               children: [
                 _QtyButton(
                   icon: Icons.remove_rounded,
-                  onPressed: _qty > 1 ? () => setState(() => _qty--) : null,
+                  onPressed: displayQty > 1
+                      ? () {
+                          if (inCart && widget.onAddToBilling == null) {
+                            ref.read(cartProvider.notifier).updateQuantity(p.id, displayQty - 1);
+                          } else {
+                            setState(() => _qty--);
+                          }
+                        }
+                      : (inCart && widget.onAddToBilling == null
+                          ? () => ref.read(cartProvider.notifier).removeItem(p.id)
+                          : null),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
-                    '$_qty',
+                    '$displayQty',
                     style: AppTypography.headlineSmall.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -220,8 +225,14 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
                 ),
                 _QtyButton(
                   icon: Icons.add_rounded,
-                  onPressed: _qty < p.stock
-                      ? () => setState(() => _qty++)
+                  onPressed: displayQty < p.stock
+                      ? () {
+                          if (inCart && widget.onAddToBilling == null) {
+                            ref.read(cartProvider.notifier).updateQuantity(p.id, displayQty + 1);
+                          } else {
+                            setState(() => _qty++);
+                          }
+                        }
                       : null,
                 ),
                 const Spacer(),
@@ -235,34 +246,39 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
             ),
           ],
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: p.isInStock ? _addToCart : null,
-            icon: const Icon(Icons.add_shopping_cart_rounded),
-            label: Text(
-              !p.isInStock
-                  ? 'Out of stock'
-                  : (widget.onAddToBilling != null
-                      ? 'Add to order'
-                      : 'Add to cart'),
+          if (!inCart || widget.onAddToBilling != null) ...[
+            FilledButton.icon(
+              onPressed: p.isInStock ? _addToCart : null,
+              icon: const Icon(Icons.add_shopping_cart_rounded),
+              label: Text(
+                !p.isInStock
+                    ? 'Out of stock'
+                    : (widget.onAddToBilling != null
+                        ? 'Add to order'
+                        : 'Add to cart'),
+              ),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
             ),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+            const SizedBox(height: 12),
+          ],
+          if (widget.onAddToBilling == null) ...[
+            OutlinedButton.icon(
+              onPressed: cartItemCount > 0 ? () => context.push('/pos/cart') : null,
+              icon: const Icon(Icons.shopping_bag_outlined),
+              label: Text(cartItemCount > 0 ? 'Go to Checkout ($cartItemCount items)' : 'Cart is Empty'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: cartItemCount > 0 ? AppColors.primary : Colors.grey,
+                side: BorderSide(color: cartItemCount > 0 ? AppColors.primary : Colors.grey.shade300),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: cartItemCount > 0 ? () => context.push('/pos/cart') : null,
-            icon: const Icon(Icons.shopping_bag_outlined),
-            label: Text(cartItemCount > 0 ? 'Go to Checkout ($cartItemCount items)' : 'Cart is Empty'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              foregroundColor: cartItemCount > 0 ? AppColors.primary : Colors.grey,
-              side: BorderSide(color: cartItemCount > 0 ? AppColors.primary : Colors.grey.shade300),
-            ),
-          ),
+          ],
         ],
+      ),
       ),
     );
   }

@@ -21,6 +21,7 @@ class QuoteDetailsModal extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Stack(
         children: [
@@ -49,8 +50,8 @@ class QuoteDetailsModal extends ConsumerWidget {
             top: 8,
             right: 8,
             child: IconButton(
-              onPressed: () => context.pop(),
-              icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
               tooltip: 'Close',
             ),
           ),
@@ -379,10 +380,7 @@ class QuoteDetailsModal extends ConsumerWidget {
         
         // Edit Button (Added via request)
         FilledButton.icon(
-          onPressed: () {
-            context.pop();
-            context.push('/quotes/edit/${quote.id}', extra: quote);
-          },
+          onPressed: () => context.push('/quotes/edit/${quote.id}', extra: quote),
           icon: const Icon(Icons.edit_rounded, size: 20),
           label: Text(
             'Edit Quote',

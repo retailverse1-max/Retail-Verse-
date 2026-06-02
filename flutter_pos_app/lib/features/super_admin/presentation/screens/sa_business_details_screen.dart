@@ -56,22 +56,33 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
               ? DateTime.parse(data['subscriptionExpiry']) 
               : null;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(data),
-                const SizedBox(height: 32),
-                _buildStatsGrid(stats),
-                const SizedBox(height: 32),
-                _buildSubscriptionCard(data, expiry),
-                const SizedBox(height: 32),
-                _buildContactInfo(data),
-                const SizedBox(height: 48),
-                _buildActionButtons(data),
-              ],
-            ),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(data),
+                      const SizedBox(height: 32),
+                      _buildStatsGrid(stats),
+                      const SizedBox(height: 32),
+                      _buildSubscriptionCard(data, expiry),
+                      const SizedBox(height: 32),
+                      _buildContactInfo(data),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: _buildActionButtons(data),
+                ),
+              ),
+            ],
           );
         },
       ),

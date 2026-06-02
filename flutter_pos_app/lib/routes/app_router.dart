@@ -632,8 +632,118 @@ class MainLayout extends ConsumerStatefulWidget {
   ConsumerState<MainLayout> createState() => _MainLayoutState();
 }
 
-class _MainLayoutState extends ConsumerState<MainLayout> {
+class _MainLayoutState extends ConsumerState<MainLayout> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    final ctx = context;
+    if (!ctx.mounted) return false;
+
+    // Close drawer if open — handle this ourselves
+    if (scaffoldNavigationKey.currentState?.isDrawerOpen ?? false) {
+      scaffoldNavigationKey.currentState?.closeDrawer();
+      return true;
+    }
+
+    // Determine if we are at the root home screen
+    String currentPath;
+    try {
+      currentPath = GoRouterState.of(ctx).uri.path;
+    } catch (_) {
+      return false;
+    }
+
+    final user = ref.read(authProvider).user;
+    final home = initialHomeRouteForUser(user);
+
+    // Not at home? Let GoRouter handle back navigation normally
+    if (currentPath != home) return false;
+
+    // At home — show exit confirmation dialog
+    final shouldExit = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.exit_to_app_rounded, color: AppColors.error, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Exit App?',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Do you want to leave Retail Verse?',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  child: const Text('Stay', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(true),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: AppColors.error,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Exit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true && ctx.mounted) {
+      SystemNavigator.pop();
+    }
+    return true; // Consume the back press at home (whether they exit or stay)
+  }
+
 
   @override
   void didChangeDependencies() {
@@ -661,13 +771,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     if (index < 0 || index >= items.length) return;
     
     final item = items[index];
-    if (item.path == '/support') {
-      final role = effectiveUserRole(ref.read(authProvider).user);
-      if (role != 'admin' && role != 'super_admin') {
-        showDialog(context: context, builder: (c) => const SupportDialog());
-        return;
-      }
-    }
+    // Support screen accessible to all roles
     
     setState(() => _selectedIndex = index);
     context.push(item.path);
@@ -764,64 +868,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       ),
     );
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop || !context.mounted) return;
-
-        // 1. Close active drawer
-        if (scaffoldNavigationKey.currentState?.isDrawerOpen ?? false) {
-          scaffoldNavigationKey.currentState?.closeDrawer();
-          return;
-        }
-
-        // 2. Standard Navigator pop (Dialogs, Modals, pushed routes)
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-          return;
-        }
-
-        // 3. GoRouter specific pop
-        try {
-          if (context.canPop()) {
-            context.pop();
-            return;
-          }
-        } catch (_) {}
-
-        // 4. Intelligence: Logical Parent Navigation
-        final uri = GoRouterState.of(context).uri;
-        final currentPath = uri.path;
-        final segments = currentPath.split('/').where((s) => s.isNotEmpty).toList();
-        
-        if (segments.length > 1) {
-          String parentPath = '/' + segments.take(segments.length - 1).join('/');
-          
-          // Handle dashboard alias
-          if (parentPath == '/super-admin') {
-            parentPath = '/super-admin/dashboard';
-          }
-          
-          if (parentPath != currentPath) {
-            context.go(parentPath);
-            return;
-          }
-        }
-
-        // 5. Root Handling: Role-based Home
-        final user = ref.read(authProvider).user;
-        final home = initialHomeRouteForUser(user);
-        
-        if (currentPath != home) {
-          context.go(home);
-          return;
-        }
-
-        SystemNavigator.pop();
-      },
-      child: body,
-    );
+    // WidgetsBindingObserver.didPopRoute() handles back navigation above.
+    // No PopScope needed — just return body directly.
+    return body;
   }
+
+
+
 
   Widget _buildVerticalNavRail({
     required int selectedIndex,

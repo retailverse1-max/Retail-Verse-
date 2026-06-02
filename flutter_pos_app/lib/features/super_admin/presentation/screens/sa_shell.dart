@@ -9,7 +9,7 @@ import 'package:retail_verse_pos/features/super_admin/presentation/widgets/suppo
 import 'package:retail_verse_pos/features/support/presentation/widgets/support_fab.dart';
 import 'package:retail_verse_pos/core/services/session_service.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
-
+import 'package:flutter/services.dart'; // For SystemNavigator.pop
 const _kPrimaryShellRoutes = <_SaRoute>[
   _SaRoute(label: 'Home', path: '/super-admin/dashboard', icon: Icons.space_dashboard_outlined, selectedIcon: Icons.space_dashboard_rounded),
   _SaRoute(label: 'Clients', path: '/super-admin/businesses', icon: Icons.apartment_outlined, selectedIcon: Icons.apartment_rounded),
@@ -121,45 +121,57 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
     final isPinned = ref.watch(saSidebarPinnedProvider);
     final showPinnedSidebar = canPinSidebar && isPinned;
 
-    return Scaffold(
-      key: saScaffoldNavigationKey,
-      backgroundColor: AppColors.background,
-      drawer: showPinnedSidebar ? null : _SuperAdminDrawer(
-        email: email, 
-        onStore: () => _openClientStorePicker(context), 
-        onPick: (p) => context.push(p),
-        canPin: canPinSidebar,
-        isPinned: isPinned,
-        onTogglePin: () {
-          if (!showPinnedSidebar) {
-            if (Navigator.of(context).canPop()) {
-              Navigator.pop(context);
-            }
-          }
-          ref.read(saSidebarPinnedProvider.notifier).state = !isPinned;
-        },
-      ),
-      // Screens provide their own headers
-      floatingActionButton: const BlinkingSupportFAB(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: Row(
-        children: [
-          if (showPinnedSidebar)
-            _SuperAdminDrawer(
+        return BackButtonListener(
+            onBackButtonPressed: () async {
+              if (GoRouter.of(context).canPop()) {
+                return false; // Let GoRouter handle the pop
+              } else if (path != '/super-admin/dashboard') {
+                context.go('/super-admin/dashboard');
+                return true; // Handled
+              } else {
+                await _showSuperAdminExitDialog(context);
+                return true; // Handled, dialog will call SystemNavigator.pop if confirmed
+              }
+            },
+          child: Scaffold(
+            key: saScaffoldNavigationKey,
+            backgroundColor: AppColors.background,
+            drawer: showPinnedSidebar ? null : _SuperAdminDrawer(
               email: email,
               onStore: () => _openClientStorePicker(context),
               onPick: (p) => context.push(p),
-              isDrawer: false,
               canPin: canPinSidebar,
               isPinned: isPinned,
               onTogglePin: () {
+                if (!showPinnedSidebar) {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.pop(context);
+                  }
+                }
                 ref.read(saSidebarPinnedProvider.notifier).state = !isPinned;
               },
             ),
-          Expanded(child: widget.child),
-        ],
-      ),
-    );
+            floatingActionButton: const BlinkingSupportFAB(),
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            body: Row(
+              children: [
+                if (showPinnedSidebar)
+                  _SuperAdminDrawer(
+                    email: email,
+                    onStore: () => _openClientStorePicker(context),
+                    onPick: (p) => context.push(p),
+                    isDrawer: false,
+                    canPin: canPinSidebar,
+                    isPinned: isPinned,
+                    onTogglePin: () {
+                      ref.read(saSidebarPinnedProvider.notifier).state = !isPinned;
+                    },
+                  ),
+                Expanded(child: widget.child),
+              ],
+            ),
+          ),
+        );
   }
 
   PreferredSizeWidget _buildModernAppBar() {
@@ -199,6 +211,28 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
         const SizedBox(width: 8),
       ],
     );
+  }
+  Future<void> _showSuperAdminExitDialog(BuildContext context) async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Leave App'),
+        content: const Text('Do you want to leave the app?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (shouldExit == true) {
+      SystemNavigator.pop();
+    }
   }
 }
 
@@ -265,17 +299,29 @@ class _SuperAdminDrawer extends ConsumerWidget {
       children: [
         _buildHeader(context),
         Expanded(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              24, 24, 24, 
-              MediaQuery.paddingOf(context).bottom + 24
-            ),
-            children: [
-              _buildDrawerSection(context, 'CORE MODULES', _kPrimaryShellRoutes),
-              const SizedBox(height: 32),
-              _buildDrawerSection(context, 'MORE TOOLS', _kSecondaryShellRoutes),
-              const SizedBox(height: 32),
-              _buildFooter(context, ref),
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildDrawerSection(context, 'CORE MODULES', _kPrimaryShellRoutes),
+                    const SizedBox(height: 32),
+                    _buildDrawerSection(context, 'MORE TOOLS', _kSecondaryShellRoutes),
+                    const SizedBox(height: 32),
+                  ]),
+                ),
+              ),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.paddingOf(context).bottom + 24),
+                    child: _buildFooter(context, ref),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

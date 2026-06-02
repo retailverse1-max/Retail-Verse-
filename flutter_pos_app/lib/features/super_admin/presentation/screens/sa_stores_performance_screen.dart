@@ -39,6 +39,21 @@ class _SaStoresPerformanceScreenState extends ConsumerState<SaStoresPerformanceS
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          'Store Analytics',
+          style: AppTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _storesFuture,
         builder: (context, snapshot) {
@@ -55,62 +70,40 @@ class _SaStoresPerformanceScreenState extends ConsumerState<SaStoresPerformanceS
 
           return CustomScrollView(
             slivers: [
-              // ── PREMIUM HEADER ─────────────────────────────
+              // ── TITLES & SEARCH BAR ─────────────────────────────
               SliverToBoxAdapter(
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
-                  ),
-                  child: SafeArea(
-                    bottom: false,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () => context.pop(),
-                              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                            ),
-                            const SizedBox(width: 8),
-                            Text('Store Analytics', style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                          ],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Top Performance', style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      const SizedBox(height: 4),
+                      Text('Leaderboard', style: AppTypography.headlineMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 24),
+                      // Search Bar
+                      Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.cardBorder),
+                          boxShadow: AppColors.shadowSubtle,
                         ),
-                        const SizedBox(height: 24),
-                        Text('Top Performance', style: AppTypography.labelLarge.copyWith(color: Colors.white54, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        const SizedBox(height: 12),
-                        Text('Leaderboard', style: AppTypography.displaySmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 32),
-                        // Search Bar
-                        Container(
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (v) => setState(() => _searchQuery = v),
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              hintText: 'Search stores...',
-                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                              prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7)),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                          style: const TextStyle(color: AppColors.textPrimary),
+                          decoration: InputDecoration(
+                            hintText: 'Search stores...',
+                            hintStyle: const TextStyle(color: AppColors.textTertiary),
+                            prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textTertiary),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 16),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

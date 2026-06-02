@@ -1046,8 +1046,16 @@ class SettingsPageContent extends ConsumerWidget {
             SettingsNavTile(
               icon: Icons.support_agent_rounded,
               title: 'Customer Support',
-              subtitle: 'Submit a support ticket',
-              onTap: () => _showSupportTicketDialog(context, ref),
+              subtitle: 'Raise tickets and chat with support',
+              onTap: () {
+                final user = ref.read(authProvider).user;
+                final role = effectiveUserRole(user);
+                if (role == 'super_admin') {
+                  context.push('/super-admin/support');
+                } else {
+                  context.push('/support');
+                }
+              },
             ),
             const SettingsDividerInset(),
             SettingsNavTile(
@@ -1176,13 +1184,43 @@ String _closestFontScaleKey(double v) {
 }
 
 const _privacyBody =
-    'We process sales, inventory, and account data to run your store. '
-    'Data may be stored on this device and on your configured backend. '
-    'Review your server policy for retention and backups.';
+    'Privacy Policy\n\n'
+    'Last updated: May 29, 2026\n\n'
+    '1. Information We Collect\n'
+    'We collect information you provide directly to us, such as when you create or modify your account, request on-demand services, contact customer support, or otherwise communicate with us. This information may include: name, email, phone number, postal address, profile picture, payment method, items requested (for delivery services), delivery notes, and other information you choose to provide.\n\n'
+    '2. How We Use Information\n'
+    'We may use the information we collect to:\n'
+    '- Provide, maintain, and improve our Services.\n'
+    '- Process and facilitate transactions and send related information.\n'
+    '- Send support and administrative messages.\n'
+    '- Respond to your comments, questions, and customer service requests.\n'
+    '- Communicate with you about products, services, offers, and events.\n\n'
+    '3. Sharing of Information\n'
+    'We may share the information we collect about you as described in this privacy policy or as described at the time of collection or sharing, including as follows:\n'
+    '- With third-party vendors, consultants and other service providers who need access to such information to carry out work on our behalf.\n'
+    '- In response to a request for information by a competent authority if we believe disclosure is in accordance with, or is otherwise required by, any applicable law, regulation, or legal process.\n\n'
+    '4. Security\n'
+    'We take reasonable measures to help protect information about you from loss, theft, misuse and unauthorized access, disclosure, alteration and destruction.\n\n'
+    '5. Contact Us\n'
+    'If you have any questions about this Privacy Policy, please contact us via the Customer Support section.';
 
 const _termsBody =
-    'This app is provided as-is for business use. You are responsible for '
-    'compliance with local tax and consumer laws.';
+    'Terms and Conditions\n\n'
+    'Last updated: May 29, 2026\n\n'
+    '1. Acceptance of Terms\n'
+    'By accessing and using Retail Verse (the "App"), you accept and agree to be bound by the terms and provision of this agreement. In addition, when using these App\'s particular services, you shall be subject to any posted guidelines or rules applicable to such services.\n\n'
+    '2. Provision of Services\n'
+    'Retail Verse provides professional retail billing, inventory management, and business analytics. We reserve the right to modify or discontinue, temporarily or permanently, the services with or without notice.\n\n'
+    '3. User Responsibilities\n'
+    'You are responsible for maintaining the confidentiality of your account and password and for restricting access to your device. You agree to accept responsibility for all activities that occur under your account or password.\n\n'
+    '4. Payment and Billing\n'
+    'For our premium services, you agree to provide current, complete, and accurate purchase and account information. You agree to promptly update your account and other information, including your email address and payment method details, so that we can complete your transactions.\n\n'
+    '5. Data Sync and Offline Mode\n'
+    'Retail Verse provides offline capabilities. Data created offline is synced when a connection is restored. We are not liable for data loss due to device failure before synchronization is complete.\n\n'
+    '6. Limitation of Liability\n'
+    'In no event shall Retail Verse or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on the App.\n\n'
+    '7. Governing Law\n'
+    'Any claim relating to Retail Verse\'s App shall be governed by the laws of the operating jurisdiction without regard to its conflict of law provisions.';
 
 Future<void> _editString(
   BuildContext context,
@@ -1444,11 +1482,37 @@ Future<void> _aboutDialog(BuildContext context, WidgetRef ref) async {
   showAboutDialog(
     context: context,
     applicationName: info.appName,
-    applicationVersion: '${info.version}+${info.buildNumber}',
-    applicationIcon: const Icon(Icons.storefront_rounded, size: 40, color: AppColors.primary),
+    applicationVersion: 'Version ${info.version} (Build ${info.buildNumber})',
+    applicationIcon: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Icon(Icons.storefront_rounded, size: 48, color: AppColors.primary),
+    ),
     children: [
+      const SizedBox(height: 16),
+      Text(
+        'Retail Verse is a complete POS (Point of Sale) ecosystem built for modern retail businesses.',
+        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 12),
       const Text(
-        'Retail Verse — professional retail billing, inventory, and sync-ready architecture.',
+        'Features include:\n'
+        '• Lightning fast checkout and billing\n'
+        '• Offline-first architecture with background sync\n'
+        '• Advanced inventory & stock management\n'
+        '• Beautiful analytics and business insights\n'
+        '• Built-in AI assistant for smart insights\n'
+        '• Multi-channel support (POS, Web, Delivery)',
+        style: TextStyle(height: 1.5),
+      ),
+      const SizedBox(height: 16),
+      const Text(
+        'Designed & Engineered by the Hexerve Solutions team.\n'
+        '© 2026 Hexerve Solutions. All rights reserved.',
+        style: TextStyle(color: Colors.grey, fontSize: 12),
       ),
     ],
   );

@@ -85,22 +85,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 14),
-                          const SizedBox(width: 6),
-                          Text(
-                            'CUSTOMERS',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
+
                       Text(
                         'Customers',
                         style: AppTypography.headlineSmall.copyWith(
@@ -112,55 +97,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                   ),
                 ],
               ),
-              // Overlapping avatars inside the header
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < _avatarUrls.length; i++)
-                    Align(
-                      widthFactor: 0.65,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: CircleAvatar(
-                          radius: 13,
-                          backgroundImage: NetworkImage(_avatarUrls[i]),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDBEAFE),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '+12',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: const Color(0xFF1E40AF),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Live',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Ecosystem Customer Registry & Analytics. Manage your platform-wide customer base and their cross-store engagements.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
           ),
         ],
       ),

@@ -40,7 +40,10 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
   void _handleSearch(BuildContext context, WidgetRef ref) {
     final query = _searchController.text.trim().toLowerCase();
     if (query.isEmpty) {
-      setState(() => _isSearching = false);
+      setState(() {
+        _isSearching = false;
+      });
+      ref.read(dashboardSearchQueryProvider.notifier).state = null;
       return;
     }
 
@@ -54,19 +57,15 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
     final isRealMatch = match.name.toLowerCase().contains(query) || match.sku.toLowerCase() == query;
 
     if (isRealMatch) {
+      ref.read(dashboardSearchQueryProvider.notifier).state = null;
       context.push('/pos/product', extra: match);
       setState(() {
         _isSearching = false;
         _searchController.clear();
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Product "$query" not found'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ref.read(dashboardSearchQueryProvider.notifier).state = query;
+      FocusScope.of(context).unfocus();
     }
   }
 
@@ -100,102 +99,95 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: _isSearching
-                              ? Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
-                                    ],
-                                  ),
-                                  child: TextField(
-                                    controller: _searchController,
-                                    autofocus: true,
-                                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-                                    decoration: InputDecoration(
-                                      hintText: 'Search product or SKU...',
-                                      hintStyle: TextStyle(color: Colors.black.withOpacity(0.4)),
-                                      border: InputBorder.none,
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
-                                      suffixIcon: IconButton(
-                                        icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
-                                        onPressed: () => setState(() => _isSearching = false),
-                                      ),
-                                    ),
-                                    onSubmitted: (_) => _handleSearch(context, ref),
-                                  ),
-                                )
-                              : Row(
+                      if (!_isSearching || !isPhone)
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const ResponsiveMenuButton(color: Colors.white),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                      const ResponsiveMenuButton(color: Colors.white),
-                                      const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(widget.subtitle ?? 'Good morning,',
-                                              style: AppTypography.bodyLarge.copyWith(color: Colors.white70)),
-                                          Text(widget.userName,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                                        ],
-                                      ),
-                                    ),
+                                    Text(widget.subtitle ?? 'Good morning,',
+                                        style: AppTypography.bodyLarge.copyWith(color: Colors.white70)),
+                                    Text(widget.userName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
                                   ],
-                                ),
-                        ),
-                      ),
-                      if (!_isSearching)
-                        Row(
-                          children: [
-                            const SizedBox(width: 8),
-                            InkWell(
-                              onTap: () => setState(() => _isSearching = true),
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                                child: const Icon(Icons.search_rounded, color: Colors.white, size: 22),
-                              ),
-                            ),
-                            if (!isPhone) ...[
-                              const SizedBox(width: 8),
-                              InkWell(
-                                onTap: () => context.go('/pos'),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                                  child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              InkWell(
-                                onTap: () => context.go('/settings'),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                                  child: const Icon(Icons.settings_rounded, color: Colors.white, size: 22),
                                 ),
                               ),
                             ],
-                            const SizedBox(width: 8),
-                            if (widget.actions != null) Row(children: widget.actions!) else 
-                            InkWell(
-                              onTap: () => context.push('/notifications'),
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                                child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
+                      if (_isSearching && isPhone)
+                        const ResponsiveMenuButton(color: Colors.white),
+                      if (_isSearching && isPhone)
+                        const SizedBox(width: 12),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: _isSearching ? (isPhone ? width - 80 : 350) : 46,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _isSearching ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: _isSearching
+                              ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]
+                              : [],
+                        ),
+                        child: _isSearching
+                            ? TextField(
+                                controller: _searchController,
+                                autofocus: true,
+                                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                onChanged: (v) {
+                                  if (v.isEmpty) {
+                                    ref.read(dashboardSearchQueryProvider.notifier).state = null;
+                                  }
+                                },
+                                decoration: InputDecoration(
+                                  hintText: isPhone ? 'Search...' : 'Search product or SKU...',
+                                  hintStyle: TextStyle(color: Colors.black.withOpacity(0.4)),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  prefixIcon: IconButton(
+                                    icon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
+                                    onPressed: () => _handleSearch(context, ref),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      ref.read(dashboardSearchQueryProvider.notifier).state = null;
+                                      setState(() => _isSearching = false);
+                                    },
+                                  ),
+                                ),
+                                onSubmitted: (_) => _handleSearch(context, ref),
+                              )
+                            : InkWell(
+                                onTap: () => setState(() => _isSearching = true),
+                                borderRadius: BorderRadius.circular(24),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                                  child: const Icon(Icons.search_rounded, color: Colors.white, size: 22),
+                                ),
+                              ),
+                      ),
+                      if (!isPhone) ...[
+                        const SizedBox(width: 8),
+                        if (widget.actions != null) Row(children: widget.actions!) else 
+                        InkWell(
+                          onTap: () => context.push('/notifications'),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                            child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 24),

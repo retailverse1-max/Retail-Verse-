@@ -319,4 +319,41 @@ class DashboardRemoteDataSource {
       throw Exception(e.toString());
     }
   }
+
+  Future<bool> recordPaymentIn({
+    required String token,
+    required double amount,
+    required String method,
+    String? remarks,
+  }) async {
+    try {
+      final response = await client.post(
+        Uri.parse('$baseUrl/orders/payment'),
+        headers: ApiResponseHandler.jsonHeaders(token: token),
+        body: jsonEncode({
+          'amount': amount,
+          'method': method,
+          'remarks': remarks,
+          'type': 'payment_in',
+        }),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      }
+
+      String errMsg = 'Server returned status ${response.statusCode}';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] != null) {
+          errMsg = decoded['message'].toString();
+        }
+      } catch (_) {}
+
+      throw Exception(errMsg);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception(e.toString());
+    }
+  }
 }

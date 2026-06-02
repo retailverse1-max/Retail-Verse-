@@ -32,11 +32,33 @@ const getProductById = async (req, res) => {
   }
 };
 
+const Business = require("../models/Business");
+const SubscriptionPlan = require("../models/SubscriptionPlan");
+
 const createProduct = async (req, res) => {
   try {
+    const clientId = req.user?.clientId || req.user?._id;
+    
+    // Enforce Product Limit based on Subscription
+    if (clientId) {
+      const business = await Business.findById(clientId);
+      if (business) {
+        const planName = business.subscriptionPlan || "Basic";
+        const plan = await SubscriptionPlan.findOne({ name: planName });
+        const maxProducts = plan ? plan.maxProducts : 100;
+
+        const currentProducts = await Product.countDocuments({ clientId });
+        if (currentProducts >= maxProducts) {
+          return res.status(403).json({ 
+            message: `Product limit reached for ${planName} plan. Please upgrade to add more products.` 
+          });
+        }
+      }
+    }
+
     const productData = {
       ...req.body,
-      clientId: req.user?.clientId || req.user?._id,
+      clientId,
     };
     if (req.body.imageBase64) {
       productData.imageUrl = req.body.imageBase64;

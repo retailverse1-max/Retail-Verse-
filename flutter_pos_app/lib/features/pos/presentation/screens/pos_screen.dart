@@ -48,6 +48,32 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     super.dispose();
   }
 
+  // Intercept back navigation to confirm exit
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Leave App'),
+        content: const Text('Do you want to leave the app?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (shouldExit == true) {
+      SystemNavigator.pop();
+    }
+    return false; // Prevent default pop
+  }
+
+
   Future<void> _handleRefresh() async {
     HapticFeedback.mediumImpact();
     setState(() => isRefreshing = true);
@@ -120,6 +146,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           behavior: SnackBarBehavior.floating,
         ),
       );
+      context.push('/pos/cart');
     }
   }
 
@@ -131,7 +158,12 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     final isTablet = MediaQuery.of(context).size.width >= 900;
     final heldCart = ref.watch(posHeldCartProvider);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool _, dynamic __) {
+        _onWillPop();
+      },
+      child: Scaffold(
       key: _posScaffoldKey,
       backgroundColor: Colors.transparent,
       endDrawer: !isTablet ? Drawer(
@@ -302,7 +334,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           ),
         ],
       ),
-    );
+    ));
   }
 
 
@@ -882,7 +914,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
 
         // 3. FIXED TOTALS & PLACE ORDER CARD
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],

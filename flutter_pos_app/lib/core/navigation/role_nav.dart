@@ -225,9 +225,11 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
 /// True if [location] should highlight the shell tab for [itemPath].
 bool shellPathMatchesItem(String location, String itemPath) {
   if (itemPath == '/dashboard') return location == '/dashboard';
-  if (itemPath == '/admin/staff') {
-    return location == '/admin/staff';
-  }
+  if (itemPath == '/admin/staff') return location == '/admin/staff';
+  if (itemPath == '/admin/custom-domain') return location == '/admin/custom-domain';
+  if (itemPath == '/customers') return location == '/customers' || location.startsWith('/customers/');
+  if (itemPath == '/products') return location == '/products' || location.startsWith('/products/');
+  
   if (itemPath == '/pos') {
     return location == '/pos' || location.startsWith('/pos/');
   }
@@ -246,7 +248,7 @@ bool shellPathMatchesItem(String location, String itemPath) {
   if (itemPath == '/settings') {
     return location == '/settings' ||
         location.startsWith('/settings/') ||
-        location.startsWith('/admin/');
+        (location.startsWith('/admin/') && location != '/admin/staff' && location != '/admin/custom-domain');
   }
   if (itemPath == '/super-admin/dashboard') {
     return location == '/super-admin/dashboard' ||

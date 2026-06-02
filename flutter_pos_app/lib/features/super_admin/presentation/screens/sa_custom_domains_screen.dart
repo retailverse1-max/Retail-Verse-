@@ -146,28 +146,31 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
               ),
         title: Text('Domain Manager', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-        : RefreshIndicator(
-            onRefresh: _loadData,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              children: [
-                _buildSimpleAddCard(),
-                if (_lastAddedDomain != null) ...[
-                  const SizedBox(height: 24),
-                  _buildDnsInstructionCard(_lastAddedDomain!),
-                ],
-                const SizedBox(height: 32),
-                Text('YOUR DOMAINS', style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
-                const SizedBox(height: 16),
-                if (_domains.isEmpty)
-                  _buildEmptyState()
-                else
-                  ..._domains.map((d) => _buildSimpleDomainCard(d)),
-              ],
-            ),
-          ),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  children: [
+                    _buildSimpleAddCard(),
+                    if (_lastAddedDomain != null) ...[
+                      const SizedBox(height: 24),
+                      _buildDnsInstructionCard(_lastAddedDomain!),
+                    ],
+                    const SizedBox(height: 32),
+                    Text('YOUR DOMAINS', style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
+                    const SizedBox(height: 16),
+                    if (_domains.isEmpty)
+                      _buildEmptyState()
+                    else
+                      ..._domains.map((d) => _buildSimpleDomainCard(d)),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 

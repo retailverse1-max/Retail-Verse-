@@ -310,4 +310,51 @@ const updateOrder = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getOrders, updateOrder };
+const recordPayment = async (req, res) => {
+  try {
+    const { amount, method, remarks, type } = req.body;
+
+    if (!amount || !method) {
+      return res.status(400).json({ message: "Amount and payment method are required" });
+    }
+
+    let clientId = req.user.clientId;
+    if (!clientId) {
+      const biz = await Business.findOne({ ownerEmail: req.user.email });
+      if (biz) {
+        clientId = biz._id;
+      } else {
+        return res.status(400).json({ message: "No active business found for this user." });
+      }
+    }
+
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    const orderId = `RV-PAY-${timestamp}-${random}`;
+
+    const paymentRecord = await Order.create({
+      orderId,
+      channel: "pos",
+      type: type || "payment_in",
+      items: [], // No items for a generic payment
+      total: parseFloat(amount),
+      paymentMethod: method.toLowerCase(),
+      status: "completed",
+      paymentStatus: "paid",
+      createdBy: req.user._id,
+      clientId: clientId,
+      customerName: remarks, // using customerName field to store remarks for now
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Payment recorded successfully",
+      data: paymentRecord,
+    });
+  } catch (error) {
+    console.error("Payment Record Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { createOrder, getOrders, updateOrder, recordPayment };

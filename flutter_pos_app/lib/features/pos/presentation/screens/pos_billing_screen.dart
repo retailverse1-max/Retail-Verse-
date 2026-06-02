@@ -15,6 +15,7 @@ import '../../providers/product_providers.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'pos_product_detail_screen.dart';
 
+
 /// Cart item for POS
 class POSCartItem {
   final Product product;

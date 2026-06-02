@@ -42,9 +42,16 @@ const orderSchema = new mongoose.Schema(
       enum: ["pos", "ecommerce", "woo"],
       default: "pos",
     },
+    type: {
+      type: String,
+      enum: ["sale", "payment_in", "payment_out"],
+      default: "sale",
+    },
     items: {
       type: [orderItemSchema],
-      required: true,
+      required: function () {
+        return this.type === "sale";
+      },
     },
     total: {
       type: Number,
