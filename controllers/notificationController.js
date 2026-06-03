@@ -2,6 +2,7 @@ const nodemailer = require("nodemailer");
 const Ticket = require("../models/Ticket");
 const Notification = require("../models/Notification");
 const { createAndSendNotification } = require("../services/notificationService");
+const { sendEmail } = require("../services/emailService");
 
 const sendEmailInvoice = async (req, res) => {
   const { to, subject, htmlContent } = req.body;
@@ -56,25 +57,15 @@ const sendEmailInvoice = async (req, res) => {
         console.error("Zendesk invoice sync failed:", zendeskErr.message);
       }
     } else {
-      // Fallback to Nodemailer if Zendesk is not configured
+      // Fallback to shared emailService (which supports Brevo HTTP API to bypass Render blocks)
       try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: process.env.GMAIL_USER,
-            pass: process.env.GMAIL_PASS, 
-          },
-        });
-        const mailOptions = {
-          from: `"Retail Verse" <${process.env.GMAIL_USER}>`,
+        await sendEmail({
           to,
           subject,
           html: htmlContent,
-        };
-        const info = await transporter.sendMail(mailOptions);
-        console.log("Message sent via Nodemailer: %s", info.messageId);
+        });
       } catch (err) {
-        console.error("Nodemailer fallback failed:", err);
+        console.error("Email service fallback failed:", err);
       }
     }
 
