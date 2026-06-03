@@ -189,7 +189,7 @@ class SuperAdminService {
 
   Future<List<Map<String, dynamic>>> listUsers({String? businessId}) async {
     final token = await _token();
-    final uri = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminUsers}')
+    final uri = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.users}')
         .replace(queryParameters: {
       if (businessId != null && businessId.trim().isNotEmpty)
         'businessId': businessId.trim(),
@@ -227,7 +227,7 @@ class SuperAdminService {
     String? phone,
   }) async {
     final token = await _token();
-    final uri = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminUsers}');
+    final uri = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.users}');
     final body = jsonEncode({
       'name': name.trim(),
       'email': email.trim(),
@@ -267,7 +267,7 @@ class SuperAdminService {
   }) async {
     final token = await _token();
     final uri = Uri.parse(
-      '${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminUsers}/$userId/status',
+      '${ApiEndpoints.baseUrl}${ApiEndpoints.users}/$userId/status',
     );
     final body = jsonEncode({'isActive': isActive});
 
@@ -302,7 +302,7 @@ class SuperAdminService {
   }) async {
     final token = await _token();
     final uri = Uri.parse(
-      '${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminUsers}/$userId/role',
+      '${ApiEndpoints.baseUrl}${ApiEndpoints.users}/$userId/role',
     );
     final body = jsonEncode({'role': role.trim()});
 
@@ -334,7 +334,7 @@ class SuperAdminService {
   Future<void> deleteUser({required String userId}) async {
     final token = await _token();
     final uri = Uri.parse(
-      '${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminUsers}/$userId',
+      '${ApiEndpoints.baseUrl}${ApiEndpoints.users}/$userId',
     );
 
     print('TEAM ACTION REQUEST: DELETE $uri');
@@ -587,9 +587,14 @@ class SuperAdminService {
     final token = await _token();
     final res = await _client
         .post(
-          ApiResponseHandler.uri(ApiEndpoints.superAdminBroadcast),
+          ApiResponseHandler.uri('${ApiEndpoints.notifications}/broadcast'),
           headers: ApiResponseHandler.jsonHeaders(token: token),
-          body: jsonEncode({'message': message, 'priority': priority}),
+          body: jsonEncode({
+            'title': priority == 'high' ? '🚨 EMERGENCY BROADCAST' : '🔔 PLATFORM ANNOUNCEMENT',
+            'message': message,
+            'targetRoles': ['admin', 'inventory', 'cashier', 'super_admin'],
+            'type': priority == 'high' ? 'alert' : 'general',
+          }),
         )
         .timeout(const Duration(seconds: 20));
 

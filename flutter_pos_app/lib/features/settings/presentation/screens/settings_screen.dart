@@ -55,7 +55,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     Row(
                       children: [
-                        const ResponsiveMenuButton(),
+                        if (context.canPop())
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                            onPressed: () => context.pop(),
+                          )
+                        else
+                          const ResponsiveMenuButton(),
                         const SizedBox(width: 12),
                         Text('Settings', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
                       ],

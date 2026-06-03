@@ -61,37 +61,52 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: IconButton(
-                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBorder.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(12),
+              Expanded(
+                child: Row(
+                  children: [
+                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: IconButton(
+                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBorder.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                           ),
-                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                         ),
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Customers',
+                            style: AppTypography.headlineSmall.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      Text(
-                        'Customers',
-                        style: AppTypography.headlineSmall.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => context.push('/add-customer'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Customer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               ),
             ],
           ),
@@ -106,15 +121,6 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push('/add-customer');
-        },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add Customer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
       body: Column(
         children: [
           _buildHeader(context),
@@ -496,7 +502,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                   ),
                 ),
                 Expanded(
-                  flex: 1,
+                  flex: 2,
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
@@ -665,36 +671,40 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                 ),
                 // ACTIONS COLUMN
                 Expanded(
-                  flex: 1,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Compose email to $email'),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        },
-                        child: const Icon(
-                          Icons.mail_outline_rounded,
-                          color: AppColors.textSecondary,
-                          size: 20,
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Compose email to $email'),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          },
+                          child: const Icon(
+                            Icons.mail_outline_rounded,
+                            color: AppColors.textSecondary,
+                            size: 20,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () => _showOptionsDialog(customer),
-                        child: const Icon(
-                          Icons.more_vert_rounded,
-                          color: AppColors.textSecondary,
-                          size: 20,
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () => _showOptionsDialog(customer),
+                          child: const Icon(
+                            Icons.more_vert_rounded,
+                            color: AppColors.textSecondary,
+                            size: 20,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],

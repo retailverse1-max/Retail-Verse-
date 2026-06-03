@@ -23,9 +23,13 @@ class ProductRemoteDataSource implements IProductDataSource {
   Future<List<Product>> getAllProducts() async {
     try {
       final token = await _getToken();
+      String url = '$baseUrl${ApiEndpoints.products}?limit=1000';
+      if (SessionService.currentStoreId != null) {
+        url += '&businessId=${SessionService.currentStoreId}';
+      }
       final response = await client
           .get(
-            Uri.parse('$baseUrl${ApiEndpoints.products}?limit=1000'),
+            Uri.parse(url),
             headers: ApiResponseHandler.jsonHeaders(token: token),
           )
           .timeout(const Duration(seconds: 15));

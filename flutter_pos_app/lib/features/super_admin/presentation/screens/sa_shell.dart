@@ -53,6 +53,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
       builder: (ctx) => Container(
         decoration: const BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
         padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.paddingOf(context).bottom + 24),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,8 +62,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
             const SizedBox(height: 8),
             Text('Switch control to a specific client store', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 20),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+            Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
                 itemCount: items.length,
@@ -110,6 +110,9 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
 
   @override
   Widget build(BuildContext context) {
+    // FORCE CLEAR context so Super Admin global queries don't pass a client ID
+    SessionService.currentStoreId = null;
+    
     final path = GoRouterState.of(context).uri.path;
     final user = ref.watch(authProvider).user ?? {};
     final email = user['email']?.toString() ?? 'Super Admin';
@@ -295,43 +298,23 @@ class _SuperAdminDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final content = Column(
+    final content = ListView(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.paddingOf(context).bottom + 80),
+      physics: const BouncingScrollPhysics(),
       children: [
         _buildHeader(context),
-        Expanded(
-          child: CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _buildDrawerSection(context, 'CORE MODULES', _kPrimaryShellRoutes),
-                    const SizedBox(height: 32),
-                    _buildDrawerSection(context, 'MORE TOOLS', _kSecondaryShellRoutes),
-                    const SizedBox(height: 32),
-                  ]),
-                ),
-              ),
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.paddingOf(context).bottom + 24),
-                    child: _buildFooter(context, ref),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        const SizedBox(height: 24),
+        _buildDrawerSection(context, 'CORE MODULES', _kPrimaryShellRoutes),
+        const SizedBox(height: 24),
+        _buildDrawerSection(context, 'MORE TOOLS', _kSecondaryShellRoutes),
+        _buildFooter(context, ref),
       ],
     );
 
     if (isDrawer) {
       return Drawer(
         backgroundColor: Colors.white,
-        width: MediaQuery.of(context).size.width * 0.85,
+        width: (MediaQuery.of(context).size.width * 0.85).clamp(260.0, 360.0),
         child: content,
       );
     } else {
@@ -348,68 +331,41 @@ class _SuperAdminDrawer extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
+          colors: [AppColors.primary, AppColors.accent],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: SafeArea(
-        bottom: false,
-        top: isDrawer, // only top padding if inside drawer, otherwise custom padding works
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  child: const Icon(Icons.shield_rounded, color: Colors.white, size: 32),
-                ),
-                if (canPin)
-                  IconButton(
-                    onPressed: onTogglePin,
-                    icon: Icon(
-                      isPinned ? Icons.code_rounded : Icons.code_off_rounded,
-                      color: Colors.white70,
-                    ),
-                  ),
+                Text('Super Admin', style: AppTypography.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text(email, style: AppTypography.bodySmall.copyWith(color: Colors.white70)),
               ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Retail Verse',
-              style: AppTypography.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
-            ),
-            Text(
-              email,
-              style: AppTypography.bodySmall.copyWith(color: Colors.white70),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.success.withOpacity(0.3)),
+          ),
+          if (canPin)
+            IconButton(
+              onPressed: onTogglePin,
+              icon: Icon(
+                isPinned ? Icons.keyboard_double_arrow_left_rounded : Icons.keyboard_double_arrow_right_rounded,
+                color: Colors.white,
               ),
-              child: Text(
-                'SUPER ADMIN',
-                style: AppTypography.labelSmall.copyWith(color: AppColors.success, fontWeight: FontWeight.w900, letterSpacing: 1),
-              ),
+              tooltip: isPinned ? 'Unpin Sidebar' : 'Pin Sidebar',
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -476,7 +432,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
               ref.read(authProvider.notifier).logout();
               context.go('/login');
             },
-            icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+            icon: const Icon(Icons.logout_rounded, size: 18),
             label: Text('Logout Retail Verse', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
             style: TextButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),

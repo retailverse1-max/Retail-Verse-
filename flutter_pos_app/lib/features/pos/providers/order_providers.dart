@@ -61,6 +61,12 @@ final ordersListProvider = FutureProvider<List<Order>>((ref) async {
   return remote.getOrders();
 });
 
+/// Orders list for Super Admin Orders screen (GET /orders across all stores)
+final saOrdersListProvider = FutureProvider<List<Order>>((ref) async {
+  final remote = ref.watch(orderRemoteDataSourceProvider);
+  return remote.getOrders(ignoreStoreId: true);
+});
+
 /// ==========================================
 /// ORDER CREATION STATE
 /// ==========================================

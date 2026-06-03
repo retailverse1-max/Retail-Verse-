@@ -76,13 +76,6 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddBusiness,
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_business_rounded, color: Colors.white),
-        label: const Text('Add Client', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
       body: Column(
         children: [
           // ── MINIMALIST SEARCH HEADER ──────────────────
@@ -98,23 +91,40 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: IconButton(
-                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                          icon: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBorder.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(12),
+                    Row(
+                      children: [
+                        if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: IconButton(
+                              onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                              icon: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardBorder.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                              ),
                             ),
-                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                           ),
-                        ),
+                        Text('Clients', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _openAddBusiness,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        elevation: 0,
                       ),
-                    Text('Clients', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      icon: const Icon(Icons.add_business_rounded, size: 18),
+                      label: const Text('Add Client', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

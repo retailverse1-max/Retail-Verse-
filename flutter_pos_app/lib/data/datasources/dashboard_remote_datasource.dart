@@ -9,6 +9,7 @@ import '../models/dashboard_stats_model.dart';
 import '../models/product_model.dart';
 import '../models/recent_activity_model.dart';
 import '../models/customer_model.dart';
+import '../../core/services/session_service.dart';
 
 class DashboardRemoteDataSource {
   final http.Client client;
@@ -254,9 +255,13 @@ class DashboardRemoteDataSource {
 
   Future<List<CustomerModel>> getCustomers({required String token}) async {
     try {
+      String url = '$baseUrl/dashboard/customers';
+      if (SessionService.currentStoreId != null) {
+        url += '?businessId=${SessionService.currentStoreId}';
+      }
       final response = await client
           .get(
-            Uri.parse('$baseUrl/dashboard/customers'),
+            Uri.parse(url),
             headers: ApiResponseHandler.jsonHeaders(token: token),
           )
           .timeout(const Duration(seconds: 15));

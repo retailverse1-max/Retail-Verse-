@@ -259,13 +259,13 @@ class OrderRemoteDataSource {
   }
 
   /// Get all orders
-  Future<List<Order>> getOrders() async {
+  Future<List<Order>> getOrders({bool ignoreStoreId = false}) async {
     try {
       final token = await _getToken();
       final response = await client
           .get(
             Uri.parse('$baseUrl${ApiEndpoints.orders}'),
-            headers: ApiResponseHandler.jsonHeaders(token: token),
+            headers: ApiResponseHandler.jsonHeaders(token: token, ignoreStoreId: ignoreStoreId),
           )
           .timeout(const Duration(seconds: 15));
 

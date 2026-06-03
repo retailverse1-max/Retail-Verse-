@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_response_handler.dart';
 import '../models/support_ticket_model.dart';
+import '../../../core/services/session_service.dart';
 
 class SupportRemoteDataSource {
   final http.Client client;
@@ -12,8 +13,12 @@ class SupportRemoteDataSource {
 
   Future<SupportStats> getSupportStats(String token) async {
     try {
+      String url = '$baseUrl/support/stats';
+      if (SessionService.currentStoreId != null) {
+        url += '?businessId=${SessionService.currentStoreId}';
+      }
       final response = await client.get(
-        Uri.parse('$baseUrl/support/stats'),
+        Uri.parse(url),
         headers: ApiResponseHandler.jsonHeaders(token: token),
       );
 
@@ -29,8 +34,12 @@ class SupportRemoteDataSource {
 
   Future<List<SupportTicket>> getRecentTickets(String token) async {
     try {
+      String url = '$baseUrl/support/tickets';
+      if (SessionService.currentStoreId != null) {
+        url += '?businessId=${SessionService.currentStoreId}';
+      }
       final response = await client.get(
-        Uri.parse('$baseUrl/support/tickets'),
+        Uri.parse(url),
         headers: ApiResponseHandler.jsonHeaders(token: token),
       );
 

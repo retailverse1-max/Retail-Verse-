@@ -59,27 +59,24 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
           return Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(data),
-                      const SizedBox(height: 32),
-                      _buildStatsGrid(stats),
-                      const SizedBox(height: 32),
-                      _buildSubscriptionCard(data, expiry),
-                      const SizedBox(height: 32),
-                      _buildContactInfo(data),
-                      const SizedBox(height: 24),
-                    ],
+                child: SafeArea(
+                  bottom: true,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(data),
+                        const SizedBox(height: 32),
+                        _buildStatsGrid(stats),
+                        const SizedBox(height: 32),
+                        _buildSubscriptionCard(data, expiry),
+                        const SizedBox(height: 32),
+                        _buildContactInfo(data),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  child: _buildActionButtons(data),
                 ),
               ),
             ],
@@ -276,31 +273,4 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
     );
   }
 
-  Widget _buildActionButtons(Map<String, dynamic> data) {
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton(
-            onPressed: () {},
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            child: const Text('Manage Billing'),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.error.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-            onPressed: () {},
-          ),
-        ),
-      ],
-    );
-  }
 }

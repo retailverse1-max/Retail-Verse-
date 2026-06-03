@@ -213,7 +213,13 @@ class SupportScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-                ResponsiveMenuButton(isSuperAdmin: isSuperAdmin),
+                if (context.canPop())
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                    onPressed: () => context.pop(),
+                  )
+                else
+                  ResponsiveMenuButton(isSuperAdmin: isSuperAdmin),
                 const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -545,103 +551,175 @@ class SupportScreen extends ConsumerWidget {
   }
 
   Widget _buildTicketCard(SupportTicket ticket) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildStatusTag(ticket.subject.toUpperCase(), AppColors.infoLight, AppColors.info),
-              _buildStatusTag(ticket.status.toUpperCase(), AppColors.errorLight, AppColors.error),
-              _buildStatusTag(ticket.priority.toUpperCase(), AppColors.warningLight, AppColors.warning),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 360;
+        final isWide = constraints.maxWidth >= 600;
+
+        return Container(
+          margin: EdgeInsets.symmetric(
+            horizontal: isWide ? 32 : 16,
+            vertical: 8,
+          ),
+          padding: EdgeInsets.all(isNarrow ? 14 : 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
             ],
           ),
-          if (ticket.orderId != null) ...[
-            const SizedBox(height: 12),
-            _buildStatusTag(ticket.orderId!, AppColors.secondary.withOpacity(0.1), AppColors.secondary, icon: Icons.inventory_2_outlined),
-          ],
-          const SizedBox(height: 12),
-          Text(ticket.subject, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-          const SizedBox(height: 12),
-          Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Row 1: avatar + name
+              // Status Tags - fully wrapping
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildStatusTag(
+                    ticket.status.toUpperCase(),
+                    AppColors.errorLight,
+                    AppColors.error,
+                  ),
+                  _buildStatusTag(
+                    ticket.priority.toUpperCase(),
+                    AppColors.warningLight,
+                    AppColors.warning,
+                  ),
+                  if (ticket.orderId != null)
+                    _buildStatusTag(
+                      ticket.orderId!,
+                      AppColors.secondary.withOpacity(0.1),
+                      AppColors.secondary,
+                      icon: Icons.inventory_2_outlined,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Subject
+              Text(
+                ticket.subject,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+
+              // Requester info
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   CircleAvatar(
-                    radius: 12,
+                    radius: 14,
                     backgroundColor: AppColors.warningLight,
                     child: Text(
-                      ticket.requesterName?[0] ?? 'U',
-                      style: const TextStyle(fontSize: 10, color: AppColors.warning, fontWeight: FontWeight.bold),
+                      ticket.requesterName?.isNotEmpty == true
+                          ? ticket.requesterName![0].toUpperCase()
+                          : 'U',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      ticket.requesterName ?? 'User',
-                      style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              // Row 2: email + date
-              Row(
-                children: [
-                  const Icon(Icons.email_outlined, size: 13, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
-                      ticket.requesterEmail ?? '',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ticket.requesterName ?? 'User',
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (ticket.requesterEmail != null &&
+                            ticket.requesterEmail!.isNotEmpty)
+                          Text(
+                            ticket.requesterEmail!,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.access_time, size: 13, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
-                  Text(
-                    ticket.formattedDate,
-                    style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: AppColors.textTertiary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        ticket.formattedDate,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ],
               ),
+
+              const SizedBox(height: 16),
+              Builder(builder: (context) {
+                return Bounceable(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TicketDetailScreen(ticket: ticket),
+                    ),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.visibility_outlined, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          'View Details',
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             ],
           ),
-
-          const SizedBox(height: 20),
-          Builder(builder: (context) {
-            return Bounceable(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TicketDetailScreen(ticket: ticket))),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.visibility_outlined, size: 16),
-                    const SizedBox(width: 8),
-                    Text('View Details', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
+        );
+      },
     );
   }
 

@@ -51,42 +51,41 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: IconButton(
-                              onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                              icon: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.cardBorder.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: IconButton(
+                                onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                                icon: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardBorder.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                                 ),
-                                child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                               ),
                             ),
+                          Expanded(
+                            child: Text('User & Access', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
                           ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('User & Access', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
-                            Text('Manage platform staff & roles', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     FilledButton.icon(
                       onPressed: _openCreateUserDialog,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.person_add_rounded, size: 18),
-                      label: const Text('Add Member', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      icon: const Icon(Icons.person_add_rounded, size: 16),
+                      label: const Text('Add Member', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ],
                 ),
@@ -204,10 +203,11 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                       Text(name.isNotEmpty ? name : 'Unnamed Member', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
                       Text(email, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           _buildRoleBadge(role),
-                          const SizedBox(width: 8),
                           _buildStatusIndicator(active),
                         ],
                       ),

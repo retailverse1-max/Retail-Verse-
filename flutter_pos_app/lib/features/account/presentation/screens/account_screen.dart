@@ -34,6 +34,12 @@ class AccountScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        leading: context.canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.textPrimary),
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: Text(
           'My Account',
           style: AppTypography.headlineMedium.copyWith(
@@ -285,6 +291,7 @@ class AccountScreen extends ConsumerWidget {
               label: const Text('Logout'),
             ),
           ),
+          const SizedBox(height: 80), // Extra space to prevent bottom nav bar from cutting it off
         ],
       ),
     );

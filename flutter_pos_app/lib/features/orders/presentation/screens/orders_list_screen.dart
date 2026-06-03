@@ -17,7 +17,8 @@ import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_sh
 
 class OrdersListScreen extends ConsumerStatefulWidget {
   final String initialFilter;
-  const OrdersListScreen({super.key, this.initialFilter = 'Invoices'});
+  final bool isSuperAdmin;
+  const OrdersListScreen({super.key, this.initialFilter = 'Invoices', this.isSuperAdmin = false});
 
   @override
   ConsumerState<OrdersListScreen> createState() => _OrdersListScreenState();
@@ -57,7 +58,9 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ordersAsync = ref.watch(ordersListProvider);
+    final ordersAsync = widget.isSuperAdmin 
+        ? ref.watch(saOrdersListProvider)
+        : ref.watch(ordersListProvider);
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
@@ -82,7 +85,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            ResponsiveMenuButton(isSuperAdmin: ref.watch(authProvider.select((s) => s.user?['role'])) == 'super_admin'),
+                            ResponsiveMenuButton(isSuperAdmin: widget.isSuperAdmin),
                             const SizedBox(width: 4),
                             Text(
                               'Quotes & Invoices',
@@ -162,7 +165,9 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
 
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () => ref.refresh(ordersListProvider.future),
+                onRefresh: () => widget.isSuperAdmin 
+                    ? ref.refresh(saOrdersListProvider.future)
+                    : ref.refresh(ordersListProvider.future),
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [

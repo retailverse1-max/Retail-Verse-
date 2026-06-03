@@ -143,8 +143,12 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) => const SaSettingsScreen(),
         ),
         GoRoute(
+          path: '/super-admin/system-preferences',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
           path: '/super-admin/custom-domains',
-          builder: (context, state) => const SaCustomDomainsScreen(),
+          builder: (context, state) => const SaCustomDomainsScreen(isSuperAdminRoute: true),
         ),
         GoRoute(
           path: '/super-admin/support',
@@ -156,7 +160,7 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/super-admin/orders',
-          builder: (context, state) => const OrdersListScreen(),
+          builder: (context, state) => const OrdersListScreen(isSuperAdmin: true),
         ),
         GoRoute(
           path: '/super-admin/stores-performance',

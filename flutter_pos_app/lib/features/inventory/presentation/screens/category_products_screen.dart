@@ -256,7 +256,8 @@ class _CategoryProductsScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).padding.bottom + 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

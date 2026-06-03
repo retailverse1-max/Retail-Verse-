@@ -11,7 +11,8 @@ import 'package:retail_verse_pos/routes/app_router.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
 class SaCustomDomainsScreen extends ConsumerStatefulWidget {
-  const SaCustomDomainsScreen({super.key});
+  final bool isSuperAdminRoute;
+  const SaCustomDomainsScreen({super.key, this.isSuperAdminRoute = false});
 
   @override
   ConsumerState<SaCustomDomainsScreen> createState() => _SaCustomDomainsScreenState();
@@ -126,7 +127,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: false,
-        leading: (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+        leading: widget.isSuperAdminRoute
             ? Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: IconButton(
@@ -141,8 +142,8 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
                   ),
                 ),
               )
-            : ResponsiveMenuButton(
-                isSuperAdmin: ref.watch(authProvider).user?['role'] == 'super_admin',
+            : const ResponsiveMenuButton(
+                isSuperAdmin: false,
               ),
         title: Text('Domain Manager', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
       ),
@@ -153,7 +154,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
                 onRefresh: _loadData,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 100),
                   children: [
                     _buildSimpleAddCard(),
                     if (_lastAddedDomain != null) ...[

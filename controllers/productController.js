@@ -5,6 +5,9 @@ const getProducts = async (req, res) => {
     const filter = {};
     if (req.user && req.user.role !== "super_admin") {
       filter.clientId = req.user.clientId;
+    } else {
+      const bId = req.query.businessId || req.headers["x-client-id"];
+      if (bId) filter.clientId = bId;
     }
     const products = await Product.find(filter).sort({ createdAt: -1 });
 
@@ -37,7 +40,11 @@ const SubscriptionPlan = require("../models/SubscriptionPlan");
 
 const createProduct = async (req, res) => {
   try {
-    const clientId = req.user?.clientId || req.user?._id;
+    let clientId = req.user?.clientId || req.user?._id;
+    if (req.user && req.user.role === "super_admin") {
+      const bId = req.query.businessId || req.headers["x-client-id"];
+      if (bId) clientId = bId;
+    }
     
     // Enforce Product Limit based on Subscription
     if (clientId) {

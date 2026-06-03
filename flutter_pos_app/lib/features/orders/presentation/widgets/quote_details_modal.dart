@@ -6,6 +6,7 @@ import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retail_verse_pos/features/pos/providers/order_providers.dart';
+import 'package:retail_verse_pos/features/pos/presentation/widgets/invoice_dialog.dart';
 
 class QuoteDetailsModal extends ConsumerWidget {
   final Order quote;
@@ -361,6 +362,7 @@ class QuoteDetailsModal extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Printing...')),
                   );
+                  context.pop(); // Close modal after printing
                 },
                 icon: const Icon(Icons.print_outlined, size: 20, color: AppColors.textPrimary),
                 label: Text(
@@ -380,7 +382,12 @@ class QuoteDetailsModal extends ConsumerWidget {
         
         // Edit Button (Added via request)
         FilledButton.icon(
-          onPressed: () => context.push('/quotes/edit/${quote.id}', extra: quote),
+          onPressed: () async {
+            final result = await context.push<bool>('/quotes/edit/${quote.id}', extra: quote);
+            if (result == true && context.mounted) {
+              context.pop(); // Close modal after successful edit
+            }
+          },
           icon: const Icon(Icons.edit_rounded, size: 20),
           label: Text(
             'Edit Quote',
@@ -527,7 +534,7 @@ class QuoteDetailsModal extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        context.pop(); // Close QuoteDetailsModal
+        context.pop(); // Close QuoteDetailsModal and stay on Quotes screen
       }
     } else {
       if (context.mounted) {

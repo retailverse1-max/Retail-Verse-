@@ -991,33 +991,69 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  void _applyAISuggestion() {
+  Future<void> _applyAISuggestion() async {
     if (_aiSuggestion == null) return;
     
-    setState(() {
-      _nameController.text = _aiSuggestion!.productName;
-      _descriptionController.text = _aiSuggestion!.description;
+    final ai = _aiSuggestion!;
 
-      if (_aiSuggestion!.priceEstimate != null) {
-        _priceController.text = _aiSuggestion!.priceEstimate.toString();
-      }
-
-      if (_aiSuggestion!.suggestedCategory != null) {
-        try {
-          final matchingCategory = _categories.firstWhere(
-            (c) =>
-                c.name.toLowerCase() ==
-                _aiSuggestion!.suggestedCategory!.toLowerCase(),
-            orElse: () => _selectedCategory ?? _categories.first,
-          );
+    // Auto-create category if missing
+    if (ai.suggestedCategory != null && ai.suggestedCategory!.isNotEmpty) {
+      try {
+        final matchingCategory = _categories.firstWhere(
+          (c) => c.name.toLowerCase() == ai.suggestedCategory!.toLowerCase(),
+        );
+        setState(() {
           _selectedCategoryId = matchingCategory.id;
-        } catch (e) {
-          // Category not found
+        });
+      } catch (e) {
+        // Category not found, auto-create it!
+        try {
+          final repo = ref.read(categoryRepositoryProvider);
+          final tempCategory = CategoryEntity(
+            id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+            name: ai.suggestedCategory!,
+            subtitle: 'Auto-created by AI scan',
+            imagePath: '',
+            productCount: 0,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          
+          final newCategory = await repo.addCategory(tempCategory);
+          
+          if (mounted) {
+            setState(() {
+              _categories.insert(0, newCategory); // Add to top
+              _selectedCategoryId = newCategory.id;
+            });
+            ref.invalidate(categoriesProvider); // Refresh global list
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Auto-created new category: ${ai.suggestedCategory}'),
+                backgroundColor: AppColors.success,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } catch (err) {
+          debugPrint('Failed to auto-create category: $err');
         }
       }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _nameController.text = ai.productName;
+        _descriptionController.text = ai.description;
 
-      _aiSuggestion = null; // Clear suggestion after applying
-    });
+        if (ai.priceEstimate != null) {
+          _priceController.text = ai.priceEstimate.toString();
+        }
+
+        _aiSuggestion = null; // Clear suggestion after applying
+      });
+    }
   }
 
   Widget _buildAIPreviewCard() {

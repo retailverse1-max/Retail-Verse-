@@ -395,49 +395,77 @@ class InvoiceDetailsModal extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (order.customerEmail != null && order.customerEmail!.isNotEmpty) ...[
-          FilledButton.icon(
-            onPressed: () async {
+        FilledButton.icon(
+          onPressed: () async {
+            String? emailToSend = order.customerEmail;
+            
+            if (emailToSend == null || emailToSend.isEmpty) {
+              final emailCtrl = TextEditingController();
+              emailToSend = await showDialog<String>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Enter Email Address'),
+                  content: TextField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'customer@example.com',
+                      prefixIcon: Icon(Icons.email),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                    FilledButton(onPressed: () => Navigator.pop(ctx, emailCtrl.text.trim()), child: const Text('Send')),
+                  ],
+                ),
+              );
+            }
+            
+            if (emailToSend == null || emailToSend.isEmpty) return;
+
+            if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Sending Email Receipt...')),
               );
-              try {
-                await NotificationService().sendEmailInvoice(
-                  email: order.customerEmail!,
-                  order: order,
+            }
+            try {
+              await NotificationService().sendEmailInvoice(
+                email: emailToSend,
+                order: order,
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Email sent successfully!'),
+                    backgroundColor: AppColors.success,
+                  ),
                 );
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Email sent successfully!'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to send email: $e'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
+                Navigator.pop(context); // Close the InvoiceDetailsModal
               }
-            },
-            icon: const Icon(Icons.email_rounded, size: 20),
-            label: Text(
-              'Email Receipt',
-              style: AppTypography.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF1976D2), // Blue
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to send email: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            }
+          },
+          icon: const Icon(Icons.email_rounded, size: 20),
+          label: Text(
+            'Email Receipt',
+            style: AppTypography.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 12),
-        ],
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1976D2), // Blue
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(

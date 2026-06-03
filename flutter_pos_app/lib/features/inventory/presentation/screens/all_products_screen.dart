@@ -89,9 +89,11 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           )
                         else
                           SliverPadding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isDesktop ? 32 : (isTablet ? 24 : 16),
-                              vertical: 16,
+                            padding: EdgeInsets.only(
+                              left: isDesktop ? 32 : (isTablet ? 24 : 16),
+                              right: isDesktop ? 32 : (isTablet ? 24 : 16),
+                              top: 16,
+                              bottom: 100,
                             ),
                             sliver: SliverGrid(
                               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

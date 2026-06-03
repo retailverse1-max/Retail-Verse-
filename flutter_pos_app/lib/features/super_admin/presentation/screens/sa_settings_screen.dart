@@ -10,6 +10,85 @@ import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
+const String _privacyPolicyText = '''
+Privacy Policy for Retail Verse POS
+
+Effective Date: January 1, 2024
+
+1. Introduction
+Welcome to Retail Verse POS ("we", "our", or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the "App"). By using the App, you agree to the collection and use of information in accordance with this policy.
+
+2. Information We Collect
+We may collect information about you in a variety of ways. The information we may collect via the App includes:
+- Personal Data: Personally identifiable information, such as your name, shipping address, email address, and telephone number that you voluntarily give to us when you register with the App.
+- Store & Inventory Data: Information related to your store, inventory, customers, and transactions entered into the Point of Sale system.
+- Device Data: Information our servers automatically collect when you access the App, such as your native actions that are integral to the App, as well as device type, operating system, and device ID.
+
+3. How We Use Your Information
+Having accurate information about you permits us to provide you with a smooth, efficient, and customized experience. Specifically, we may use information collected about you via the App to:
+- Create and manage your account.
+- Process transactions, invoices, and send related information.
+- Manage store inventory and customer databases on your behalf.
+- Send you administrative information, such as updates, security alerts, and support messages.
+- Improve our App's functionality and user experience.
+
+4. Disclosure of Your Information
+We do not sell, trade, or rent your personal identification information to others. We may share information we have collected about you in certain situations:
+- By Law or to Protect Rights: If we believe the release of information about you is necessary to respond to legal process, to investigate or remedy potential violations of our policies, or to protect the rights, property, and safety of others.
+- Third-Party Service Providers: We may share your information with third parties that perform services for us or on our behalf, such as data analysis, email delivery, hosting services, and customer service.
+
+5. Data Security
+We use administrative, technical, and physical security measures to help protect your personal information. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable, and no method of data transmission can be guaranteed against any interception or other type of misuse.
+
+6. User Rights & Data Deletion
+You have the right to request access to, correction of, or deletion of your personal data. If you wish to delete your account or any associated data, please contact our support team. We will process your request in accordance with applicable privacy laws.
+
+7. Changes to This Privacy Policy
+We may update this Privacy Policy from time to time. We will notify you of any changes by updating the "Effective Date" of this Privacy Policy. You are encouraged to periodically review this Privacy Policy to stay informed of updates.
+
+8. Contact Us
+If you have questions or comments about this Privacy Policy, please contact us at:
+platform@retailverse.com
+''';
+
+const String _termsAndConditionsText = '''
+Terms and Conditions for Retail Verse POS
+
+Effective Date: January 1, 2024
+
+1. Acceptance of Terms
+By accessing or using the Retail Verse POS mobile application and platform (the "Service"), you agree to be bound by these Terms and Conditions. If you do not agree to all the terms and conditions, then you may not access the Service.
+
+2. License to Use
+We grant you a limited, non-exclusive, non-transferable, and revocable license to use our Service for your business operations, in accordance with your subscription plan. You may not copy, modify, distribute, sell, or lease any part of our Services or included software.
+
+3. Account Responsibilities
+You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password. You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.
+
+4. Acceptable Use
+You agree not to use the Service to:
+- Violate any local, state, national, or international laws.
+- Process illegal or unauthorized transactions.
+- Interfere with or disrupt the integrity or performance of the Service.
+- Attempt to gain unauthorized access to the Service or its related systems.
+
+5. Fees and Payment
+Certain features of the Service are billed on a subscription basis. You will be billed in advance on a recurring and periodic basis depending on your subscription plan.
+
+6. Termination
+We may terminate or suspend your account and bar access to the Service immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever, including a breach of these Terms.
+
+7. Limitation of Liability
+In no event shall Retail Verse, nor its directors, employees, partners, or agents, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
+
+8. Changes to Terms
+We reserve the right, at our sole discretion, to modify or replace these Terms at any time.
+
+9. Contact Us
+If you have any questions about these Terms, please contact us at:
+platform@retailverse.com
+''';
+
 class SaSettingsScreen extends ConsumerWidget {
   const SaSettingsScreen({super.key});
 
@@ -137,23 +216,30 @@ class SaSettingsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Platform Settings', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
                     if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                      IconButton(
-                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBorder.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(12),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: IconButton(
+                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBorder.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                           ),
-                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                         ),
                       )
                     else
-                      const ResponsiveMenuButton(isSuperAdmin: true, color: AppColors.textPrimary),
+                      const Padding(
+                        padding: EdgeInsets.only(right: 16),
+                        child: ResponsiveMenuButton(isSuperAdmin: true, color: AppColors.textPrimary),
+                      ),
+                    Expanded(
+                      child: Text('Platform Settings', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -197,19 +283,13 @@ class SaSettingsScreen extends ConsumerWidget {
                     icon: Icons.person_rounded,
                     title: 'Account & Profile',
                     subtitle: 'Manage your enterprise credentials',
-                    onTap: () => context.go('/account'),
-                  ),
-                  _SettingsTile(
-                    icon: Icons.dashboard_customize_rounded,
-                    title: 'Client Dashboard View',
-                    subtitle: 'Switch to a specific store environment',
-                    onTap: () => context.go('/dashboard'),
+                    onTap: () => context.push('/account'),
                   ),
                   _SettingsTile(
                     icon: Icons.tune_rounded,
                     title: 'System Preferences',
                     subtitle: 'Internal API & Theme overrides',
-                    onTap: () => context.go('/settings'),
+                    onTap: () => context.push('/super-admin/system-preferences'),
                   ),
                 ]),
                 const SizedBox(height: 40),
@@ -225,7 +305,7 @@ class SaSettingsScreen extends ConsumerWidget {
                     icon: Icons.security_rounded,
                     title: 'System Health Audit',
                     subtitle: 'Infrastructure & security logs',
-                    onTap: () => context.go('/super-admin/logs'),
+                    onTap: () => context.push('/super-admin/logs'),
                   ),
                   _SettingsTile(
                     icon: Icons.build_circle_rounded,
@@ -256,19 +336,19 @@ class SaSettingsScreen extends ConsumerWidget {
                     icon: Icons.privacy_tip_outlined,
                     title: 'Privacy and Policies',
                     subtitle: 'Platform data handling',
-                    onTap: () => _infoDialog(context, 'Privacy and Policies', 'Privacy policies are managed centrally. Please refer to the main website for the full legal text.'),
+                    onTap: () => _infoDialog(context, 'Privacy and Policies', _privacyPolicyText),
                   ),
                   _SettingsTile(
                     icon: Icons.gavel_rounded,
                     title: 'Terms and Conditions',
                     subtitle: 'SaaS usage agreement',
-                    onTap: () => _infoDialog(context, 'Terms and Conditions', 'Terms of service for platform administrators and businesses.'),
+                    onTap: () => _infoDialog(context, 'Terms and Conditions', _termsAndConditionsText),
                   ),
                   _SettingsTile(
                     icon: Icons.support_agent_rounded,
                     title: 'Customer Support',
                     subtitle: 'Direct line to developers',
-                    onTap: () => _infoDialog(context, 'Support', 'For technical emergencies, contact the dev team at platform@retailverse.com'),
+                    onTap: () => context.push('/super-admin/support'),
                   ),
                   _SettingsTile(
                     icon: Icons.info_outline_rounded,

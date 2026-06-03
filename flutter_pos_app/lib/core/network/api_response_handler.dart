@@ -12,11 +12,11 @@ import 'api_exception.dart';
 class ApiResponseHandler {
   ApiResponseHandler._();
 
-  static Map<String, String> jsonHeaders({String? token}) {
+  static Map<String, String> jsonHeaders({String? token, bool ignoreStoreId = false}) {
     return {
       'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      if (SessionService.currentStoreId != null && SessionService.currentStoreId!.isNotEmpty)
+      if (!ignoreStoreId && SessionService.currentStoreId != null && SessionService.currentStoreId!.isNotEmpty)
         'x-client-id': SessionService.currentStoreId!,
     };
   }
