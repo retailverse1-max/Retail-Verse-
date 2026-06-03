@@ -634,15 +634,6 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildActionButton(
-                        icon: Icons.sms_rounded,
-                        label: 'SMS',
-                        color: AppColors.info,
-                        onTap: _onSmsPressed,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionButton(
                         icon: Icons.email_rounded,
                         label: 'Email',
                         color: AppColors.warning,

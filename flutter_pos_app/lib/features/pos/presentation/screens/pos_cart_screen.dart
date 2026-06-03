@@ -148,7 +148,17 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
   }
 
   void _applyDiscount() {
-    final v = double.tryParse(_discountCtrl.text.trim()) ?? 0;
+    final cart = ref.read(cartProvider);
+    double v = double.tryParse(_discountCtrl.text.trim()) ?? 0;
+    
+    if (v > cart.subtotal) {
+      v = cart.subtotal;
+      _discountCtrl.text = v.toStringAsFixed(2);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Discount cannot exceed subtotal.')),
+      );
+    }
+    
     ref.read(cartProvider.notifier).updateDiscount(v < 0 ? 0 : v);
   }
 

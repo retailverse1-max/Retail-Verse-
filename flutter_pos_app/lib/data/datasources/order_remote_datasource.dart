@@ -57,8 +57,9 @@ class OrderRemoteDataSource {
             .toList(),
         'paymentMethod': _normalizePaymentMethod(paymentMethod),
         'total': total,
-        if (discount > 0) 'discount': discount,
-        if (extra > 0) 'extraCharges': extra,
+        'discount': discount,
+        'tax': taxAmount,
+        'extraCharges': extra,
         if (customerName != null && customerName.isNotEmpty)
           'customerName': customerName,
         if (customerPhone != null && customerPhone.isNotEmpty)

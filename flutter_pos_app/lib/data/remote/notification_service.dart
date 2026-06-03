@@ -59,7 +59,7 @@ class NotificationService {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
-      final url = Uri.parse('\${ApiEndpoints.baseUrl}/api/notifications/email');
+      final url = Uri.parse('\${ApiEndpoints.baseUrl}/notifications/email');
       final response = await http.post(
         url,
         headers: {
@@ -105,29 +105,29 @@ class NotificationService {
       smsBody += '\\nTotal: ₹\${order.total.toStringAsFixed(2)}\\n';
       smsBody += 'Thank you for shopping with us!';
 
-      String toPhone = phone.trim();
-      if (!toPhone.startsWith('+')) {
-        toPhone = '+91\$toPhone'; // Assume India if no country code provided
-      }
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
 
-      // Try WhatsApp first
-      final whatsappUrl = Uri.parse("whatsapp://send?phone=\$toPhone&text=\${Uri.encodeComponent(smsBody)}");
-      
-      if (await canLaunchUrl(whatsappUrl)) {
-        await launchUrl(whatsappUrl);
-        debugPrint('📱 WhatsApp intent launched successfully.');
-      } else {
-        // Fallback to regular SMS
-        final smsUrl = Uri.parse("sms:\$toPhone?body=\${Uri.encodeComponent(smsBody)}");
-        if (await canLaunchUrl(smsUrl)) {
-          await launchUrl(smsUrl);
-          debugPrint('📱 SMS intent launched successfully.');
-        } else {
-          throw Exception('Could not launch WhatsApp or SMS. Please install WhatsApp or check your default messaging app.');
-        }
+      final url = Uri.parse('\${ApiEndpoints.baseUrl}/notifications/sms');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer \$token',
+        },
+        body: json.encode({
+          'phone': phone,
+          'content': smsBody,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        final errorMsg = json.decode(response.body)['message'] ?? 'Unknown error';
+        throw Exception('Failed to send SMS via backend: \$errorMsg');
       }
+      debugPrint('📱 SMS sent via Node backend successfully.');
     } catch (e) {
-      debugPrint('❌ Error sending SMS via URL Launcher: \$e');
+      debugPrint('❌ Error sending SMS: \$e');
       rethrow;
     }
   }
