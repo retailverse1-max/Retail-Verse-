@@ -7,6 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../subscription/data/repositories/subscription_repository.dart';
 import '../../../subscription/data/models/subscription_plan.dart';
+import '../../../core/navigation/role_nav.dart';
 
 class TrialBanner extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
@@ -56,6 +57,11 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final role = effectiveUserRole(widget.user);
+    if (role != 'admin' && role != 'super_admin') {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
     // If not a trial, hide the banner
     if (widget.user['subscriptionPlan'] != 'trial') {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
