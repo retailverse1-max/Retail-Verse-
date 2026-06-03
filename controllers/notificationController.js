@@ -117,24 +117,6 @@ const sendEmailInvoice = async (req, res) => {
   }
 };
 
-const sendSmsInvoice = async (req, res) => {
-  const { phone, content } = req.body;
-
-  if (!phone || !content) {
-    return res.status(400).json({ message: "Missing required fields" });
-  }
-
-  try {
-    // Mock SMS sending (Brevo removed)
-    console.log(`[SMS MOCK] To: ${phone}\nContent: ${content}`);
-    
-    // In the future, integrate Twilio, AWS SNS, or Firebase here.
-    res.status(200).json({ message: "SMS sent successfully (Mocked)" });
-  } catch (error) {
-    console.error("Error sending SMS:", error);
-    res.status(500).json({ message: "Failed to send SMS", error: error.message });
-  }
-};
 
 const getNotifications = async (req, res) => {
   try {
@@ -243,4 +225,4 @@ const requestRestock = async (req, res) => {
   }
 };
 
-module.exports = { sendEmailInvoice, sendSmsInvoice, getNotifications, markAsRead, broadcastNotification, requestRestock };
+module.exports = { sendEmailInvoice, getNotifications, markAsRead, broadcastNotification, requestRestock };
