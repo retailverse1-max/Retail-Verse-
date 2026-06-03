@@ -306,7 +306,7 @@ const forgotPassword = async (req, res) => {
     res.json({ message: "OTP sent successfully to your email" });
   } catch (error) {
     console.error("Forgot Password Error:", error);
-    res.status(500).json({ message: "Failed to process forgot password request" });
+    res.status(500).json({ message: error.message || "Failed to process forgot password request" });
   }
 };
 
