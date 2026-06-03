@@ -560,6 +560,7 @@ class _CategoryProductsScreenState
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _ProductGridCard(
                           product: filtered[index],
+                          showMenu: canAddProduct, // same logic as canManage
                           onTap: () => _showProductMenu(
                               context, filtered[index]),
                           onMenuTap: () =>
@@ -576,6 +577,7 @@ class _CategoryProductsScreenState
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _ProductCard(
                           product: filtered[index],
+                          showMenu: canAddProduct,
                           onTap: () => ScaffoldMessenger.of(context)
                               .showSnackBar(
                             SnackBar(
@@ -742,11 +744,13 @@ class _SummaryCard extends StatelessWidget {
 // ── Product List Card (Phone) ─────────────────────────────────
 class _ProductCard extends StatelessWidget {
   final api.Product product;
+  final bool showMenu;
   final VoidCallback onTap;
   final VoidCallback onMenuTap;
 
   const _ProductCard({
     required this.product,
+    this.showMenu = true,
     required this.onTap,
     required this.onMenuTap,
   });
@@ -885,21 +889,24 @@ class _ProductCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 // Menu button
-                GestureDetector(
-                  onTap: onMenuTap,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary,
-                      borderRadius: BorderRadius.circular(10),
+                if (showMenu)
+                  GestureDetector(
+                    onTap: onMenuTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.more_vert_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.more_vert_rounded,
-                      size: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
+                  )
+                else
+                  const SizedBox(width: 34), // Maintain spacing if hidden
               ],
             ),
           ),
@@ -912,11 +919,13 @@ class _ProductCard extends StatelessWidget {
 // ── Product Grid Card (Tablet / Desktop) ─────────────────────
 class _ProductGridCard extends StatelessWidget {
   final api.Product product;
+  final bool showMenu;
   final VoidCallback onTap;
   final VoidCallback onMenuTap;
 
   const _ProductGridCard({
     required this.product,
+    this.showMenu = true,
     required this.onTap,
     required this.onMenuTap,
   });
@@ -1000,22 +1009,23 @@ class _ProductGridCard extends StatelessWidget {
                       ),
                     ),
                     // Menu button
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: GestureDetector(
-                        onTap: onMenuTap,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(8),
+                    if (showMenu)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: GestureDetector(
+                          onTap: onMenuTap,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.more_vert_rounded,
+                                size: 16, color: AppColors.textSecondary),
                           ),
-                          child: const Icon(Icons.more_vert_rounded,
-                              size: 16, color: AppColors.textSecondary),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
