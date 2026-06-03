@@ -15,6 +15,8 @@ const createOrder = async (req, res) => {
       customerEmail,
       customerAddress,
       notes,
+      discount,
+      tax,
     } = req.body;
 
     if (!items || !items.length) {
@@ -96,6 +98,8 @@ const createOrder = async (req, res) => {
       customerEmail,
       customerAddress,
       notes,
+      discount: discount || 0,
+      tax: tax || 0,
     });
 
     // Update stock and logs
