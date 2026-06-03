@@ -5,11 +5,13 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/inventory/data/models/category_entity.dart';
-import 'package:retail_verse_pos/features/inventory/data/models/category.dart' as inv;
 import 'package:retail_verse_pos/features/inventory/data/local/category_local_service.dart';
+import 'package:retail_verse_pos/features/inventory/providers/category_providers.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
+
+import 'package:retail_verse_pos/features/inventory/data/models/category.dart' as inv;
 
 inv.Category _entityToNavCategory(CategoryEntity e) {
   return inv.Category(
@@ -30,7 +32,6 @@ class InventoryCategoriesScreen extends ConsumerStatefulWidget {
 
 class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final CategoryLocalService _service = CategoryLocalService();
   String _query = '';
 
   @override
@@ -137,15 +138,11 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
               ],
             ),
           ),
-
           Expanded(
-            child: FutureBuilder<List<CategoryEntity>>(
-              future: _service.getAllCategories(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final list = snapshot.data ?? [];
+            child: ref.watch(categoriesProvider).when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+              data: (list) {
                 final filtered = list.where((c) => c.name.toLowerCase().contains(_query.toLowerCase())).toList();
 
                 if (filtered.isEmpty) return _buildEmptyState();
@@ -382,9 +379,10 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
           FilledButton(
             onPressed: () async {
               if (nameC.text.trim().isEmpty) return;
-              await _service.updateCategory(
+              await ref.read(categoryRepositoryProvider).updateCategory(
                 category.copyWith(name: nameC.text.trim(), subtitle: subC.text.trim()),
               );
+              ref.invalidate(categoriesProvider);
               if (mounted) {
                 Navigator.pop(ctx);
                 setState(() {});
@@ -416,7 +414,8 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
-              await _service.deleteCategory(category.id);
+              await ref.read(categoryRepositoryProvider).deleteCategory(category.id);
+              ref.invalidate(categoriesProvider);
               if (mounted) {
                 Navigator.pop(ctx);
                 setState(() {});

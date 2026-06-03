@@ -18,7 +18,7 @@ import '../../../auth/providers/auth_provider.dart';
 import '../../../pos/providers/product_providers.dart';
 import '../../data/models/category_entity.dart';
 import '../../data/models/category.dart' as inv;
-import '../../data/local/category_local_service.dart';
+import '../../providers/category_providers.dart';
 import '../../data/models/product.dart';
 
 /// Add Product Screen - Professional product creation form with AI integration
@@ -103,8 +103,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     });
 
     try {
-      final categoryService = CategoryLocalService();
-      final categories = await categoryService.getAllCategories();
+      final categories = await ref.read(categoryRepositoryProvider).getAllCategories();
 
       setState(() {
         _categories = categories;
@@ -515,7 +514,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         // Update local category product count if a category was selected
         final selectedCatId = _selectedCategory?.id ?? widget.category?.id;
         if (selectedCatId != null && selectedCatId.isNotEmpty) {
-          CategoryLocalService().incrementProductCount(selectedCatId);
+          ref.read(categoryRepositoryProvider).localService.incrementProductCount(selectedCatId);
         }
       }
       Navigator.of(context).pop(legacy);

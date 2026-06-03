@@ -143,6 +143,9 @@ class ApiEndpoints {
   static const String productById = '/products/:id';
   static const String searchProducts = '/products/search';
 
+  static const String categories = '/categories';
+  static const String categoryById = '/categories/:id';
+
   static const String orders = '/orders';
   static const String orderById = '/orders/:id';
   static const String createOrder = '/orders/create';

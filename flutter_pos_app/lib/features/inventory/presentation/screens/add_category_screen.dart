@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
-import 'package:retail_verse_pos/features/inventory/data/local/category_local_service.dart';
 import 'package:retail_verse_pos/features/inventory/data/models/category_entity.dart';
+import 'package:retail_verse_pos/features/inventory/providers/category_providers.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 import 'package:retail_verse_pos/core/navigation/role_route_guard.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
@@ -21,7 +21,6 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _subtitleController = TextEditingController();
-  final _service = CategoryLocalService();
   bool _isLoading = false;
 
   @override
@@ -59,7 +58,10 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
         return;
       }
 
-      await _service.insertCategory(category);
+      await ref.read(categoryRepositoryProvider).addCategory(category);
+      // Refresh categories list
+      ref.invalidate(categoriesProvider);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Category added successfully!'), backgroundColor: AppColors.success),

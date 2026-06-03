@@ -12,6 +12,7 @@ const aiRoutes = require("./routes/aiRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
 const app = express();
 
 app.use(cors());
@@ -35,4 +36,5 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/categories", categoryRoutes);
 module.exports = app;

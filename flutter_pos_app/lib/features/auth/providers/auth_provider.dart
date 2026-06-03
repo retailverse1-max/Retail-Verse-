@@ -7,6 +7,7 @@ import '../../../data/remote/auth_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/session_service.dart';
 import '../../inventory/data/local/category_local_service.dart';
+import '../../inventory/providers/category_providers.dart';
 
 /// Authentication state management
 ///
@@ -40,8 +41,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService = AuthService();
+  final Ref ref;
 
-  AuthNotifier() : super(AuthState());
+  AuthNotifier(this.ref) : super(AuthState());
 
   /// Register a new user account
   Future<bool> register({
@@ -68,9 +70,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Do not keep register token/user in memory or prefs — avoids a brief window
       // where the UI could read an old session role. User must log in explicitly.
       await SessionService.clearSession();
-      try {
-        await CategoryLocalService().clearAllCategories();
-      } catch (_) {}
+        await ref.read(categoryRepositoryProvider).localService.clearAllCategories();
       state = AuthState(isLoading: false);
 
       return true;
@@ -141,6 +141,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user: userMap,
         error: null,
       );
+
+      // Background sync categories
+      ref.read(categoryRepositoryProvider).syncCategories();
 
       return true;
     } catch (e) {
@@ -333,7 +336,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await SessionService.clearSession();
     try {
-      await CategoryLocalService().clearAllCategories();
+      await ref.read(categoryRepositoryProvider).localService.clearAllCategories();
     } catch (_) {}
     state = AuthState();
   }
@@ -415,5 +418,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });

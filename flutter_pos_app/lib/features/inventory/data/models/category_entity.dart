@@ -22,6 +22,36 @@ class CategoryEntity {
     this.isDeleted = false,
   });
 
+  /// Convert to JSON (for API)
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'subtitle': subtitle,
+      'imagePath': imagePath,
+      'productCount': productCount,
+      'isDeleted': isDeleted,
+    };
+  }
+
+  /// Create from JSON (from API)
+  factory CategoryEntity.fromJson(Map<String, dynamic> json) {
+    return CategoryEntity(
+      id: json['_id'] ?? json['id'] ?? '',
+      name: json['name'] ?? '',
+      subtitle: json['subtitle'] ?? '',
+      imagePath: json['imagePath'] ?? '',
+      productCount: json['productCount'] ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
+      isDeleted: json['isDeleted'] ?? false,
+    );
+  }
+
   /// Convert to Map (for SQLite)
   Map<String, dynamic> toMap() {
     return {

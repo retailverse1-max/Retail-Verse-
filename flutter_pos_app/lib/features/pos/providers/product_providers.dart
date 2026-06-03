@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:retail_verse_pos/features/inventory/data/local/category_local_service.dart';
 import 'package:retail_verse_pos/features/inventory/data/models/category_entity.dart';
+import 'package:retail_verse_pos/features/inventory/providers/category_providers.dart';
 
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/providers/api_config_provider.dart';
@@ -76,8 +76,6 @@ final categoryProductsProvider =
   return repository.getProductsByCategory(categoryName);
 });
 
-/// Fetches categories from the SQLite local categories table
 final posCategoriesProvider = FutureProvider<List<CategoryEntity>>((ref) async {
-  final service = CategoryLocalService();
-  return service.getAllCategories();
+  return ref.watch(categoriesProvider.future);
 });
