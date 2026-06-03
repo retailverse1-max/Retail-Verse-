@@ -5,6 +5,7 @@ import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/core/widgets/common/status_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retail_verse_pos/data/remote/notification_service.dart';
 
 class InvoiceDetailsModal extends ConsumerWidget {
   final Order order;
@@ -394,6 +395,49 @@ class InvoiceDetailsModal extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (order.customerEmail != null && order.customerEmail!.isNotEmpty) ...[
+          FilledButton.icon(
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Sending Email Receipt...')),
+              );
+              try {
+                await NotificationService().sendEmailInvoice(
+                  email: order.customerEmail!,
+                  order: order,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Email sent successfully!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to send email: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.email_rounded, size: 20),
+            label: Text(
+              'Email Receipt',
+              style: AppTypography.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF1976D2), // Blue
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         FilledButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
