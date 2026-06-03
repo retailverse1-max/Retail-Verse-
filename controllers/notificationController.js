@@ -2,7 +2,6 @@ const nodemailer = require("nodemailer");
 const Ticket = require("../models/Ticket");
 const Notification = require("../models/Notification");
 const { createAndSendNotification } = require("../services/notificationService");
-const { sendEmail } = require("../services/emailService");
 
 const sendEmailInvoice = async (req, res) => {
   const { to, subject, htmlContent } = req.body;
@@ -16,58 +15,79 @@ const sendEmailInvoice = async (req, res) => {
     const zendeskEmail = process.env.ZENDESK_EMAIL;
     const apiToken = process.env.ZENDESK_API_TOKEN;
 
+    if (!subdomain || !zendeskEmail || !apiToken) {
+      return res.status(500).json({ message: "Zendesk configuration is missing on the server." });
+    }
+
+    const url = `https://${subdomain}.zendesk.com/api/v2/tickets.json`;
+    const authHeader = "Basic " + Buffer.from(`${zendeskEmail}/token:${apiToken}`).toString('base64');
+
+    const ticketData = {
+      ticket: {
+        subject: subject,
+        comment: {
+          html_body: htmlContent // Zendesk uses html_body for HTML comments
+        },
+        requester: {
+          name: "Customer",
+          email: to
+        }
+      }
+    };
+
     let zendeskTicketId = null;
-
-    // 1. Create a ticket in Zendesk (this emails the customer)
-    if (subdomain && zendeskEmail && apiToken) {
-      try {
-        const url = `https://${subdomain}.zendesk.com/api/v2/tickets.json`;
-        const authHeader = "Basic " + Buffer.from(`${zendeskEmail}/token:${apiToken}`).toString('base64');
-
-        const ticketData = {
-          ticket: {
-            subject: subject,
-            comment: {
-              html_body: htmlContent // Zendesk uses html_body for HTML comments
-            },
-            requester: {
-              name: "Customer",
-              email: to
-            }
+    
+    // Attempt Zendesk API call using fetch or https (polyfilled for older node just in case)
+    if (typeof fetch !== 'undefined') {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader
+        },
+        body: JSON.stringify(ticketData)
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Zendesk API Error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      zendeskTicketId = data.ticket?.id;
+    } else {
+      // Fallback for Node 16 (Render sometimes uses older Node)
+      const https = require('https');
+      zendeskTicketId = await new Promise((resolve, reject) => {
+        const reqOpts = new URL(url);
+        const options = {
+          hostname: reqOpts.hostname,
+          path: reqOpts.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
           }
         };
-
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": authHeader
-          },
-          body: JSON.stringify(ticketData)
+        const reqHttp = https.request(options, (resHttp) => {
+          let body = '';
+          resHttp.on('data', chunk => body += chunk);
+          resHttp.on('end', () => {
+            if (resHttp.statusCode >= 200 && resHttp.statusCode < 300) {
+              try {
+                const data = JSON.parse(body);
+                resolve(data.ticket?.id);
+              } catch (e) { resolve(null); }
+            } else {
+              reject(new Error(`Zendesk API Error: ${resHttp.statusCode} ${body}`));
+            }
+          });
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          zendeskTicketId = data.ticket?.id;
-          console.log(`✅ Invoice sent via Zendesk. Ticket ID: ${zendeskTicketId}`);
-        } else {
-          console.error("Zendesk invoice sync status not ok:", response.status);
-        }
-      } catch (zendeskErr) {
-        console.error("Zendesk invoice sync failed:", zendeskErr.message);
-      }
-    } else {
-      // Fallback to shared emailService (which supports Brevo HTTP API to bypass Render blocks)
-      try {
-        await sendEmail({
-          to,
-          subject,
-          html: htmlContent,
-        });
-      } catch (err) {
-        console.error("Email service fallback failed:", err);
-      }
+        reqHttp.on('error', reject);
+        reqHttp.write(JSON.stringify(ticketData));
+        reqHttp.end();
+      });
     }
+
+    console.log(`✅ Invoice sent via Zendesk. Ticket ID: ${zendeskTicketId}`);
 
     // 2. Create local Ticket so the 'total tickets' count increases in the support dashboard
     try {
