@@ -327,8 +327,8 @@ class _CategoryProductsScreenState
                 },
               ),
             ] else ...[
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text('You do not have permission to modify this product.', style: AppTypography.bodyMedium),
               ),
             ],

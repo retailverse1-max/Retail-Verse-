@@ -7,7 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../subscription/data/repositories/subscription_repository.dart';
 import '../../../subscription/data/models/subscription_plan.dart';
-import '../../../core/navigation/role_nav.dart';
+import '../../../../core/navigation/role_nav.dart';
 
 class TrialBanner extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;

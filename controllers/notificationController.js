@@ -125,34 +125,11 @@ const sendSmsInvoice = async (req, res) => {
   }
 
   try {
-    if (!process.env.BREVO_API_KEY) {
-      return res.status(400).json({ message: "SMS API Key (Brevo) is not configured" });
-    }
-
-    const response = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        sender: "RetailVerse", // Max 11 characters
-        recipient: phone.startsWith('+') ? phone : `+91${phone}`, // Default to +91 if not provided
-        content: content,
-        type: "transactional"
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return res.status(response.status).json({ 
-        message: "Failed to send SMS via Brevo", 
-        error: errorData 
-      });
-    }
-
-    res.status(200).json({ message: "SMS sent successfully" });
+    // Mock SMS sending (Brevo removed)
+    console.log(`[SMS MOCK] To: ${phone}\nContent: ${content}`);
+    
+    // In the future, integrate Twilio, AWS SNS, or Firebase here.
+    res.status(200).json({ message: "SMS sent successfully (Mocked)" });
   } catch (error) {
     console.error("Error sending SMS:", error);
     res.status(500).json({ message: "Failed to send SMS", error: error.message });
