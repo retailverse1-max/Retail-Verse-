@@ -300,25 +300,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       context: context,
       builder: (BuildContext context) {
         return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.camera_alt_rounded,
-                  color: AppColors.primary,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 24.0), // Extra padding to avoid nav bar overlap
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Take Photo'),
+                  onTap: () => _schedulePickImage(context, ImageSource.camera),
                 ),
-                title: const Text('Take Photo'),
-                onTap: () => _schedulePickImage(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.photo_library_rounded,
-                  color: AppColors.primary,
+                ListTile(
+                  leading: const Icon(
+                    Icons.photo_library_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Choose from Gallery'),
+                  onTap: () => _schedulePickImage(context, ImageSource.gallery),
                 ),
-                title: const Text('Choose from Gallery'),
-                onTap: () => _schedulePickImage(context, ImageSource.gallery),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
