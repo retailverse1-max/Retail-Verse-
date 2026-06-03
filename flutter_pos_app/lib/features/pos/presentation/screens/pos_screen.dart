@@ -616,7 +616,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
             const aspectRatio = 0.75;
 
             return GridView.builder(
-              padding: EdgeInsets.all(padding),
+              padding: EdgeInsets.fromLTRB(padding, padding, padding, padding + 80), // Extra bottom padding for nav bar
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossCount,
                 mainAxisSpacing: spacing,
