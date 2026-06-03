@@ -19,9 +19,9 @@ class NotificationService {
       for (var item in order.items) {
         itemsHtml += '''
           <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">\${item.product.name}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">\${item.quantity}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹\${item.total.toStringAsFixed(2)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.product.name}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${item.total.toStringAsFixed(2)}</td>
           </tr>
         ''';
       }
@@ -31,9 +31,9 @@ class NotificationService {
           <h2 style="text-align: center; color: #163F6B;">RETAIL VERSE STORE</h2>
           <p style="text-align: center; color: #666;">Receipt / Tax Invoice</p>
           <hr style="border: 1px solid #eee;" />
-          <p><strong>Order ID:</strong> \${order.orderId}</p>
-          <p><strong>Date:</strong> \$formattedDate</p>
-          <p><strong>Payment Method:</strong> \${order.paymentMethod.toUpperCase()}</p>
+          <p><strong>Order ID:</strong> ${order.orderId}</p>
+          <p><strong>Date:</strong> $formattedDate</p>
+          <p><strong>Payment Method:</strong> ${order.paymentMethod.toUpperCase()}</p>
           <hr style="border: 1px solid #eee;" />
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
@@ -44,14 +44,14 @@ class NotificationService {
               </tr>
             </thead>
             <tbody>
-              \$itemsHtml
+              $itemsHtml
             </tbody>
           </table>
           <hr style="border: 1px solid #eee;" />
-          <p style="text-align: right;"><strong>Subtotal:</strong> ₹\${order.subtotal.toStringAsFixed(2)}</p>
-          \${order.discount > 0 ? '<p style="text-align: right; color: green;"><strong>Discount:</strong> -₹\${order.discount.toStringAsFixed(2)}</p>' : ''}
-          \${order.tax > 0 ? '<p style="text-align: right;"><strong>Tax:</strong> ₹\${order.tax.toStringAsFixed(2)}</p>' : ''}
-          <h3 style="text-align: right; color: #163F6B;">GRAND TOTAL: ₹\${order.total.toStringAsFixed(2)}</h3>
+          <p style="text-align: right;"><strong>Subtotal:</strong> ₹${order.subtotal.toStringAsFixed(2)}</p>
+          ${order.discount > 0 ? '<p style="text-align: right; color: green;"><strong>Discount:</strong> -₹${order.discount.toStringAsFixed(2)}</p>' : ''}
+          ${order.tax > 0 ? '<p style="text-align: right;"><strong>Tax:</strong> ₹${order.tax.toStringAsFixed(2)}</p>' : ''}
+          <h3 style="text-align: right; color: #163F6B;">GRAND TOTAL: ₹${order.total.toStringAsFixed(2)}</h3>
           <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #999;">Thank you for shopping with Retail Verse!</p>
         </div>
       ''';
@@ -59,26 +59,26 @@ class NotificationService {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
-      final url = Uri.parse('\${ApiEndpoints.baseUrl}/notifications/email');
+      final url = Uri.parse('${ApiEndpoints.baseUrl}/notifications/email');
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer \$token',
+          'Authorization': 'Bearer $token',
         },
         body: json.encode({
           'to': email,
-          'subject': 'Your Receipt from Retail Verse (Order: \${order.orderId})',
+          'subject': 'Your Receipt from Retail Verse (Order: ${order.orderId})',
           'htmlContent': htmlContent,
         }),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to send email: \${response.body}');
+        throw Exception('Failed to send email: ${response.body}');
       }
       debugPrint('📧 Email sent via Node backend successfully.');
     } catch (e) {
-      debugPrint('❌ Error sending email: \$e');
+      debugPrint('❌ Error sending email: $e');
       rethrow;
     }
   }
@@ -91,29 +91,29 @@ class NotificationService {
       final formattedDate = DateFormat('dd MMM yyyy').format(order.dateTime);
       
       String smsBody = 'Retail Verse Receipt\\n';
-      smsBody += 'Order: \${order.orderId}\\n';
-      smsBody += 'Date: \$formattedDate\\n\\n';
+      smsBody += 'Order: ${order.orderId}\\n';
+      smsBody += 'Date: $formattedDate\\n\\n';
       
       int maxItems = order.items.length > 3 ? 3 : order.items.length;
       for (int i = 0; i < maxItems; i++) {
-        smsBody += '\${order.items[i].product.name} (x\${order.items[i].quantity})\\n';
+        smsBody += '${order.items[i].product.name} (x${order.items[i].quantity})\\n';
       }
       if (order.items.length > 3) {
-        smsBody += '...and \${order.items.length - 3} more items\\n';
+        smsBody += '...and ${order.items.length - 3} more items\\n';
       }
       
-      smsBody += '\\nTotal: ₹\${order.total.toStringAsFixed(2)}\\n';
+      smsBody += '\\nTotal: ₹${order.total.toStringAsFixed(2)}\\n';
       smsBody += 'Thank you for shopping with us!';
 
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
-      final url = Uri.parse('\${ApiEndpoints.baseUrl}/notifications/sms');
+      final url = Uri.parse('${ApiEndpoints.baseUrl}/notifications/sms');
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer \$token',
+          'Authorization': 'Bearer $token',
         },
         body: json.encode({
           'phone': phone,
@@ -123,11 +123,11 @@ class NotificationService {
 
       if (response.statusCode != 200) {
         final errorMsg = json.decode(response.body)['message'] ?? 'Unknown error';
-        throw Exception('Failed to send SMS via backend: \$errorMsg');
+        throw Exception('Failed to send SMS via backend: $errorMsg');
       }
       debugPrint('📱 SMS sent via Node backend successfully.');
     } catch (e) {
-      debugPrint('❌ Error sending SMS: \$e');
+      debugPrint('❌ Error sending SMS: $e');
       rethrow;
     }
   }
