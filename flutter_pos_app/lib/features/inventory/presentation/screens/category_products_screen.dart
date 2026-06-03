@@ -122,8 +122,6 @@ class _CategoryProductsScreenState
   }
 
   Future<void> _editProduct(api.Product product) async {
-    final role = effectiveUserRole(ref.read(authProvider).user);
-    final isInventoryManager = role == 'inventory_manager' || role == 'seo_manager';
     final nameCtrl = TextEditingController(text: product.name);
     final descCtrl = TextEditingController(text: product.description ?? '');
     final priceCtrl = TextEditingController(text: product.price.toString());
@@ -139,29 +137,26 @@ class _CategoryProductsScreenState
           children: [
             Text(product.name, style: AppTypography.titleSmall),
             const SizedBox(height: 12),
-            if (isInventoryManager) ...[
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Product Name'),
-              ),
-              TextField(
-                controller: descCtrl,
-                maxLines: 4,
-                minLines: 3,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-            ] else ...[
-              TextField(
-                controller: priceCtrl,
-                decoration: const InputDecoration(labelText: 'Price'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: stockCtrl,
-                decoration: const InputDecoration(labelText: 'Stock'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Product Name'),
+            ),
+            TextField(
+              controller: descCtrl,
+              maxLines: 4,
+              minLines: 3,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            TextField(
+              controller: priceCtrl,
+              decoration: const InputDecoration(labelText: 'Price'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: stockCtrl,
+              decoration: const InputDecoration(labelText: 'Stock'),
+              keyboardType: TextInputType.number,
+            ),
           ],
         ),
         actions: [
@@ -180,21 +175,15 @@ class _CategoryProductsScreenState
     if (ok != true || !mounted) return;
 
     try {
-      if (isInventoryManager) {
-        await ref.read(productRepositoryProvider).updateProduct(
-              id: product.id,
-              name: nameCtrl.text.trim(),
-              description: descCtrl.text.trim(),
-            );
-      } else {
-        final price = double.tryParse(priceCtrl.text.trim());
-        final stock = int.tryParse(stockCtrl.text.trim());
-        await ref.read(productRepositoryProvider).updateProduct(
-              id: product.id,
-              price: price,
-              stock: stock,
-            );
-      }
+      final price = double.tryParse(priceCtrl.text.trim());
+      final stock = int.tryParse(stockCtrl.text.trim());
+      await ref.read(productRepositoryProvider).updateProduct(
+            id: product.id,
+            name: nameCtrl.text.trim(),
+            description: descCtrl.text.trim(),
+            price: price,
+            stock: stock,
+          );
       ref.invalidate(categoryProductsProvider(widget.category.name));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -280,34 +269,32 @@ class _CategoryProductsScreenState
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            ListTile(
-              leading: Icon(
-                product.isActive
-                    ? Icons.toggle_on_rounded
-                    : Icons.toggle_off_rounded,
-                color:
-                    product.isActive ? AppColors.success : AppColors.textSecondary,
-                size: 28,
+            if (canDelete) ...[
+              ListTile(
+                leading: Icon(
+                  product.isActive
+                      ? Icons.toggle_on_rounded
+                      : Icons.toggle_off_rounded,
+                  color:
+                      product.isActive ? AppColors.success : AppColors.textSecondary,
+                  size: 28,
+                ),
+                title: Text(product.isActive
+                    ? 'Active (Tap to Deactivate)'
+                    : 'Inactive (Tap to Activate)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _toggleActive(product);
+                },
               ),
-              title: Text(product.isActive
-                  ? 'Active (Tap to Deactivate)'
-                  : 'Inactive (Tap to Activate)'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _toggleActive(product);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(role == 'inventory_manager'
-                  ? 'Edit name & description'
-                  : 'Edit'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _editProduct(product);
-              },
-            ),
-            if (canDelete)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _editProduct(product);
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: AppColors.error),
                 title: const Text('Delete',
@@ -339,6 +326,12 @@ class _CategoryProductsScreenState
                   );
                 },
               ),
+            ] else ...[
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('You do not have permission to modify this product.', style: AppTypography.bodyMedium),
+              ),
+            ],
             const SizedBox(height: 8),
           ],
         ),
