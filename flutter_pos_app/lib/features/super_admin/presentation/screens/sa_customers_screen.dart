@@ -52,12 +52,8 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
         boxShadow: AppColors.shadowSubtle,
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +161,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
                         // ── KPI CARDS ──────────────────────────────────
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),

@@ -29,37 +29,8 @@ class DashboardScreen extends ConsumerWidget {
                              (productsAsync.isLoading && !productsAsync.hasValue) ||
                              (ordersAsync.isLoading && !ordersAsync.hasValue);
 
-    if (isInitialLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Setting up your dashboard...',
-                style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This may take a moment if the server is sleeping.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    // Removed the full-screen blocking loader to allow the dashboard to open instantly
+    // The individual UI components (stats, products, orders) already have their own loading states.
 
     final userName = user?['name'] ?? 'Admin';
     final stats = statsAsync.asData?.value ?? DashboardStatsModel.empty;

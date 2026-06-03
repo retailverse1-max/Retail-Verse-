@@ -128,13 +128,10 @@ class SaSettingsScreen extends ConsumerWidget {
           // ── PREMIUM INTEGRATED HEADER ──────────────────
           Container(
             padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 24, 24, 32),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: AppColors.shadowSubtle,
+              border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,43 +139,43 @@ class SaSettingsScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Platform Settings', style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                    Text('Platform Settings', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
                     if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
                       IconButton(
                         onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white12,
+                            color: AppColors.cardBorder.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                         ),
                       )
                     else
-                      const ResponsiveMenuButton(isSuperAdmin: true, color: Colors.white),
+                      const ResponsiveMenuButton(isSuperAdmin: true, color: AppColors.textPrimary),
                   ],
                 ),
                 const SizedBox(height: 24),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: AppColors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: AppColors.cardBorder),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.settings_suggest_rounded, color: Colors.white, size: 20),
+                        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.settings_suggest_rounded, color: AppColors.primary, size: 20),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
                           'Global Administration Center',
-                          style: AppTypography.bodyMedium.copyWith(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w600),
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -190,7 +187,7 @@ class SaSettingsScreen extends ConsumerWidget {
 
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
               children: [
                 _buildProfileCard(),
                 const SizedBox(height: 32),

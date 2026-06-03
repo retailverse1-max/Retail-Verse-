@@ -488,7 +488,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                             subtitle: 'Awaiting action', 
                             icon: Icons.pending_actions_rounded, 
                             color: AppColors.warning,
-                            onTap: () => context.push('/super-admin/subscriptions'),
+                            onTap: () => context.push('/super-admin/contacts'),
                           ),
                         ),
                         const SizedBox(width: 16),

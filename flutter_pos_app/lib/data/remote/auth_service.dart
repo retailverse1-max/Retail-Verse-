@@ -383,4 +383,52 @@ class AuthService {
       throw ApiException('Failed to verify OTP: $e');
     }
   }
+
+  Future<void> forgotPassword({required String email}) async {
+    try {
+      final requestBody = jsonEncode({'email': email.trim()});
+      final response = await _postAuthWithBaseFallback(
+        endpoint: '/auth/forgot-password',
+        requestBody: requestBody,
+      );
+      final decoded = _safeJsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      final errorMessage = decoded['message']?.toString() ?? 'Forgot password request failed';
+      throw ApiException(errorMessage, statusCode: response.statusCode);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to send reset email: $e');
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final requestBody = jsonEncode({
+        'email': email.trim(),
+        'otp': otp.trim(),
+        'newPassword': newPassword.trim(),
+      });
+      final response = await _postAuthWithBaseFallback(
+        endpoint: '/auth/reset-password',
+        requestBody: requestBody,
+      );
+      final decoded = _safeJsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      final errorMessage = decoded['message']?.toString() ?? 'Password reset failed';
+      throw ApiException(errorMessage, statusCode: response.statusCode);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to reset password: $e');
+    }
+  }
 }

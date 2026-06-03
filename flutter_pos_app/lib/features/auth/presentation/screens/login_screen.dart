@@ -14,6 +14,7 @@ import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../dashboard/providers/dashboard_providers.dart';
 import '../../providers/auth_provider.dart';
+import '../../../../data/remote/auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import 'package:country_code_picker/country_code_picker.dart';
@@ -149,14 +150,117 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _showErrorSnackBar('Please enter your email first to reset password');
       return;
     }
+
+    setState(() => _isLocalLoading = true);
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await AuthService().forgotPassword(email: email);
+      
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset link sent to email')),
+        const SnackBar(content: Text('OTP sent to your email. Please check your inbox.'), backgroundColor: Colors.green),
       );
+      
+      _showResetPasswordDialog(email);
     } catch (e) {
-      _showErrorSnackBar('Failed to send reset email: $e');
+      _showErrorSnackBar('Failed to send reset email: ${e.toString().replaceAll('Exception: ', '')}');
+    } finally {
+      if (mounted) setState(() => _isLocalLoading = false);
     }
+  }
+
+  void _showResetPasswordDialog(String email) {
+    final otpController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isResetting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Text('Reset Password', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Enter the 6-digit OTP sent to $email and your new password.', style: AppTypography.bodySmall),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: otpController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: '6-digit OTP',
+                        prefixIcon: const Icon(Icons.pin_rounded),
+                        filled: true,
+                        fillColor: AppColors.backgroundSecondary,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                      validator: (v) => v == null || v.length < 6 ? 'Enter valid OTP' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: newPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'New Password',
+                        prefixIcon: const Icon(Icons.lock_rounded),
+                        filled: true,
+                        fillColor: AppColors.backgroundSecondary,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                      validator: (v) => v == null || v.length < 6 ? 'Min 6 characters' : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isResetting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: isResetting ? null : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    setDialogState(() => isResetting = true);
+                    try {
+                      await AuthService().resetPassword(
+                        email: email,
+                        otp: otpController.text.trim(),
+                        newPassword: newPasswordController.text.trim(),
+                      );
+                      if (!mounted) return;
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Password reset successfully! Please log in.'), backgroundColor: Colors.green),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                      );
+                    } finally {
+                      if (mounted) setDialogState(() => isResetting = false);
+                    }
+                  },
+                  child: isResetting
+                      ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Reset Password'),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
   }
 
   Future<void> _handleGoogleSignIn() async {

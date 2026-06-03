@@ -42,9 +42,8 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
             padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 24, 24, 32),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
               boxShadow: AppColors.shadowSubtle,
-              border: Border.all(color: AppColors.cardBorder),
+              border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +140,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                 return RefreshIndicator(
                   onRefresh: () async => setState(() => _f = _svc.listUsers()),
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
                     itemCount: filtered.length,
                     itemBuilder: (context, i) => _buildModernUserCard(filtered[i]),
                   ),

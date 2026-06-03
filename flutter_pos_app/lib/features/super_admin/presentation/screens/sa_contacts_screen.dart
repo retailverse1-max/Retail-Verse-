@@ -587,12 +587,8 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
         boxShadow: AppColors.shadowSubtle,
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,29 +616,9 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            _selectedTab == 0 ? Icons.mail_outline : Icons.support_agent_rounded, 
-                            color: AppColors.primary, 
-                            size: 14
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _selectedTab == 0 ? 'CONTACT MESSAGES' : 'SUPPORT TICKETS',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         _selectedTab == 0 ? 'Contact Messages' : 'Support Tickets',
-                        style: AppTypography.headlineMedium.copyWith(
+                        style: AppTypography.headlineSmall.copyWith(
                           fontWeight: FontWeight.w900,
                           color: AppColors.textPrimary,
                         ),
@@ -652,16 +628,6 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                 ],
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _selectedTab == 0 
-                ? 'Manage your contact messages and view detailed insights.'
-                : 'Manage your support tickets and assist your customers.',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
           ),
         ],
       ),

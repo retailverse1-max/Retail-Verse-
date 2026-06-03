@@ -270,4 +270,74 @@ const updateFcmToken = async (req, res) => {
   }
 };
 
-module.exports = { loginUser, googleLogin, registerUser, phoneLogin, updateFcmToken };
+const { sendEmail } = require("../services/emailService");
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    user.resetPasswordOtp = otp;
+    user.resetPasswordExpires = expires;
+    await user.save();
+
+    // Send email
+    await sendEmail({
+      to: user.email,
+      subject: "Retail Verse - Password Reset OTP",
+      html: `<div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; border-radius: 10px;">
+        <h2 style="color: #1E1B4B; text-align: center;">Password Reset Request</h2>
+        <p style="color: #333; font-size: 16px;">Hello ${user.name},</p>
+        <p style="color: #333; font-size: 16px;">We received a request to reset your Retail Verse password. Here is your One-Time Password (OTP):</p>
+        <div style="background-color: #ffffff; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0; border: 1px solid #ddd;">
+          <h1 style="color: #4CAF50; letter-spacing: 5px; margin: 0;">${otp}</h1>
+        </div>
+        <p style="color: #777; font-size: 14px; text-align: center;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
+      </div>`
+    });
+
+    res.json({ message: "OTP sent successfully to your email" });
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({ message: "Failed to process forgot password request" });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and new password are required" });
+    }
+
+    const user = await User.findOne({ 
+      email, 
+      resetPasswordOtp: otp,
+      resetPasswordExpires: { $gt: Date.now() } // Ensure OTP hasn't expired
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Password reset successful" });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    res.status(500).json({ message: "Failed to reset password" });
+  }
+};
+
+module.exports = { loginUser, googleLogin, registerUser, phoneLogin, updateFcmToken, forgotPassword, resetPassword };

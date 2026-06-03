@@ -89,10 +89,10 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
           Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 24, 24, 24),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+              boxShadow: AppColors.shadowSubtle,
+              border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,8 +144,6 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
               ],
             ),
           ),
-          
-          const SizedBox(height: 8),
 
           Expanded(
             child: FutureBuilder<Map<String, dynamic>>(
@@ -189,7 +187,7 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
                 return RefreshIndicator(
                   onRefresh: () async => setState(() => _f = _loadData()),
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final b = filtered[index];
