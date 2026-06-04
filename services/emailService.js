@@ -1,41 +1,83 @@
-const nodemailer = require('nodemailer');
-
 const sendEmail = async ({ to, subject, html }) => {
   try {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT || 465;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const fromEmail = process.env.SMTP_FROM || smtpUser || 'no-reply@retailverse.com';
+    const apiToken = process.env.ZENDESK_API_TOKEN || "X2y0UurUdpv72ya87RRpAeTGsO5h0g2dDm1L7rhc";
+    const zendeskEmail = process.env.ZENDESK_EMAIL || "info@hexerve.com";
+    const subdomain = process.env.ZENDESK_SUBDOMAIN || "hexerve";
 
-    // If SMTP is not configured, log and return mock
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      console.warn("SMTP credentials missing, falling back to basic Nodemailer logging.");
+    if (!apiToken || !zendeskEmail || !subdomain) {
+      console.warn("Zendesk credentials missing, falling back to basic Nodemailer logging.");
       console.log(`[EMAIL MOCK] To: ${to}, Subject: ${subject}`);
       return { messageId: 'mock-' + Date.now() };
     }
 
-    // Create Nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: Number(smtpPort),
-      secure: Number(smtpPort) === 465, // true for 465, false for other ports
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
+    const url = `https://${subdomain}.zendesk.com/api/v2/tickets.json`;
+    const authHeader = "Basic " + Buffer.from(`${zendeskEmail}/token:${apiToken}`).toString('base64');
 
-    // Send mail
-    const info = await transporter.sendMail({
-      from: `"Retail Verse" <${fromEmail}>`,
-      to: to,
-      subject: subject,
-      html: html,
-    });
+    const ticketData = {
+      ticket: {
+        subject: subject,
+        comment: {
+          html_body: html // Zendesk uses html_body for HTML
+        },
+        requester: {
+          name: "User",
+          email: to
+        }
+      }
+    };
 
-    console.log('Message sent via Nodemailer:', info.messageId);
-    return { messageId: info.messageId };
+    if (typeof fetch !== 'undefined') {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader
+        },
+        body: JSON.stringify(ticketData)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Zendesk API Error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      console.log('Message sent via Zendesk Ticket:', data.ticket?.id);
+      return { messageId: 'zendesk-' + data.ticket?.id };
+    } else {
+      // Fallback for Node 16 (Render sometimes uses older Node)
+      const https = require('https');
+      const zendeskTicketId = await new Promise((resolve, reject) => {
+        const reqOpts = new URL(url);
+        const options = {
+          hostname: reqOpts.hostname,
+          path: reqOpts.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          }
+        };
+        const reqHttp = https.request(options, (resHttp) => {
+          let body = '';
+          resHttp.on('data', chunk => body += chunk);
+          resHttp.on('end', () => {
+            if (resHttp.statusCode >= 200 && resHttp.statusCode < 300) {
+              try {
+                const data = JSON.parse(body);
+                resolve(data.ticket?.id);
+              } catch (e) { resolve(null); }
+            } else {
+              reject(new Error(`Zendesk API Error: ${resHttp.statusCode} ${body}`));
+            }
+          });
+        });
+        reqHttp.on('error', reject);
+        reqHttp.write(JSON.stringify(ticketData));
+        reqHttp.end();
+      });
+      console.log('Message sent via Zendesk Ticket (https):', zendeskTicketId);
+      return { messageId: 'zendesk-' + zendeskTicketId };
+    }
   } catch (error) {
     console.error('Error sending email:', error);
     throw error;
