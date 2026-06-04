@@ -28,9 +28,40 @@ class DashboardScreen extends ConsumerWidget {
     final isInitialLoading = (statsAsync.isLoading && !statsAsync.hasValue) ||
                              (productsAsync.isLoading && !productsAsync.hasValue) ||
                              (ordersAsync.isLoading && !ordersAsync.hasValue);
-
-    // Removed the full-screen blocking loader to allow the dashboard to open instantly
-    // The individual UI components (stats, products, orders) already have their own loading states.
+    // Show a full screen loader on first load to prevent inline spinners on dashboard
+    if (isInitialLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 3,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Setting up your dashboard...',
+                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This may take a moment',
+                style: AppTypography.labelMedium.copyWith(color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final userName = user?['name'] ?? 'Admin';
     final stats = statsAsync.asData?.value ?? DashboardStatsModel.empty;
@@ -535,7 +566,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     _buildGridKPI(
                       title: 'Total Sales',
-                      value: '₹${stats.totalSales}',
+                      value: '₹${stats.totalSales.toStringAsFixed(2)}',
                       subtitle: '+12.5%',
                       icon: Icons.payments_rounded,
                       accentColor: AppColors.primary,

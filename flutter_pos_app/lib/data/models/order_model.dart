@@ -36,6 +36,7 @@ class Order {
   final double tax;
   final double discount;
   final double total;
+  final double extraCharges;
   final String paymentMethod;
   final String status;
   final String? customerName;
@@ -55,6 +56,7 @@ class Order {
     required this.tax,
     required this.discount,
     required this.total,
+    this.extraCharges = 0.0,
     required this.paymentMethod,
     this.status = 'Completed',
     this.customerName,
@@ -79,6 +81,7 @@ class Order {
       'tax': tax,
       'discount': discount,
       'total': total,
+      'extraCharges': extraCharges,
       'paymentMethod': paymentMethod,
       'status': status,
       'customerName': customerName,
@@ -89,5 +92,47 @@ class Order {
       'cashierName': cashierName,
       'converted': converted,
     };
+  }
+
+  Order copyWith({
+    String? id,
+    String? orderId,
+    DateTime? dateTime,
+    List<OrderItem>? items,
+    double? subtotal,
+    double? tax,
+    double? discount,
+    double? total,
+    double? extraCharges,
+    String? paymentMethod,
+    String? status,
+    String? customerName,
+    String? customerPhone,
+    String? customerEmail,
+    String? customerAddress,
+    String? notes,
+    String? cashierName,
+    bool? converted,
+  }) {
+    return Order(
+      id: id ?? this.id,
+      orderId: orderId ?? this.orderId,
+      dateTime: dateTime ?? this.dateTime,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      tax: tax ?? this.tax,
+      discount: discount ?? this.discount,
+      total: total ?? this.total,
+      extraCharges: extraCharges ?? this.extraCharges,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      status: status ?? this.status,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      customerEmail: customerEmail ?? this.customerEmail,
+      customerAddress: customerAddress ?? this.customerAddress,
+      notes: notes ?? this.notes,
+      cashierName: cashierName ?? this.cashierName,
+      converted: converted ?? this.converted,
+    );
   }
 }

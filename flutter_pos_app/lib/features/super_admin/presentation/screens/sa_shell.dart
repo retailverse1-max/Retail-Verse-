@@ -110,9 +110,6 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
 
   @override
   Widget build(BuildContext context) {
-    // FORCE CLEAR context so Super Admin global queries don't pass a client ID
-    SessionService.currentStoreId = null;
-    
     final path = GoRouterState.of(context).uri.path;
     final user = ref.watch(authProvider).user ?? {};
     final email = user['email']?.toString() ?? 'Super Admin';

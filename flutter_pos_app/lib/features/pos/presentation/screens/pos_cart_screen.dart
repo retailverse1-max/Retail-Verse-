@@ -447,6 +447,12 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
     _syncControllersFromCart(cart);
+    
+    ref.listen(cartProvider, (prev, next) {
+      if (prev == null || prev.total != next.total) {
+        _cashReceivedCtrl.text = next.total > 0 ? next.total.toStringAsFixed(2) : '';
+      }
+    });
 
     final maxW = MediaQuery.sizeOf(context).width >= 600 ? 640.0 : double.infinity;
     final muted = Theme.of(context).brightness == Brightness.dark
@@ -746,7 +752,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _cashReceivedCtrl,
-                              readOnly: true,
+                              readOnly: false,
                               showCursor: true,
                               keyboardType:
                                   const TextInputType.numberWithOptions(

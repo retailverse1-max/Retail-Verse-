@@ -574,6 +574,8 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                               _buildAmountRow('Discount', -order.discount, isDiscount: true),
                             if (order.tax > 0)
                               _buildAmountRow('GST / Tax', order.tax),
+                            if (order.extraCharges > 0)
+                              _buildAmountRow('Extra Charges', order.extraCharges),
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,

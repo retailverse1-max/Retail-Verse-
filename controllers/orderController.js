@@ -17,6 +17,7 @@ const createOrder = async (req, res) => {
       notes,
       discount,
       tax,
+      extraCharges,
     } = req.body;
 
     if (!items || !items.length) {
@@ -100,6 +101,7 @@ const createOrder = async (req, res) => {
       notes,
       discount: discount || 0,
       tax: tax || 0,
+      extraCharges: extraCharges || 0,
     });
 
     // Update stock and logs
@@ -182,6 +184,7 @@ const updateOrder = async (req, res) => {
       discount,
       tax,
       converted,
+      extraCharges,
     } = req.body;
 
     const order = await Order.findById(id);
@@ -300,6 +303,7 @@ const updateOrder = async (req, res) => {
     if (discount !== undefined) order.discount = discount;
     if (tax !== undefined) order.tax = tax;
     if (converted !== undefined) order.converted = converted;
+    if (extraCharges !== undefined) order.extraCharges = extraCharges;
 
     await order.save();
 

@@ -167,10 +167,13 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
         razorpaySignature: razorpaySignature,
       );
 
+      // Patch extraCharges since the deployed backend might not return it yet
+      final fixedOrder = order.copyWith(extraCharges: extraCharges);
+
       state = state.copyWith(
         isLoading: false,
-        orderId: order.id,
-        createdOrder: order,
+        orderId: fixedOrder.id,
+        createdOrder: fixedOrder,
       );
 
       ref.invalidate(todaySalesProvider);
@@ -232,10 +235,13 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
         converted: converted,
       );
 
+      // Patch extraCharges since the deployed backend might not return it yet
+      final fixedOrder = order.copyWith(extraCharges: extraCharges);
+
       state = state.copyWith(
         isLoading: false,
-        orderId: order.id,
-        createdOrder: order,
+        orderId: fixedOrder.id,
+        createdOrder: fixedOrder,
       );
 
       ref.invalidate(todaySalesProvider);

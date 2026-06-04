@@ -24,6 +24,7 @@ String initialHomeRouteForUser(Map<String, dynamic>? user) {
     case 'super_admin':
       return '/super-admin/dashboard';
     case 'inventory_manager':
+    case 'seo_manager':
       return '/inventory';
     case 'cashier':
       return '/pos';
@@ -110,7 +111,7 @@ bool isRouteAllowedForShell(String location, String role) {
       }
       return true;
     case 'seo_manager':
-      if (location == '/dashboard' || location == '/pos' || location.startsWith('/pos/') || location == '/products' || location.startsWith('/products/') || location == '/inventory' || location.startsWith('/inventory/') || location == '/support' || location.startsWith('/support/') || location == '/settings' || location.startsWith('/settings/')) {
+      if (location == '/pos' || location.startsWith('/pos/') || location == '/products' || location.startsWith('/products/') || location == '/inventory' || location.startsWith('/inventory/')) {
         return true;
       }
       return false;
@@ -216,7 +217,7 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
     case 'inventory_manager':
       return [dash, pos, allProducts, inv, support, settings];
     case 'seo_manager':
-      return [dash, pos, allProducts, inv, support, settings];
+      return [pos, allProducts, inv];
     default:
       return [dash, pos, orders, settings];
   }
@@ -371,7 +372,7 @@ List<DrawerNavItem> drawerNavItemsForRole(String role) {
     case 'inventory_manager':
       return [dash, sales, allProducts, products, support, settings];
     case 'seo_manager':
-      return [dash, sales, allProducts, products, support, settings];
+      return [sales, allProducts, products];
     default:
       return [dash, sales, reports, support, settings];
   }

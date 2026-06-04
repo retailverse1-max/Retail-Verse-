@@ -57,6 +57,7 @@ import '../features/notifications/presentation/screens/notifications_screen.dart
 import '../features/inventory/presentation/screens/add_category_screen.dart';
 import '../features/support/presentation/screens/support_screen.dart';
 import '../core/theme/app_colors.dart';
+import '../core/services/session_service.dart';
 
 final scaffoldNavigationKey = GlobalKey<ScaffoldState>();
 
@@ -66,6 +67,10 @@ final GoRouter appRouter = GoRouter(
     final loc = state.uri.path;
     const public = {'/splash', '/login', '/signup', '/onboarding'};
     if (public.contains(loc)) return null;
+
+    if (loc.startsWith('/super-admin')) {
+      SessionService.currentStoreId = null;
+    }
 
     try {
       final container = ProviderScope.containerOf(context, listen: false);
@@ -636,47 +641,10 @@ class MainLayout extends ConsumerStatefulWidget {
   ConsumerState<MainLayout> createState() => _MainLayoutState();
 }
 
-class _MainLayoutState extends ConsumerState<MainLayout> with WidgetsBindingObserver {
+class _MainLayoutState extends ConsumerState<MainLayout> {
   int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  Future<bool> didPopRoute() async {
-    final ctx = context;
-    if (!ctx.mounted) return false;
-
-    // Close drawer if open — handle this ourselves
-    if (scaffoldNavigationKey.currentState?.isDrawerOpen ?? false) {
-      scaffoldNavigationKey.currentState?.closeDrawer();
-      return true;
-    }
-
-    // Determine if we are at the root home screen
-    String currentPath;
-    try {
-      currentPath = GoRouterState.of(ctx).uri.path;
-    } catch (_) {
-      return false;
-    }
-
-    final user = ref.read(authProvider).user;
-    final home = initialHomeRouteForUser(user);
-
-    // Not at home? Let GoRouter handle back navigation normally
-    if (currentPath != home) return false;
-
-    // At home — show exit confirmation dialog
+  Future<void> _showExitDialog(BuildContext ctx) async {
     final shouldExit = await showDialog<bool>(
       context: ctx,
       barrierDismissible: false,
@@ -745,7 +713,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> with WidgetsBindingObse
     if (shouldExit == true && ctx.mounted) {
       SystemNavigator.pop();
     }
-    return true; // Consume the back press at home (whether they exit or stay)
   }
 
 
@@ -872,9 +839,25 @@ class _MainLayoutState extends ConsumerState<MainLayout> with WidgetsBindingObse
       ),
     );
 
-    // WidgetsBindingObserver.didPopRoute() handles back navigation above.
-    // No PopScope needed — just return body directly.
-    return body;
+    return BackButtonListener(
+      onBackButtonPressed: () async {
+        if (scaffoldNavigationKey.currentState?.isDrawerOpen ?? false) {
+          scaffoldNavigationKey.currentState?.closeDrawer();
+          return true;
+        }
+        if (GoRouter.of(context).canPop()) {
+          return false; // Let GoRouter pop
+        }
+        final home = initialHomeRouteForUser(ref.read(authProvider).user);
+        if (path != home) {
+          context.go(home);
+          return true; // Go to dashboard instead of exiting
+        }
+        await _showExitDialog(context);
+        return true; // Handled
+      },
+      child: body,
+    );
   }
 
 

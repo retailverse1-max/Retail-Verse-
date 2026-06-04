@@ -34,12 +34,16 @@ class AccountScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: context.canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.textPrimary),
-                onPressed: () => context.pop(),
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.textPrimary),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
+        ),
         title: Text(
           'My Account',
           style: AppTypography.headlineMedium.copyWith(
@@ -263,7 +267,7 @@ class AccountScreen extends ConsumerWidget {
               }
             },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -291,7 +295,7 @@ class AccountScreen extends ConsumerWidget {
               label: const Text('Logout'),
             ),
           ),
-          const SizedBox(height: 80), // Extra space to prevent bottom nav bar from cutting it off
+          const SizedBox(height: 32), // Extra space to prevent bottom nav bar from cutting it off
         ],
       ),
     );

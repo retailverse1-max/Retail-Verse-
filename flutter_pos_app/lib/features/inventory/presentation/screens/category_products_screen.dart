@@ -122,6 +122,9 @@ class _CategoryProductsScreenState
   }
 
   Future<void> _editProduct(api.Product product) async {
+    final role = effectiveUserRole(ref.read(authProvider).user);
+    final isSeoManager = role == 'seo_manager';
+
     final nameCtrl = TextEditingController(text: product.name);
     final descCtrl = TextEditingController(text: product.description ?? '');
     final priceCtrl = TextEditingController(text: product.price.toString());
@@ -129,61 +132,198 @@ class _CategoryProductsScreenState
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Update product'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(product.name, style: AppTypography.titleSmall),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Product Name'),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Update Product',
+                  style: AppTypography.headlineMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'SKU: ${product.sku}',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.textTertiary,
+                    letterSpacing: 1.1,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: nameCtrl,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'Product Title',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: AppColors.cardBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: AppColors.cardBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 4,
+                  minLines: 3,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: AppColors.cardBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: AppColors.cardBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  ),
+                ),
+                if (!isSeoManager) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: priceCtrl,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Price',
+                            prefixText: '\$ ',
+                            labelStyle: const TextStyle(color: AppColors.textSecondary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: AppColors.cardBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.backgroundSecondary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: stockCtrl,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
+                          decoration: InputDecoration(
+                            labelText: 'Stock',
+                            labelStyle: const TextStyle(color: AppColors.textSecondary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: AppColors.cardBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: AppColors.backgroundSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: AppTypography.titleSmall.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextField(
-              controller: descCtrl,
-              maxLines: 4,
-              minLines: 3,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-            TextField(
-              controller: priceCtrl,
-              decoration: const InputDecoration(labelText: 'Price'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: stockCtrl,
-              decoration: const InputDecoration(labelText: 'Stock'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
 
     if (ok != true || !mounted) return;
 
     try {
-      final price = double.tryParse(priceCtrl.text.trim());
-      final stock = int.tryParse(stockCtrl.text.trim());
-      await ref.read(productRepositoryProvider).updateProduct(
-            id: product.id,
-            name: nameCtrl.text.trim(),
-            description: descCtrl.text.trim(),
-            price: price,
-            stock: stock,
-          );
+      if (isSeoManager) {
+        await ref.read(productRepositoryProvider).updateProduct(
+              id: product.id,
+              name: nameCtrl.text.trim(),
+              description: descCtrl.text.trim(),
+            );
+      } else {
+        final price = double.tryParse(priceCtrl.text.trim());
+        final stock = int.tryParse(stockCtrl.text.trim());
+        await ref.read(productRepositoryProvider).updateProduct(
+              id: product.id,
+              name: nameCtrl.text.trim(),
+              description: descCtrl.text.trim(),
+              price: price,
+              stock: stock,
+            );
+      }
       ref.invalidate(categoryProductsProvider(widget.category.name));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +391,7 @@ class _CategoryProductsScreenState
   void _showProductMenu(BuildContext context, api.Product product) {
     final role = effectiveUserRole(ref.read(authProvider).user);
     final canDelete = role == 'admin' || role == 'super_admin' || role == 'inventory_manager';
+    final isSeoManager = role == 'seo_manager';
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -288,6 +429,8 @@ class _CategoryProductsScreenState
                   _toggleActive(product);
                 },
               ),
+            ],
+            if (canDelete || isSeoManager) ...[
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
                 title: const Text('Edit'),
@@ -296,6 +439,8 @@ class _CategoryProductsScreenState
                   _editProduct(product);
                 },
               ),
+            ],
+            if (canDelete) ...[
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: AppColors.error),
                 title: const Text('Delete',
@@ -327,7 +472,8 @@ class _CategoryProductsScreenState
                   );
                 },
               ),
-            ] else ...[
+            ],
+            if (!canDelete && !isSeoManager) ...[
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text('You do not have permission to modify this product.', style: AppTypography.bodyMedium),
@@ -345,6 +491,7 @@ class _CategoryProductsScreenState
     final role = effectiveUserRole(ref.watch(authProvider).user);
     final canAccessInventory = canAccessInventoryManagement(role);
     final canAddProduct = role == 'admin' || role == 'super_admin' || role == 'inventory_manager';
+    final canManageProduct = canAddProduct || role == 'seo_manager';
     final async = ref.watch(categoryProductsProvider(widget.category.name));
 
     if (!canAccessInventory) {
@@ -561,7 +708,7 @@ class _CategoryProductsScreenState
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _ProductGridCard(
                           product: filtered[index],
-                          showMenu: canAddProduct, // same logic as canManage
+                          showMenu: canManageProduct, // same logic as canManage
                           onTap: () => _showProductMenu(
                               context, filtered[index]),
                           onMenuTap: () =>
@@ -578,7 +725,7 @@ class _CategoryProductsScreenState
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _ProductCard(
                           product: filtered[index],
-                          showMenu: canAddProduct,
+                          showMenu: canManageProduct,
                           onTap: () => ScaffoldMessenger.of(context)
                               .showSnackBar(
                             SnackBar(

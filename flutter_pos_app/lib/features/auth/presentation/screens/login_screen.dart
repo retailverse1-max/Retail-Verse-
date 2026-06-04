@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -284,23 +283,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       _showErrorSnackBar('Google Sign-In failed: $e');
-    }
-  }
-
-  Future<void> _handleFacebookSignIn() async {
-    try {
-      final LoginResult result = await FacebookAuth.instance.login();
-      if (result.status == LoginStatus.success) {
-        final OAuthCredential credential = FacebookAuthProvider.credential(result.accessToken!.tokenString);
-        final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-        if (userCred.user != null) {
-          _showSuccessAndNavigate('Facebook Sign-In successful');
-        }
-      } else if (result.status != LoginStatus.cancelled) {
-        _showErrorSnackBar('Facebook Sign-In failed: ${result.message}');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Facebook Sign-In failed: $e');
     }
   }
 
@@ -599,8 +581,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _SocialButton(icon: Icons.g_mobiledata_rounded, color: const Color(0xFFDB4437), onTap: _handleGoogleSignIn),
-                        const SizedBox(width: 20),
-                        _SocialButton(icon: Icons.facebook_rounded, color: const Color(0xFF1877F2), onTap: _handleFacebookSignIn),
                       ],
                     ),
                     const SizedBox(height: 40),

@@ -194,39 +194,47 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       if (!(widget.isSelectionMode && ref.watch(authProvider).user?['role'] == 'cashier')) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
+                          child: GridView.count(
+                            crossAxisCount: screenWidth >= 1200 ? 4 : (screenWidth >= 1000 ? 3 : 2),
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: screenWidth >= 1200
+                                ? 2.2
+                                : (screenWidth >= 1000
+                                    ? 2.0
+                                    : (screenWidth >= 800
+                                        ? 1.7
+                                        : (screenWidth >= 600 ? 1.45 : 1.3))),
                             children: [
-                              _buildKpiCard(
-                                title: 'TOTAL CUSTOMERS',
+                              SaaSKPICard(
+                                title: 'Total Customers',
                                 value: totalCount.toString(),
+                                subtitle: 'Registered',
+                                icon: Icons.people_alt_rounded,
                                 accentColor: const Color(0xFF3B82F6),
-                                icon: Icons.people_outline_rounded,
-                                iconColor: const Color(0xFF2563EB),
-                                iconBgColor: const Color(0xFFEFF6FF),
                               ),
-                              _buildKpiCard(
-                                title: 'ACTIVE MEMBERS',
+                              SaaSKPICard(
+                                title: 'Active Members',
                                 value: activeCount.toString(),
-                                accentColor: const Color(0xFF10B981),
+                                subtitle: 'Currently active',
                                 icon: Icons.person_outline_rounded,
-                                iconColor: const Color(0xFF059669),
-                                iconBgColor: const Color(0xFFECFDF5),
+                                accentColor: const Color(0xFF10B981),
                               ),
-                              _buildKpiCard(
-                                title: 'NEW THIS MONTH',
+                              SaaSKPICard(
+                                title: 'New This Month',
                                 value: newThisMonthCount.toString(),
+                                subtitle: 'Growth',
+                                icon: Icons.person_add_rounded,
                                 accentColor: const Color(0xFF8B5CF6),
-                                icon: Icons.person_add_outlined,
-                                iconColor: const Color(0xFF7C3AED),
-                                iconBgColor: const Color(0xFFF5F3FF),
                               ),
-                              _buildKpiCard(
-                                title: 'CHURN RATE',
+                              SaaSKPICard(
+                                title: 'Churn Rate',
                                 value: '${churnRate.toStringAsFixed(1)}%',
-                                accentColor: const Color(0xFFEF4444),
+                                subtitle: 'Lost customers',
                                 icon: Icons.show_chart_rounded,
-                                iconColor: const Color(0xFFDC2626),
-                                iconBgColor: const Color(0xFFFEF2F2),
+                                accentColor: const Color(0xFFEF4444),
                               ),
                             ],
                           ),
@@ -335,86 +343,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     );
   }
 
-  Widget _buildKpiCard({
-    required String title,
-    required String value,
-    required Color accentColor,
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBgColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Container(
-                width: 5,
-                color: accentColor,
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.textTertiary,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            value,
-                            style: AppTypography.displaySmall.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: iconBgColor,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(icon, color: iconColor, size: 22),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildCustomerTable(List<CustomerModel> customers) {
+    final isPhone = MediaQuery.of(context).size.width < 600;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
+      margin: EdgeInsets.symmetric(horizontal: isPhone ? 12 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -431,7 +365,8 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Table Header
-          Container(
+          if (!isPhone)
+            Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.backgroundSecondary.withOpacity(0.3),
@@ -524,11 +459,147 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
               children: customers.asMap().entries.map((entry) {
                 final index = entry.key;
                 final customer = entry.value;
+                if (isPhone) {
+                  return _buildMobileCustomerCard(customer, index, index == customers.length - 1);
+                }
                 return _buildCustomerTableRow(customer, index, index == customers.length - 1);
               }).toList(),
             ),
           ],
         ),
+    );
+  }
+
+  Widget _buildMobileCustomerCard(CustomerModel customer, int index, bool isLast) {
+    final initials = customer.name.isNotEmpty 
+        ? customer.name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase() 
+        : 'C';
+    
+    final avatarColors = [
+      const Color(0xFF00695C), const Color(0xFFE65100), const Color(0xFF2E7D32),
+      const Color(0xFFFBC02D), const Color(0xFFEF6C00), const Color(0xFF00B8D4),
+      const Color(0xFFBA68C8),
+    ];
+    final avatarColor = avatarColors[index % avatarColors.length];
+    
+    final isActive = isCustomerActive(customer);
+    final email = (customer.email != null && customer.email!.isNotEmpty)
+        ? customer.email!
+        : '${customer.name.toLowerCase().replaceAll(' ', '')}@gmail.com';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        border: isLast ? null : const Border(
+          bottom: BorderSide(color: AppColors.border, width: 0.5),
+        ),
+      ),
+      child: InkWell(
+        onTap: widget.isSelectionMode ? () => context.pop(customer) : null,
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: avatarColor,
+              child: Text(
+                initials,
+                style: AppTypography.titleMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    customer.name,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        AppFormatters.formatCurrency(customer.totalSpent),
+                        style: AppTypography.labelMedium.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '• ${customer.totalOrders} orders',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isActive ? 'ACTIVE' : 'INACTIVE',
+                    style: AppTypography.caption.copyWith(
+                      color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Compose email to $email'),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      },
+                      child: const Icon(Icons.mail_outline_rounded, color: AppColors.textSecondary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => _showOptionsDialog(customer),
+                      child: const Icon(Icons.more_vert_rounded, color: AppColors.textSecondary, size: 20),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
