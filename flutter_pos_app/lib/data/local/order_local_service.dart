@@ -148,6 +148,42 @@ class OrderLocalService {
     );
   }
 
+  /// Update full order (e.g. editing a quote offline)
+  Future<void> updateOrderFull({
+    required String orderId,
+    required OrderEntity updatedOrder,
+    required List<OrderItemEntity> updatedItems,
+  }) async {
+    final db = await AppDatabase.database;
+    final batch = db.batch();
+
+    // Update order row
+    batch.update(
+      'orders',
+      updatedOrder.toMap(),
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+
+    // Delete old items
+    batch.delete(
+      'order_items',
+      where: 'order_id = ?',
+      whereArgs: [orderId],
+    );
+
+    // Insert new items
+    for (final item in updatedItems) {
+      batch.insert(
+        'order_items',
+        item.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    await batch.commit(noResult: true);
+  }
+
   /// Mark order as synced
   Future<int> markOrderAsSynced(String orderId) async {
     final db = await AppDatabase.database;

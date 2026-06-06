@@ -62,7 +62,7 @@ class _SaStoresPerformanceScreenState extends ConsumerState<SaStoresPerformanceS
           }
           
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text(snapshot.error.toString().contains('SocketException') || snapshot.error.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: ${snapshot.error}'));
           }
 
           final stores = snapshot.data ?? [];

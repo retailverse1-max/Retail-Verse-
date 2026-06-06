@@ -4,7 +4,10 @@ import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_shell.dart';
 
-class SaSupportChatScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retail_verse_pos/features/support/providers/support_providers.dart';
+
+class SaSupportChatScreen extends ConsumerStatefulWidget {
   final String ticketSubject;
   final String initialMessage;
 
@@ -15,17 +18,19 @@ class SaSupportChatScreen extends StatefulWidget {
   });
 
   @override
-  State<SaSupportChatScreen> createState() => _SaSupportChatScreenState();
+  ConsumerState<SaSupportChatScreen> createState() => _SaSupportChatScreenState();
 }
 
-class _SaSupportChatScreenState extends State<SaSupportChatScreen> {
+class _SaSupportChatScreenState extends ConsumerState<SaSupportChatScreen> {
   final List<_ChatMessage> _messages = [];
   final TextEditingController _msgC = TextEditingController();
   final ScrollController _scrollC = ScrollController();
+  late String _currentSubject;
 
   @override
   void initState() {
     super.initState();
+    _currentSubject = widget.ticketSubject;
     // Add initial user message
     _messages.add(_ChatMessage(
       text: widget.initialMessage,
@@ -168,18 +173,127 @@ class _SaSupportChatScreenState extends State<SaSupportChatScreen> {
   }
 
   Widget _buildTicketBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      color: Colors.blue.shade50,
-      child: Text(
-        "Subject: ${widget.ticketSubject}",
-        style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 13),
+    return InkWell(
+      onTap: _showTicketSelectionSheet,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        color: Colors.blue.shade50,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                "Subject: $_currentSubject",
+                style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: Colors.blue.shade900),
+          ],
+        ),
       ),
     );
   }
 
+  void _showTicketSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        final ticketsAsync = ref.watch(recentTicketsProvider);
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Select Related Ticket', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              ticketsAsync.when(
+                data: (tickets) {
+                  if (tickets.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: Text('No active tickets found.')),
+                    );
+                  }
+                  return Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: tickets.length,
+                      itemBuilder: (context, index) {
+                        final ticket = tickets[index];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                          title: Text(ticket.subject, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('ID: ${ticket.id} • Status: ${ticket.status.toUpperCase()}'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              _currentSubject = ticket.subject;
+                              _messages.add(_ChatMessage(
+                                text: 'Linked to ticket: ${ticket.subject}',
+                                isMe: true,
+                                time: DateTime.now(),
+                                isSystemMessage: true,
+                              ));
+                            });
+                            _scrollToBottom();
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(child: Text('Failed to load tickets: $e')),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMessageBubble(_ChatMessage msg) {
+    if (msg.isSystemMessage) {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            msg.text,
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
     return Align(
       alignment: msg.isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -263,5 +377,6 @@ class _ChatMessage {
   final String text;
   final bool isMe;
   final DateTime time;
-  _ChatMessage({required this.text, required this.isMe, required this.time});
+  final bool isSystemMessage;
+  _ChatMessage({required this.text, required this.isMe, required this.time, this.isSystemMessage = false});
 }

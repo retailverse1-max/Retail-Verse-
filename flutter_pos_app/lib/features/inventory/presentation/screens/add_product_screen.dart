@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/navigation/role_route_guard.dart';
 import '../../../../core/theme/app_colors.dart';
+// Removed flutter_image_compress import to avoid unused dependency
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/ai_service.dart';
 import '../../../auth/providers/auth_provider.dart';
@@ -225,13 +226,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   /// After closing the bottom sheet, wait briefly so the route transition
   /// does not block launching the camera / photo picker on some devices.
-  void _schedulePickImage(BuildContext sheetContext, ImageSource source) {
-    Navigator.pop(sheetContext);
-    Future<void>.delayed(const Duration(milliseconds: 220), () async {
+    void _schedulePickImage(BuildContext sheetContext, ImageSource source) {
+      Navigator.pop(sheetContext);
+      // Directly invoke image picker without artificial delay to improve responsiveness
       if (!mounted) return;
-      await _pickImage(source);
-    });
-  }
+      _pickImage(source);
+    }
 
   /// Pick image from camera or gallery
   Future<void> _pickImage(ImageSource source) async {
@@ -459,7 +459,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     String? imageBase64;
     if (_productImage != null) {
       try {
-        final bytes = await _productImage!.readAsBytes();
         final pathLower = _productImage!.path.toLowerCase();
         var mime = 'image/jpeg';
         if (pathLower.endsWith('.png')) {
@@ -467,6 +466,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         } else if (pathLower.endsWith('.webp')) {
           mime = 'image/webp';
         }
+        final bytes = await _productImage!.readAsBytes();
         imageBase64 = 'data:$mime;base64,${base64Encode(bytes)}';
       } catch (e) {
         if (mounted) {
@@ -518,34 +518,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         final selectedCatId = _selectedCategory?.id ?? widget.category?.id;
         if (selectedCatId != null && selectedCatId.isNotEmpty) {
           ref.read(categoryRepositoryProvider).localService.incrementProductCount(selectedCatId);
+          // Refresh categories to reflect updated product count
+          ref.invalidate(categoriesProvider);
         }
       }
-      Navigator.of(context).pop(legacy);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
-          content: Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                'Product saved successfully!',
-                style: TextStyle(color: Colors.white),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-        ),
-      );
+      context.pop(legacy);
     } catch (e) {
       if (mounted) {
+        final errStr = e.toString();
+        final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection') || errStr.contains('Failed host lookup')
+            ? 'You are offline. Please check your internet connection and try again.'
+            : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-            content: Text('Save failed: $e'),
+            content: Text('Save failed: $cleanErr'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -1006,39 +994,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           _selectedCategoryId = matchingCategory.id;
         });
       } catch (e) {
-        // Category not found, auto-create it!
-        try {
-          final repo = ref.read(categoryRepositoryProvider);
-          final tempCategory = CategoryEntity(
-            id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-            name: ai.suggestedCategory!,
-            subtitle: 'Auto-created by AI scan',
-            imagePath: '',
-            productCount: 0,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-          
-          final newCategory = await repo.addCategory(tempCategory);
-          
-          if (mounted) {
-            setState(() {
-              _categories.insert(0, newCategory); // Add to top
-              _selectedCategoryId = newCategory.id;
-            });
-            ref.invalidate(categoriesProvider); // Refresh global list
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Auto-created new category: ${ai.suggestedCategory}'),
-                backgroundColor: AppColors.success,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        } catch (err) {
-          debugPrint('Failed to auto-create category: $err');
-        }
+        // Suggested category not found. Ignored; user can select an existing category.
       }
     }
     

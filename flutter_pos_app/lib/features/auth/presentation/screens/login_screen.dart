@@ -116,6 +116,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       if (success) {
+        // Stop loader immediately before navigating
+        setState(() => _isLocalLoading = false);
         invalidateAllDashboardProviders(ref);
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         final home = initialHomeRouteForUser(ref.read(authProvider).user);
@@ -448,7 +450,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: Row(
                               children: [
                                 _buildModeToggle(label: 'Email', isActive: !_useOtp, onTap: () => setState(() { _useOtp = false; _otpSent = false; })),
-                                _buildModeToggle(label: 'Phone OTP', isActive: _useOtp, onTap: () => setState(() { _useOtp = true; _otpSent = false; })),
+                                _buildModeToggle(
+                                  label: 'Phone OTP', 
+                                  isActive: _useOtp, 
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Phone OTP login is coming soon!'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                ),
                               ],
                             ),
                           ),

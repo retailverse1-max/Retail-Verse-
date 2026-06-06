@@ -122,7 +122,11 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                   return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (snap.hasError) {
-                  return _buildErrorState(snap.error.toString());
+                  final errStr = snap.error.toString();
+                  final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection')
+                      ? 'You are offline or the server is unreachable. Please check your internet connection.'
+                      : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+                  return _buildErrorState(cleanErr);
                 }
 
                 final users = snap.data ?? [];
@@ -325,7 +329,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.error));
     }
   }
 
@@ -406,7 +410,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
         await _svc.createUser(name: nameC.text, email: emailC.text, password: passC.text, role: role);
         if (mounted) setState(() { _f = _svc.listUsers(); });
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
       }
     }
   }

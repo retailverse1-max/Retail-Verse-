@@ -51,9 +51,15 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
           Expanded(
               child: productsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(
-                  child: Text('Error: $e', style: const TextStyle(color: AppColors.error)),
-                ),
+                error: (e, _) {
+                  final errStr = e.toString();
+                  final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection') || errStr.contains('Failed host lookup')
+                      ? 'You are offline. Please check your internet connection.'
+                      : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+                  return Center(
+                    child: Text('Error: $cleanErr', style: const TextStyle(color: AppColors.error)),
+                  );
+                },
                 data: (products) {
                   final filtered = products.where((p) {
                     final matchesSearch = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||

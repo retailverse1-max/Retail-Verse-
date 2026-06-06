@@ -11,6 +11,7 @@ import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
+import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 
 // ── 1. PREMIUM HERO HEADER ─────────────────────
 class PremiumHeroHeader extends StatefulWidget {
@@ -47,26 +48,53 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
       return;
     }
 
-    final products = ref.read(dashboardProductsProvider).value ?? [];
-    final match = products.firstWhere(
-      (p) => p.name.toLowerCase().contains(query) || p.sku.toLowerCase() == query,
-      orElse: () => products.firstWhere((p) => p.id == query, orElse: () => products.first), // fallback or error logic
-    );
-
-    // Check if it's a real match
-    final isRealMatch = match.name.toLowerCase().contains(query) || match.sku.toLowerCase() == query;
-
-    if (isRealMatch) {
+    // 1. Check Menu Routes
+    final user = ref.read(authProvider).user;
+    final role = user?['role'] ?? user?['userRole'] ?? 'unknown';
+    final navItems = drawerNavItemsForRole(role);
+    
+    try {
+      final screenMatch = navItems.firstWhere(
+        (item) => item.label.toLowerCase().contains(query) || item.route.toLowerCase().contains(query),
+      );
+      
+      // Found a matching screen!
       ref.read(dashboardSearchQueryProvider.notifier).state = null;
-      context.push('/pos/product', extra: match);
       setState(() {
         _isSearching = false;
         _searchController.clear();
       });
-    } else {
-      ref.read(dashboardSearchQueryProvider.notifier).state = query;
-      FocusScope.of(context).unfocus();
+      context.push(screenMatch.route);
+      return;
+    } catch (_) {
+      // Not a screen, continue to product search
     }
+
+    // 2. Check Products
+    final products = ref.read(dashboardProductsProvider).value ?? [];
+    try {
+      final match = products.firstWhere(
+        (p) => p.name.toLowerCase().contains(query) || p.sku.toLowerCase() == query,
+      );
+
+      final isRealMatch = match.name.toLowerCase().contains(query) || match.sku.toLowerCase() == query;
+
+      if (isRealMatch) {
+        ref.read(dashboardSearchQueryProvider.notifier).state = null;
+        context.push('/pos/product', extra: match);
+        setState(() {
+          _isSearching = false;
+          _searchController.clear();
+        });
+        return;
+      }
+    } catch (_) {
+      // Not a product either
+    }
+
+    // 3. Not found
+    ref.read(dashboardSearchQueryProvider.notifier).state = query;
+    FocusScope.of(context).unfocus();
   }
 
   @override
@@ -99,95 +127,99 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (!_isSearching || !isPhone)
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const ResponsiveMenuButton(color: Colors.white),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(widget.subtitle ?? 'Good morning,',
-                                        style: AppTypography.bodyLarge.copyWith(color: Colors.white70)),
-                                    Text(widget.userName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                                  ],
-                                ),
+                      // ── Left: Menu and Logo ──
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const ResponsiveMenuButton(color: Colors.white),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(widget.subtitle ?? 'Good morning,',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.bodyLarge.copyWith(color: Colors.white70)),
+                                  Text(widget.userName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      if (_isSearching && isPhone)
-                        const ResponsiveMenuButton(color: Colors.white),
-                      if (_isSearching && isPhone)
-                        const SizedBox(width: 12),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: _isSearching ? (isPhone ? width - 80 : 350) : 46,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: _isSearching ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: _isSearching
-                              ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]
-                              : [],
-                        ),
-                        child: _isSearching
-                            ? TextField(
-                                controller: _searchController,
-                                autofocus: true,
-                                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-                                onChanged: (v) {
-                                  if (v.isEmpty) {
-                                    ref.read(dashboardSearchQueryProvider.notifier).state = null;
-                                  }
-                                },
-                                decoration: InputDecoration(
-                                  hintText: isPhone ? 'Search...' : 'Search product or SKU...',
-                                  hintStyle: TextStyle(color: Colors.black.withOpacity(0.4)),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  prefixIcon: IconButton(
-                                    icon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
-                                    onPressed: () => _handleSearch(context, ref),
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      ref.read(dashboardSearchQueryProvider.notifier).state = null;
-                                      setState(() => _isSearching = false);
-                                    },
-                                  ),
-                                ),
-                                onSubmitted: (_) => _handleSearch(context, ref),
-                              )
-                            : InkWell(
-                                onTap: () => setState(() => _isSearching = true),
-                                borderRadius: BorderRadius.circular(24),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                                  child: const Icon(Icons.search_rounded, color: Colors.white, size: 22),
-                                ),
-                              ),
                       ),
-                      if (!isPhone) ...[
-                        const SizedBox(width: 8),
-                        if (widget.actions != null) Row(children: widget.actions!) else 
-                        InkWell(
-                          onTap: () => context.push('/notifications'),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                            child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
+
+                      // ── Right: Search Bar and Notifications ──
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: _isSearching ? (isPhone ? width - 160 : 350) : 46,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: _isSearching ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: _isSearching
+                                  ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]
+                                  : [],
+                            ),
+                            child: _isSearching
+                                ? TextField(
+                                    controller: _searchController,
+                                    autofocus: true,
+                                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                    onChanged: (v) {
+                                      if (v.isEmpty) {
+                                        ref.read(dashboardSearchQueryProvider.notifier).state = null;
+                                      }
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: isPhone ? 'Search...' : 'Search product or SKU...',
+                                      hintStyle: TextStyle(color: Colors.black.withOpacity(0.4)),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      prefixIcon: IconButton(
+                                        icon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
+                                        onPressed: () => _handleSearch(context, ref),
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          ref.read(dashboardSearchQueryProvider.notifier).state = null;
+                                          setState(() => _isSearching = false);
+                                        },
+                                      ),
+                                    ),
+                                    onSubmitted: (_) => _handleSearch(context, ref),
+                                  )
+                                : InkWell(
+                                    onTap: () => setState(() => _isSearching = true),
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                                      child: const Icon(Icons.search_rounded, color: Colors.white, size: 22),
+                                    ),
+                                  ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          if (widget.actions != null) Row(children: widget.actions!) else 
+                          InkWell(
+                            onTap: () => context.push('/notifications'),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                              child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),

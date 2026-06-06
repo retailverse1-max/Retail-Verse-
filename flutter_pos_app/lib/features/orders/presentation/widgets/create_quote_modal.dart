@@ -69,10 +69,12 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
     final totalItems = _selectedItems.fold<int>(0, (sum, item) => sum + item.quantity);
     final totalAmount = _selectedItems.fold<double>(0.0, (sum, item) => sum + item.total);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final double width = constraints.maxWidth > 800 ? 600.0 : constraints.maxWidth * 0.9;
@@ -374,8 +376,9 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
     );
   }, // close builder function
 ), // close LayoutBuilder
-); // close Dialog
-}
+      ), // close Dialog
+    ); // close PopScope
+  }
 
 
   Widget _buildSectionTitle(String title) {

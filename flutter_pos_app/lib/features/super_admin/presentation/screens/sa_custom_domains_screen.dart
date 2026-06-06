@@ -80,6 +80,9 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
   }
 
   void _showError(String message) {
+    if (message.contains('SocketException') || message.contains('Failed host lookup')) {
+      message = 'You are offline. Please check your internet connection.';
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
     );
@@ -233,6 +236,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
 
     return DropdownButtonFormField<String>(
       value: _selectedBusinessId,
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: 'Select Client',
         labelStyle: const TextStyle(fontWeight: FontWeight.bold),
@@ -243,7 +247,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
       ),
       items: _businesses.map((b) {
         final name = b['businessName']?.toString() ?? 'Unnamed';
-        return DropdownMenuItem(value: b['id']?.toString() ?? b['_id']?.toString(), child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)));
+        return DropdownMenuItem(value: b['id']?.toString() ?? b['_id']?.toString(), child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis));
       }).toList(),
       onChanged: (v) => setState(() => _selectedBusinessId = v),
     );

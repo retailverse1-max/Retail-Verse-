@@ -14,6 +14,7 @@ import '../../providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/trial_banner.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
+import 'package:retail_verse_pos/features/billing/presentation/screens/subscription_expired_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -70,6 +71,18 @@ class DashboardScreen extends ConsumerWidget {
     final width = MediaQuery.of(context).size.width;
     final isTablet = width >= 600;
 
+    final role = user?['role'];
+    bool isExpired = false;
+    if (role != 'super_admin') {
+      final expiryStr = user?['subscriptionExpiry'];
+      if (expiryStr != null) {
+        try {
+          final expiryDate = DateTime.parse(expiryStr);
+          isExpired = DateTime.now().isAfter(expiryDate);
+        } catch (_) {}
+      }
+    }
+
     return PopScope(
       canPop: false,
       // Intercept back navigation. If there is a previous route, pop it; otherwise, show exit confirmation.
@@ -107,8 +120,10 @@ class DashboardScreen extends ConsumerWidget {
           }
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: AppColors.background,
         body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardStatsProvider);
@@ -439,17 +454,7 @@ class DashboardScreen extends ConsumerWidget {
                                               const SizedBox(height: 8),
                                               GestureDetector(
                                                 onTap: () async {
-                                                  final success = await ref.read(notificationProvider.notifier).requestRestock(p.id, p.name);
-                                                  if (context.mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(success ? 'Notification sent to Admin for ${p.name}' : 'Failed to send notification'),
-                                                        backgroundColor: success ? AppColors.primary : AppColors.error,
-                                                        behavior: SnackBarBehavior.floating,
-                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                      ),
-                                                    );
-                                                  }
+                                                  await ref.read(notificationProvider.notifier).requestRestock(p.id, p.name);
                                                 },
                                                 child: Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -605,6 +610,12 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
+        ),
+          if (isExpired)
+            const Positioned.fill(
+              child: SubscriptionExpiredScreen(),
+            ),
+        ],
       ),
     );
   }

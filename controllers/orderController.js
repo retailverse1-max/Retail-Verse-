@@ -192,7 +192,7 @@ const updateOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    if (order.clientId && req.user?.clientId && order.clientId.toString() !== req.user.clientId.toString()) {
+    if (req.user?.role !== "super_admin" && order.clientId && req.user?.clientId && order.clientId.toString() !== req.user.clientId.toString()) {
       return res.status(403).json({ success: false, message: "Not authorized to update this order" });
     }
 

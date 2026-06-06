@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/constants/api_endpoints.dart';
 import 'core/services/zendesk_service.dart';
@@ -11,10 +10,13 @@ import 'core/utils/error_detector.dart';
 import 'features/settings/providers/pos_settings_provider.dart';
 import 'routes/app_router.dart';
 
+import 'core/providers/sync_providers.dart';
 import 'core/services/push_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+
   
   // Initialize Firebase
   try {
@@ -49,6 +51,9 @@ class RetailVerseApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize background sync service to listen for connectivity changes
+    ref.watch(syncServiceProvider);
+    
     final settings = ref.watch(posSettingsProvider);
 
     return ScreenUtilInit(
@@ -63,6 +68,7 @@ class RetailVerseApp extends ConsumerWidget {
         return MaterialApp.router(
           title: 'Retail Verse',
           debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: scaffoldMessengerKey,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,

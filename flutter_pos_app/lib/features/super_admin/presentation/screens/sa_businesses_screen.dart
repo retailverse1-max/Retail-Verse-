@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
@@ -43,7 +44,7 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
     final saved = await context.push<bool>('/super-admin/businesses/add');
     if (!mounted) return;
     if (saved == true) {
-      setState(() => _f = _loadData());
+      setState(() { _f = _loadData(); });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -163,7 +164,20 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
                   return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (snap.hasError) {
-                  return Center(child: Text('Error: ${snap.error}'));
+                  final errStr = snap.error.toString().toLowerCase();
+                  final isOffline = errStr.contains('socketexception') || 
+                                    errStr.contains('failed host lookup') || 
+                                    errStr.contains('offline') || 
+                                    errStr.contains('unreachable');
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        isOffline ? 'You are offline. Please check your internet connection to view client stores.' : 'Error: ${snap.error}',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
                 }
 
                 final data = snap.data ?? {};
@@ -195,7 +209,7 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () async => setState(() => _f = _loadData()),
+                  onRefresh: () async => setState(() { _f = _loadData(); }),
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
                     itemCount: filtered.length,
@@ -206,7 +220,11 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
                         (d) => d?['businessId'] == bId,
                         orElse: () => null
                       );
-                      return _BusinessModernCard(business: b, domain: domainObj);
+                      return _BusinessModernCard(
+                        business: b, 
+                        domain: domainObj,
+                        onRefresh: () => setState(() { _f = _loadData(); }),
+                      );
                     },
                   ),
                 );
@@ -222,17 +240,38 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
 class _BusinessModernCard extends StatelessWidget {
   final Map<String, dynamic> business;
   final Map<String, dynamic>? domain;
+  final VoidCallback onRefresh;
 
-  const _BusinessModernCard({required this.business, this.domain});
+  const _BusinessModernCard({
+    required this.business, 
+    this.domain,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
     final name = business['businessName'] ?? 'Unnamed Business';
     final owner = business['ownerName'] ?? 'No owner';
     final email = business['ownerEmail'] ?? '';
-    final status = business['status'] ?? 'active';
     final plan = business['subscriptionPlan'] ?? 'free';
     final id = business['id'] ?? business['_id'] ?? '';
+
+    // Calculate Expiry Details
+    final expiryStr = business['subscriptionExpiry'];
+    DateTime? expiry;
+    bool isExpired = false;
+    int daysAgo = 0;
+    if (expiryStr != null) {
+      try {
+        expiry = DateTime.parse(expiryStr.toString());
+        isExpired = DateTime.now().isAfter(expiry);
+        if (isExpired) {
+          daysAgo = DateTime.now().difference(expiry).inDays;
+        }
+      } catch (_) {}
+    }
+
+    final status = isExpired ? 'expired' : (business['status'] ?? 'active');
 
     return InkWell(
       onTap: () => context.push('/super-admin/businesses/$id'),
@@ -266,11 +305,8 @@ class _BusinessModernCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(name, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-                        ),
-                        const SizedBox(height: 2),
+                        Text(name, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             Container(
@@ -282,7 +318,9 @@ class _BusinessModernCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(owner, style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                            Expanded(
+                              child: Text(owner, style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                            ),
                           ],
                         ),
                       ],
@@ -305,6 +343,20 @@ class _BusinessModernCard extends StatelessWidget {
               const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(height: 1, thickness: 1)),
               if (email.isNotEmpty)
                 _buildInfoRow(Icons.alternate_email_rounded, email),
+              if (isExpired && expiry != null) ...[
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  Icons.event_busy_rounded, 
+                  'Expired on ${DateFormat('dd MMM yyyy').format(expiry)} ($daysAgo days ago)',
+                  color: Colors.redAccent,
+                ),
+              ] else if (expiry != null) ...[
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  Icons.event_available_rounded, 
+                  'Ends on ${DateFormat('dd MMM yyyy').format(expiry)}',
+                ),
+              ],
               const SizedBox(height: 16),
               Wrap(
                 spacing: 12,
@@ -371,11 +423,10 @@ class _BusinessModernCard extends StatelessWidget {
             ),
           );
           // Trigger refresh
-          final state = context.findAncestorStateOfType<_SaBusinessesScreenState>();
-          state?.setState(() => state._f = state._loadData());
+          onRefresh();
         }
       } catch (e) {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
       }
     }
   }
@@ -416,8 +467,7 @@ class _BusinessModernCard extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
         );
-        final state = context.findAncestorStateOfType<_SaBusinessesScreenState>();
-        state?.setState(() => state._f = state._loadData());
+        onRefresh();
       }
     }
   }
@@ -442,12 +492,12 @@ class _BusinessModernCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildInfoRow(IconData icon, String text, {Color? color}) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppColors.textTertiary),
+        Icon(icon, size: 18, color: color ?? AppColors.textTertiary),
         const SizedBox(width: 12),
-        Text(text, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+        Text(text, style: AppTypography.bodySmall.copyWith(color: color ?? AppColors.textSecondary, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -510,7 +560,7 @@ class _AddBusinessSheetState extends State<_AddBusinessSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
         setState(() => _saving = false);
       }
     }
@@ -613,7 +663,7 @@ class _EditBusinessSheetState extends State<_EditBusinessSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
         setState(() => _saving = false);
       }
     }

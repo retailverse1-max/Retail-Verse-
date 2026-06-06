@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/features/subscription/presentation/screens/subscription_plans_screen.dart';
 import '../core/navigation/role_nav.dart';
 import '../core/navigation/role_route_guard.dart';
@@ -60,9 +61,25 @@ import '../core/theme/app_colors.dart';
 import '../core/services/session_service.dart';
 
 final scaffoldNavigationKey = GlobalKey<ScaffoldState>();
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+class SnackBarClearObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+  }
+}
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
+  observers: [SnackBarClearObserver()],
   redirect: (BuildContext context, GoRouterState state) {
     final loc = state.uri.path;
     const public = {'/splash', '/login', '/signup', '/onboarding'};
@@ -80,17 +97,7 @@ final GoRouter appRouter = GoRouter(
       if (!loggedIn) return '/login';
 
       final role = authState.user?['role'];
-      if (role != 'super_admin' && loc != '/subscription-expired') {
-        final expiryStr = authState.user?['subscriptionExpiry'];
-        if (expiryStr != null) {
-          try {
-            final expiryDate = DateTime.parse(expiryStr);
-            if (DateTime.now().isAfter(expiryDate)) {
-              return '/subscription-expired';
-            }
-          } catch (_) {}
-        }
-      }
+      // Let dashboard load even if expired. Expiration UI will be handled on top of the dashboard.
     } catch (_) {
       // Provider not available yet — stay on splash until ready.
       if (loc == '/splash' || loc == '/login' || loc == '/signup') return null;
@@ -197,6 +204,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/support-chat',
+      builder: (context, state) {
+        final params = state.extra as Map<String, dynamic>? ?? {};
+        return SaSupportChatScreen(
+          ticketSubject: params['subject'] ?? 'Support Request',
+          initialMessage: params['message'] ?? '',
+        );
+      },
     ),
     GoRoute(
       path: '/inventory/:categoryId',
@@ -812,6 +829,20 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
     final showFab = !(path == '/dashboard' && isInitialLoading);
 
+    bool isTrialExpired = false;
+    if (user != null && user['subscriptionPlan'] == 'trial') {
+      final expiryString = user['subscriptionExpiry'];
+      if (expiryString != null) {
+        final expiryDate = DateTime.tryParse(expiryString);
+        if (expiryDate != null) {
+          final difference = expiryDate.difference(DateTime.now());
+          if (difference.inDays <= 0) {
+            isTrialExpired = true;
+          }
+        }
+      }
+    }
+
     final body = Scaffold(
       key: scaffoldNavigationKey,
       drawer: showPinnedSidebar ? null : Drawer(
@@ -835,26 +866,96 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               Expanded(child: widget.child),
             ],
           ),
+          if (isTrialExpired && path != '/upgrade')
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.7),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(24),
+                    constraints: const BoxConstraints(maxWidth: 450),
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 24, offset: const Offset(0, 10)),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(color: AppColors.error.withOpacity(0.1), shape: BoxShape.circle),
+                          child: const Icon(Icons.lock_clock_rounded, color: AppColors.error, size: 48),
+                        ),
+                        const SizedBox(height: 24),
+                        Text('Trial Expired', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Your 14-day free trial has expired. To continue using Retail Verse, please upgrade your subscription.',
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => context.push('/upgrade'),
+                            child: const Text('View Plans & Upgrade', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () async {
+                            await ref.read(authProvider.notifier).logout();
+                            if (context.mounted) {
+                              context.go('/login');
+                            }
+                          },
+                          child: const Text('Log Out', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
 
-    return BackButtonListener(
-      onBackButtonPressed: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
         if (scaffoldNavigationKey.currentState?.isDrawerOpen ?? false) {
           scaffoldNavigationKey.currentState?.closeDrawer();
-          return true;
+          return;
         }
-        if (GoRouter.of(context).canPop()) {
-          return false; // Let GoRouter pop
-        }
+        
         final home = initialHomeRouteForUser(ref.read(authProvider).user);
-        if (path != home) {
-          context.go(home);
-          return true; // Go to dashboard instead of exiting
+        
+        // If we are on the dashboard/home, always ask to exit.
+        if (path == home) {
+          await _showExitDialog(context);
+          return;
         }
-        await _showExitDialog(context);
-        return true; // Handled
+
+        if (GoRouter.of(context).canPop()) {
+          context.pop();
+          return;
+        }
+        
+        // Otherwise, go back to home instead of exiting
+        context.go(home);
       },
       child: body,
     );

@@ -35,12 +35,12 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
     _carouselTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (!mounted) return;
       
-      int totalPages = 3; // Trial status + Basic + Premium
-      _currentPage = (_currentPage + 1) % totalPages;
+      int totalPages = 4; // Trial status + Basic + Plus + Premium
+      int nextPage = (_currentPage + 1) % totalPages;
       
       if (_pageController.hasClients) {
         _pageController.animateToPage(
-          _currentPage,
+          nextPage,
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeInOutCubic,
         );
@@ -81,7 +81,8 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
     final difference = expiryDate.difference(now);
     final daysLeft = difference.inDays;
 
-    if (daysLeft < 0) {
+    // If already expired (exact time check), don't show trial banner — the expired overlay handles it
+    if (now.isAfter(expiryDate)) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
@@ -116,14 +117,24 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
     final isTablet = width >= 750 && width < 1000;
     final height = isMobile ? 160.0 : (isTablet ? 120.0 : 110.0);
 
-    // We build 3 slides: Trial Info, Plus/Basic Plan, Premium Plan
+    // We build 4 slides: Trial Info, Basic Plan, Plus Plan, Premium Plan
     final List<Widget> slides = [
       _buildTrialSlide(daysLeft, isUrgent, isMobile),
       _buildPlanSlide(
-        title: 'Plus Plan',
-        price: plans != null && plans.isNotEmpty ? '₹${plans[0].price.toInt()}' : '₹999',
+        title: 'Basic Plan',
+        price: plans != null && plans.isNotEmpty ? '₹${plans[0].price.toInt()}' : '₹499',
         features: plans != null && plans.isNotEmpty 
             ? plans[0].features.take(3).join(' • ')
+            : 'Max 50 Products • 2 Staff Users • Standard Analytics',
+        gradientColors: [const Color(0xFF3B82F6), const Color(0xFF2563EB)], // Blue
+        icon: FontAwesomeIcons.store,
+        isMobile: isMobile,
+      ),
+      _buildPlanSlide(
+        title: 'Plus Plan',
+        price: plans != null && plans.length > 1 ? '₹${plans[1].price.toInt()}' : '₹999',
+        features: plans != null && plans.length > 1 
+            ? plans[1].features.take(3).join(' • ')
             : 'Max 100 Products • 5 Staff Users • Basic Analytics',
         gradientColors: [const Color(0xFF6366F1), const Color(0xFF4F46E5)],
         icon: FontAwesomeIcons.rocket,
@@ -131,9 +142,9 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
       ),
       _buildPlanSlide(
         title: 'Premium Plan',
-        price: plans != null && plans.length > 1 ? '₹${plans[1].price.toInt()}' : '₹1999',
-        features: plans != null && plans.length > 1
-            ? plans[1].features.take(3).join(' • ')
+        price: plans != null && plans.length > 2 ? '₹${plans[2].price.toInt()}' : '₹1999',
+        features: plans != null && plans.length > 2
+            ? plans[2].features.take(3).join(' • ')
             : 'Unlimited Products • Unlimited Staff • Multi-Store POS',
         gradientColors: [const Color(0xFFF59E0B), const Color(0xFFD97706)],
         icon: FontAwesomeIcons.crown,
@@ -384,6 +395,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
                 ),
+                const Spacer(),
                 Row(
                   children: [
                     Expanded(

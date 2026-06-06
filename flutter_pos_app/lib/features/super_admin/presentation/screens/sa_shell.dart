@@ -121,18 +121,22 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
     final isPinned = ref.watch(saSidebarPinnedProvider);
     final showPinnedSidebar = canPinSidebar && isPinned;
 
-        return BackButtonListener(
-            onBackButtonPressed: () async {
-              if (GoRouter.of(context).canPop()) {
-                return false; // Let GoRouter handle the pop
-              } else if (path != '/super-admin/dashboard') {
-                context.go('/super-admin/dashboard');
-                return true; // Handled
-              } else {
-                await _showSuperAdminExitDialog(context);
-                return true; // Handled, dialog will call SystemNavigator.pop if confirmed
-              }
-            },
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+
+        if (path == '/super-admin/dashboard') {
+          await _showSuperAdminExitDialog(context);
+          return;
+        }
+
+        if (GoRouter.of(context).canPop()) {
+          context.pop();
+        } else {
+          context.go('/super-admin/dashboard');
+        }
+      },
           child: Scaffold(
             key: saScaffoldNavigationKey,
             backgroundColor: AppColors.background,

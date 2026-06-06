@@ -108,13 +108,8 @@ class ApiResponseHandler {
 
     if (error is SocketException) {
       return ApiException(
-        'Unable to reach the backend at ${ApiEndpoints.baseUrl}.\n\n'
-        '• Start the Node server on your PC (port 5000).\n'
-        '• Phone and PC must be on the same Wi‑Fi.\n'
-        '• In Settings → Sync & data, set API URL to your PC\'s current IP '
-        '(run ipconfig on Windows or ifconfig / ip on Mac; it may differ from the default in the app).\n'
-        '• Allow port 5000 through the PC firewall.\n'
-        '• API base URL should be set to https://app-backend-je91.onrender.com/api.',
+        'You are currently offline or the backend is unreachable.\n'
+        'Orders will be saved locally and synced when you are back online.',
       );
     }
 
@@ -126,6 +121,23 @@ class ApiResponseHandler {
 
     if (error is HttpException) {
       return ApiException('Network error while trying to $action.');
+    }
+
+    // Catch network-related errors from custom domains (ClientException, HandshakeException, etc.)
+    final errStr = error.toString().toLowerCase();
+    if (errStr.contains('clientexception') ||
+        errStr.contains('handshakeexception') ||
+        errStr.contains('connection closed') ||
+        errStr.contains('connection refused') ||
+        errStr.contains('failed host lookup') ||
+        errStr.contains('no address associated') ||
+        errStr.contains('network is unreachable') ||
+        errStr.contains('connection reset') ||
+        errStr.contains('os error')) {
+      return ApiException(
+        'You are currently offline or the backend is unreachable.\n'
+        'Orders will be saved locally and synced when you are back online.',
+      );
     }
 
     return ApiException('Unexpected error while trying to $action: $error');

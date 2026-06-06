@@ -7,6 +7,7 @@ import 'package:retail_verse_pos/core/widgets/product_thumbnail.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/models/product_model.dart';
 import 'package:retail_verse_pos/data/models/order_model.dart';
+import 'package:retail_verse_pos/data/models/cart_model.dart';
 import 'package:retail_verse_pos/data/remote/payment_service.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../settings/providers/pos_settings_provider.dart';
@@ -387,18 +388,16 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
     String? razorpaySignature,
   }) async {
     try {
-      final orderItems = _cart.map((cartItem) {
-        return OrderItem(
+      final cartItems = _cart.map((cartItem) {
+        return CartItem(
           product: cartItem.product,
           quantity: cartItem.quantity,
-          price: cartItem.product.price,
-          total: cartItem.total,
         );
       }).toList();
 
-      final remote = ref.read(orderRemoteDataSourceProvider);
-      final order = await remote.createOrder(
-        items: orderItems,
+      final notifier = ref.read(orderCreationProvider.notifier);
+      final success = await notifier.createOrder(
+        cartItems: cartItems,
         paymentMethod: _selectedPaymentMethod,
         taxRate: 0.18,
         paymentStatus: paymentStatus,
@@ -408,27 +407,37 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         razorpaySignature: razorpaySignature,
       );
 
-      debugPrint('✅ Order created successfully: ${order.id}');
+      if (success) {
+        final createdOrder = ref.read(orderCreationProvider).createdOrder;
+        debugPrint('✅ Order created successfully: ${createdOrder?.id}');
 
-      _clearCart();
+        _clearCart();
 
-      if (mounted) {
-        setState(() => _isProcessingOrder = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: 12),
-                const Text('Order placed successfully!'),
-              ],
+        if (mounted) {
+          setState(() => _isProcessingOrder = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  const Text('Order placed successfully!'),
+                ],
+              ),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
             ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        context.go('/pos');
+          );
+          context.go('/pos');
+        }
+      } else {
+        final err = ref.read(orderCreationProvider).error ?? 'Unknown error';
+        debugPrint('❌ Failed to create order: $err');
+        _showError('Failed to place order: $err');
+        if (mounted) {
+          setState(() => _isProcessingOrder = false);
+        }
       }
     } catch (e) {
       debugPrint('❌ Failed to create order: $e');

@@ -556,7 +556,7 @@ class OrderDetailScreen extends ConsumerWidget {
         final errorMsg = ref.read(orderCreationProvider).error ?? 'Conversion failed';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $errorMsg'),
+            content: Text(errorMsg.toString().contains('SocketException') || errorMsg.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $errorMsg'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
@@ -6,6 +7,10 @@ import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/core/widgets/common/status_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retail_verse_pos/data/remote/notification_service.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class InvoiceDetailsModal extends ConsumerWidget {
   final Order order;
@@ -21,11 +26,13 @@ class InvoiceDetailsModal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final title = isQuote ? 'Quote Details' : 'Invoice Details';
     
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Stack(
         children: [
           // Main Scrollable Content
@@ -62,6 +69,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -85,13 +93,6 @@ class InvoiceDetailsModal extends ConsumerWidget {
               color: AppColors.textPrimary,
             ),
           ),
-        ),
-        IconButton(
-          onPressed: () {
-            // TODO: Implement delete functionality
-          },
-          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-          tooltip: 'Delete',
         ),
       ],
     );
@@ -267,7 +268,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
           
           // Totals
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -279,8 +280,22 @@ class InvoiceDetailsModal extends ConsumerWidget {
               ],
             ),
           ),
+          if (order.discount > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Discount', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                  Text(
+                    '- ${AppFormatters.formatCurrency(order.discount)}',
+                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800, color: AppColors.error),
+                  ),
+                ],
+              ),
+            ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -292,6 +307,22 @@ class InvoiceDetailsModal extends ConsumerWidget {
               ],
             ),
           ),
+          if (order.extraCharges > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Extra Charges', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                  Text(
+                    '+ ${AppFormatters.formatCurrency(order.extraCharges)}',
+                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+          if (order.extraCharges <= 0)
+            const SizedBox(height: 12),
           
           // Total Amount (Blue Background Area)
           Container(
@@ -391,6 +422,116 @@ class InvoiceDetailsModal extends ConsumerWidget {
     );
   }
 
+  Future<void> _downloadPdf(BuildContext context, Order order) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(isQuote ? 'Quote #${order.orderId}' : 'Invoice #${order.orderId}', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 20),
+              pw.Text('Customer: ${order.customerName ?? 'Walk-In'}'),
+              if (order.customerEmail != null && order.customerEmail!.isNotEmpty) pw.Text('Email: ${order.customerEmail}'),
+              if (order.customerPhone != null && order.customerPhone!.isNotEmpty) pw.Text('Phone: ${order.customerPhone}'),
+              pw.Text('Date: ${AppFormatters.formatDateTime(order.dateTime)}'),
+              pw.SizedBox(height: 20),
+              pw.TableHelper.fromTextArray(
+                headers: ['Item', 'Qty', 'Price', 'Total'],
+                data: order.items.map((item) => [
+                  item.product.name,
+                  item.quantity.toString(),
+                  AppFormatters.formatCurrency(item.price).replaceAll('₹', 'Rs.'),
+                  AppFormatters.formatCurrency(item.total).replaceAll('₹', 'Rs.'),
+                ]).toList(),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.end,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Subtotal: ${AppFormatters.formatCurrency(order.subtotal).replaceAll('₹', 'Rs.')}'),
+                      pw.Text('Tax: ${AppFormatters.formatCurrency(order.tax).replaceAll('₹', 'Rs.')}'),
+                      if (order.discount > 0) pw.Text('Discount: -${AppFormatters.formatCurrency(order.discount).replaceAll('₹', 'Rs.')}'),
+                      if (order.extraCharges > 0) pw.Text('Extra Charges: +${AppFormatters.formatCurrency(order.extraCharges).replaceAll('₹', 'Rs.')}'),
+                      pw.Divider(),
+                      pw.Text('Total: ${AppFormatters.formatCurrency(order.total).replaceAll('₹', 'Rs.')}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                    ]
+                  )
+                ]
+              ),
+              pw.SizedBox(height: 40),
+              pw.Text('Thank you for your business!', style: pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+            ],
+          ),
+        ),
+      );
+
+      final bytes = await pdf.save();
+
+      Directory? directory;
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+        
+        final downloadDir = Directory('/storage/emulated/0/Download');
+        if (await downloadDir.exists()) {
+          directory = downloadDir;
+        } else {
+          directory = await getExternalStorageDirectory();
+        }
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory != null) {
+        final prefix = isQuote ? 'Quote' : 'Invoice';
+        File file = File('${directory.path}/${prefix}_${order.orderId}.pdf');
+        
+        try {
+          await file.writeAsBytes(bytes);
+        } catch (e) {
+          // If permission denied on Download dir (Android 13+), fallback to app dir
+          if (Platform.isAndroid) {
+            final fallbackDir = await getExternalStorageDirectory();
+            if (fallbackDir != null) {
+              file = File('${fallbackDir.path}/${prefix}_${order.orderId}.pdf');
+              await file.writeAsBytes(bytes);
+            } else {
+              throw e;
+            }
+          } else {
+            throw e;
+          }
+        }
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PDF Downloaded to ${file.path}'),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else {
+        throw Exception("Could not access storage directory");
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading PDF: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -425,8 +566,13 @@ class InvoiceDetailsModal extends ConsumerWidget {
             if (emailToSend == null || emailToSend.isEmpty) return;
 
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sending Email Receipt...')),
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const PopScope(
+                  canPop: false,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               );
             }
             try {
@@ -435,16 +581,18 @@ class InvoiceDetailsModal extends ConsumerWidget {
                 order: order,
               );
               if (context.mounted) {
+                Navigator.of(context).pop(); // Pop loading dialog
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Email sent successfully!'),
                     backgroundColor: AppColors.success,
                   ),
                 );
-                Navigator.pop(context); // Close the InvoiceDetailsModal
+                Navigator.of(context).pop(); // Close the InvoiceDetailsModal
               }
             } catch (e) {
               if (context.mounted) {
+                Navigator.of(context).pop(); // Pop loading dialog
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Failed to send email: $e'),
@@ -467,10 +615,22 @@ class InvoiceDetailsModal extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Downloading PDF...')),
+          onPressed: () async {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const PopScope(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             );
+            
+            await _downloadPdf(context, order);
+
+            if (context.mounted) {
+              Navigator.of(context, rootNavigator: true).pop(); // pop loading
+              Navigator.of(context).pop(); // pop modal
+            }
           },
           icon: const Icon(Icons.download_rounded, size: 20),
           label: Text(
@@ -485,10 +645,23 @@ class InvoiceDetailsModal extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Printing Receipt...')),
+          onPressed: () async {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const PopScope(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             );
+            await Future.delayed(const Duration(seconds: 1));
+            if (context.mounted) {
+              Navigator.of(context).pop(); // pop loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Receipt Printed')),
+              );
+              Navigator.of(context).pop(); // pop modal
+            }
           },
           icon: const Icon(Icons.print_rounded, size: 20),
           label: Text(

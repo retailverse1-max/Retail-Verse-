@@ -104,6 +104,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                                 onPressed: () {
                                   showDialog(
                                     context: context,
+                                    barrierDismissible: false,
                                     builder: (context) => const CreateQuoteModal(),
                                   );
                                 },
@@ -185,7 +186,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                     SliverToBoxAdapter(
                       child: ordersAsync.when(
                         loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-                        error: (e, _) => Center(child: Text('Error: $e')),
+                        error: (e, _) => Center(child: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')),
                         data: (orders) => _buildStatsRow(orders),
                       ),
                     ),
@@ -480,11 +481,13 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
             if (selectedTab == 'Quotes') {
               showDialog(
                 context: context,
+                barrierDismissible: false,
                 builder: (_) => QuoteDetailsModal(quote: order),
               );
             } else {
               showDialog(
                 context: context,
+                barrierDismissible: false,
                 builder: (_) => InvoiceDetailsModal(
                   order: order,
                   isQuote: false,

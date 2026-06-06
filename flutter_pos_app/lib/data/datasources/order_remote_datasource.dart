@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -144,12 +145,25 @@ class OrderRemoteDataSource {
         error,
         action: 'create order',
       );
+    } on TimeoutException catch (error) {
+      throw ApiResponseHandler.errorFromException(
+        error,
+        action: 'create order',
+      );
     } on HttpException catch (error) {
       throw ApiResponseHandler.errorFromException(
         error,
         action: 'create order',
       );
     } on FormatException catch (error) {
+      throw ApiResponseHandler.errorFromException(
+        error,
+        action: 'create order',
+      );
+    } catch (error) {
+      // Catch-all for ClientException, HandshakeException, etc.
+      // (common with custom domains when offline)
+      if (error is ApiException) rethrow;
       throw ApiResponseHandler.errorFromException(
         error,
         action: 'create order',

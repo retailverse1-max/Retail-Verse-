@@ -18,12 +18,14 @@ class QuoteDetailsModal extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Stack(
         children: [
           // Main Scrollable Content
@@ -58,6 +60,7 @@ class QuoteDetailsModal extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -281,23 +284,82 @@ class QuoteDetailsModal extends ConsumerWidget {
           
           const Divider(height: 16, color: AppColors.border),
           
-          // Requested Price
+          // Subtotal
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'REQUESTED PRICE', 
+                  'SUBTOTAL', 
                   style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  AppFormatters.formatCurrency(quote.total),
-                  style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800, color: AppColors.primary),
+                  AppFormatters.formatCurrency(quote.subtotal),
+                  style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                 ),
               ],
             ),
           ),
+
+          // Discount
+          if (quote.discount > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'DISCOUNT', 
+                    style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    '- ${AppFormatters.formatCurrency(quote.discount)}',
+                    style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.error),
+                  ),
+                ],
+              ),
+            ),
+
+          // Tax
+          if (quote.tax > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'TAX', 
+                    style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    '+ ${AppFormatters.formatCurrency(quote.tax)}',
+                    style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+            
+          // Extra Charges
+          if (quote.extraCharges > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'EXTRA CHARGES', 
+                    style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    '+ ${AppFormatters.formatCurrency(quote.extraCharges)}',
+                    style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+            
+          const SizedBox(height: 12),
           
           // Final Accepted Price (Green Background Area)
           Container(
@@ -358,11 +420,23 @@ class QuoteDetailsModal extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Printing...')),
+                onPressed: () async {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => const PopScope(
+                      canPop: false,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   );
-                  context.pop(); // Close modal after printing
+                  await Future.delayed(const Duration(seconds: 1));
+                  if (context.mounted) {
+                    Navigator.of(context).pop(); // Pop loading dialog
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Printing completed')),
+                    );
+                    Navigator.of(context).pop(); // Close modal
+                  }
                 },
                 icon: const Icon(Icons.print_outlined, size: 20, color: AppColors.textPrimary),
                 label: Text(
@@ -382,11 +456,9 @@ class QuoteDetailsModal extends ConsumerWidget {
         
         // Edit Button (Added via request)
         FilledButton.icon(
-          onPressed: () async {
-            final result = await context.push<bool>('/quotes/edit/${quote.id}', extra: quote);
-            if (result == true && context.mounted) {
-              context.pop(); // Close modal after successful edit
-            }
+          onPressed: () {
+            Navigator.of(context).pop(); // Close modal immediately
+            context.push('/quotes/edit/${quote.id}', extra: quote);
           },
           icon: const Icon(Icons.edit_rounded, size: 20),
           label: Text(
@@ -403,7 +475,9 @@ class QuoteDetailsModal extends ConsumerWidget {
         
         // Pay Now
         FilledButton.icon(
-          onPressed: () => _showPaymentSelectionDialog(context, ref),
+          onPressed: () {
+            _showPaymentSelectionDialog(context, ref);
+          },
           icon: const Icon(Icons.payment_rounded, size: 20, color: Colors.black87),
           label: Text(
             'Pay Now',
@@ -419,7 +493,9 @@ class QuoteDetailsModal extends ConsumerWidget {
         
         // Convert to Invoice
         FilledButton.icon(
-          onPressed: () => _showPaymentSelectionDialog(context, ref),
+          onPressed: () {
+            _showPaymentSelectionDialog(context, ref);
+          },
           icon: const Icon(Icons.receipt_long_rounded, size: 20),
           label: Text(
             'Convert to Invoice',
@@ -501,7 +577,10 @@ class QuoteDetailsModal extends ConsumerWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      builder: (ctx) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
 
     // Using ref.read to access orderCreationProvider logic
@@ -522,7 +601,7 @@ class QuoteDetailsModal extends ConsumerWidget {
     );
 
     if (context.mounted) {
-      Navigator.pop(context); // Pop loading dialog
+      Navigator.of(context, rootNavigator: true).pop(); // Pop loading dialog
     }
 
     if (success) {
@@ -534,14 +613,14 @@ class QuoteDetailsModal extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        context.pop(); // Close QuoteDetailsModal and stay on Quotes screen
+        Navigator.of(context).pop(); // Close QuoteDetailsModal and stay on Quotes screen
       }
     } else {
       if (context.mounted) {
         final errorMsg = ref.read(orderCreationProvider).error ?? 'Conversion failed';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $errorMsg'),
+            content: Text(errorMsg.toString().contains('SocketException') || errorMsg.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $errorMsg'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),

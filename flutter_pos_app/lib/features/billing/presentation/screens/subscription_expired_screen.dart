@@ -7,12 +7,12 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 
 class SubscriptionExpiredScreen extends ConsumerWidget {
-  const SubscriptionExpiredScreen({Key? key}) : super(key: key);
+  const SubscriptionExpiredScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.black.withOpacity(0.6),
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 450),
@@ -46,13 +46,13 @@ class SubscriptionExpiredScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Trial Expired',
+                'Plan Expired',
                 style: AppTypography.headlineMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                'Your 14-day free trial has expired. To continue using the software, please purchase a subscription.',
+                'Your subscription plan has expired. To continue using the dashboard and POS, please upgrade your subscription.',
                 style: AppTypography.bodyLarge.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -61,10 +61,7 @@ class SubscriptionExpiredScreen extends ConsumerWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: Open Razorpay checkout or Billing page
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Contact support to upgrade your plan')),
-                    );
+                    context.push('/upgrade');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -74,7 +71,7 @@ class SubscriptionExpiredScreen extends ConsumerWidget {
                     ),
                   ),
                   child: Text(
-                    'Upgrade Plan',
+                    'See Plans',
                     style: AppTypography.labelLarge.copyWith(color: Colors.white),
                   ),
                 ),

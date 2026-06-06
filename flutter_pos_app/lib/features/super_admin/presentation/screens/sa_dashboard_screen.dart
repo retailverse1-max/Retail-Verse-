@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
@@ -222,94 +223,69 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(height: MediaQuery.viewPaddingOf(context).top + 20),
-                        isPhone 
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 12),
-                                        child: IconButton(
-                                          onPressed: () => Scaffold.of(context).openDrawer(),
-                                          icon: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                        SizedBox(height: MediaQuery.viewPaddingOf(context).top + 40),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              flex: 1,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 12),
+                                      child: InkWell(
+                                        onTap: () => Scaffold.of(context).openDrawer(),
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.12),
+                                            shape: BoxShape.circle,
                                           ),
+                                          child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
                                         ),
                                       ),
-                                    Expanded(
+                                    ),
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, letterSpacing: 2, fontWeight: FontWeight.w900)),
-                                          const SizedBox(height: 4),
-                                          Text('Super Admin', style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                          Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, fontWeight: FontWeight.w900)),
+                                          Text('Super Admin', style: AppTypography.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
                                         ],
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const BouncingScrollPhysics(),
-                                  child: Row(
-                                    children: [
-                                      _buildHeaderSearchBar(isPhone),
-                                      const SizedBox(width: 8),
-                                      _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
-                                      const SizedBox(width: 8),
-                                      _buildStorePickerButton(),
-                                    ],
                                   ),
-                                ),
-                              ],
-                            )
-                          : Row(
-                              children: [
-                                if (Scaffold.maybeOf(context)?.hasDrawer ?? false)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: IconButton(
-                                      onPressed: () => Scaffold.of(context).openDrawer(),
-                                      icon: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
-                                      ),
-                                    ),
-                                  ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, letterSpacing: 2, fontWeight: FontWeight.w900)),
-                                    const SizedBox(height: 4),
-                                    Text('Super Admin', style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                                  ],
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: _buildHeaderSearchBar(isPhone),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
-                                const SizedBox(width: 12),
-                                _buildStorePickerButton(),
-                              ],
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 16),
+                            Flexible(
+                              flex: 1,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Flexible(child: _buildHeaderSearchBar(isPhone)),
+                                  const SizedBox(width: 8),
+                                  _buildHeaderAction(Icons.notifications_none_rounded, () => _showNotificationSheet(), badgeCount: unreadCount),
+                                  if (!isPhone) ...[
+                                    const SizedBox(width: 8),
+                                    _buildStorePickerButton(),
+                                  ]
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (isPhone && !_isSearchExpanded) ...[
+                          const SizedBox(height: 24),
+                          _buildStorePickerButton(),
+                        ],
                         const SizedBox(height: 40),
                         Container(
                           padding: const EdgeInsets.all(24),
@@ -594,7 +570,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                     child: ModernLineChart(
                       title: 'Revenue Growth',
-                      value: '₹$totalSales',
+                      value: '₹${totalSales.toStringAsFixed(2)}',
                       change: '+12.5%',
                       data: totalSales == 0 ? List.generate(10, (index) => 0.0) : const [12000, 15000, 13000, 18000, 22000, 19000, 25000, 32000, 28000, 35000],
                     ),
@@ -636,19 +612,21 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
   Widget _buildHeaderAction(IconData icon, VoidCallback onTap, {int? badgeCount}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(23),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        width: 46,
+        height: 46,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
+          shape: BoxShape.circle,
         ),
         child: badgeCount != null && badgeCount > 0
             ? Badge(
                 label: Text(badgeCount.toString()),
-                child: Icon(icon, color: Colors.white, size: 22),
+                child: Icon(icon, color: Colors.white, size: 20),
               )
-            : Icon(icon, color: Colors.white, size: 22),
+            : Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
@@ -711,7 +689,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
       onTap: _showStorePicker,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
@@ -720,9 +698,9 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text('Client Store', style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+            const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Flexible(child: Text('Client Store', style: AppTypography.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),
@@ -1201,11 +1179,29 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
   List<Map<String, dynamic>> _all = [];
   String _search = '';
   bool _loading = true;
+  String? _error;
+  StreamSubscription? _connSub;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _connSub = Connectivity().onConnectivityChanged.listen((results) {
+      final List<ConnectivityResult> connectivityResults = 
+          results is List ? (results as List).cast<ConnectivityResult>() : [results as ConnectivityResult];
+          
+      final isOnline = !connectivityResults.contains(ConnectivityResult.none);
+      
+      if (isOnline && _error != null) {
+        _load();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -1218,7 +1214,12 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
@@ -1280,6 +1281,43 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
           Expanded(
             child: _loading 
               ? const Center(child: CircularProgressIndicator())
+              : _error != null 
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _error!.toLowerCase().contains('offline') || 
+                            _error!.toLowerCase().contains('unreachable') ||
+                            _error!.toLowerCase().contains('socketexception') ||
+                            _error!.toLowerCase().contains('failed host lookup')
+                                ? 'Internet connection is off. Cannot load client stores.'
+                                : 'Error loading stores',
+                            style: AppTypography.bodyLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _loading = true;
+                                _error = null;
+                              });
+                              _load();
+                            },
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Retry'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
               : filtered.isEmpty 
                 ? Center(child: Text('No results found', style: AppTypography.bodyLarge))
                 : ListView.builder(

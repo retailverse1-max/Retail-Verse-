@@ -30,91 +30,108 @@ class SupportScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Raise Ticket'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: subjectController,
-                  decoration: const InputDecoration(labelText: 'Subject'),
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Raise Ticket'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: subjectController,
+                      decoration: const InputDecoration(labelText: 'Subject'),
+                      enabled: !isSubmitting,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: messageController,
+                      decoration: const InputDecoration(labelText: 'Message'),
+                      maxLines: 4,
+                      enabled: !isSubmitting,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Your Name (optional)'),
+                      enabled: !isSubmitting,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(labelText: 'Email (optional)'),
+                      enabled: !isSubmitting,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: messageController,
-                  decoration: const InputDecoration(labelText: 'Message'),
-                  maxLines: 4,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Your Name (optional)'),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email (optional)'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            Consumer(
-              builder: (context, ref, _) {
-                return TextButton(
-                  onPressed: () async {
-                    final subject = subjectController.text.trim();
-                    final message = messageController.text.trim();
-                    final messenger = ScaffoldMessenger.of(context);
-                    final navigator = Navigator.of(dialogContext);
-                    
-                    if (subject.isEmpty || message.isEmpty) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Subject and message are required'),
-                          backgroundColor: AppColors.error,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                      return;
-                    }
-                    final token = ref.read(authProvider).token;
-                    if (token == null) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('User not authenticated'),
-                          backgroundColor: AppColors.error,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                      return;
-                    }
-                    final success = await ref.read(supportRepositoryProvider).createTicket(
-                      token: token,
-                      subject: subject,
-                      message: message,
-                      userName: nameController.text.trim().isEmpty ? null : nameController.text.trim(),
-                      email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
-                    );
-                    navigator.pop();
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(success ? 'Support ticket raised successfully!' : 'Failed to create support ticket.'),
-                        backgroundColor: success ? AppColors.success : AppColors.error,
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    return TextButton(
+                      onPressed: isSubmitting ? null : () async {
+                        final subject = subjectController.text.trim();
+                        final message = messageController.text.trim();
+                        final messenger = ScaffoldMessenger.of(context);
+                        
+                        if (subject.isEmpty || message.isEmpty) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Subject and message are required'),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        final token = ref.read(authProvider).token;
+                        if (token == null) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('User not authenticated'),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setState(() => isSubmitting = true);
+                        
+                        final success = await ref.read(supportRepositoryProvider).createTicket(
+                          token: token,
+                          subject: subject,
+                          message: message,
+                          userName: nameController.text.trim().isEmpty ? null : nameController.text.trim(),
+                          email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                        );
+                        
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                        
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(success ? 'Support ticket raised successfully!' : 'Failed to create support ticket.'),
+                            backgroundColor: success ? AppColors.success : AppColors.error,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: isSubmitting 
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Submit'),
                     );
                   },
-                  child: const Text('Submit'),
-                );
-              },
-            ),
-          ],
+                ),
+              ],
+            );
+          }
         );
       },
     );
@@ -122,20 +139,12 @@ class SupportScreen extends ConsumerWidget {
   void _showOpenChatDialog(BuildContext context, WidgetRef ref) {
     final user = ref.read(authProvider).user ?? {};
     final userRole = user['role']?.toString();
-    if (userRole == 'super_admin') {
-      GoRouter.of(context).push('/super-admin/support-chat', extra: {
-        'subject': 'User Support Request',
-        'message': '',
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Live support chat is currently exclusive to Super Admins. Please raise a ticket instead.'),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    final route = userRole == 'super_admin' ? '/super-admin/support-chat' : '/support-chat';
+    
+    GoRouter.of(context).push(route, extra: {
+      'subject': 'User Support Request',
+      'message': '',
+    });
   }
 
   SupportScreen({super.key});

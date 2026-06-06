@@ -141,7 +141,13 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
           Expanded(
             child: ref.watch(categoriesProvider).when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
+              error: (err, stack) {
+                final errStr = err.toString();
+                final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection') || errStr.contains('Failed host lookup')
+                    ? 'You are offline. Please check your internet connection.'
+                    : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+                return Center(child: Text('Error: $cleanErr'));
+              },
               data: (list) {
                 final filtered = list.where((c) => c.name.toLowerCase().contains(_query.toLowerCase())).toList();
 
@@ -151,17 +157,24 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                   children: [
                     _buildStatsSummary(list),
                     Expanded(
-                      child: GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                        physics: const BouncingScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: 0.9,
+                      child: RefreshIndicator(
+                        onRefresh: () async {
+                          ref.invalidate(categoriesProvider);
+                          // wait for a short duration to show the loader
+                          await Future.delayed(const Duration(milliseconds: 500));
+                        },
+                        child: GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 0.9,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) => _buildCategoryCard(filtered[index], canManage),
                         ),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) => _buildCategoryCard(filtered[index], canManage),
                       ),
                     ),
                   ],

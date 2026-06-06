@@ -71,7 +71,7 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
                   return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 if (snap.hasError) {
-                  return Center(child: Text('Error: ${snap.error}'));
+                  return Center(child: Text(snap.error.toString().contains('SocketException') || snap.error.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: ${snap.error}'));
                 }
 
                 List<Map<String, dynamic>> items = snap.data ?? [];

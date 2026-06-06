@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 import '../../../core/auth/login_role_parser.dart';
+import '../../../core/constants/api_endpoints.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../data/remote/auth_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/session_service.dart';
@@ -142,8 +146,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: null,
       );
 
+      // Save FCM token to backend for push notifications
+      _saveFcmToken(token);
+
       // Background sync categories
       ref.read(categoryRepositoryProvider).syncCategories();
+      ref.invalidate(categoriesProvider);
 
       return true;
     } catch (e) {
@@ -241,6 +249,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: userMap,
           error: null,
         );
+        // Save FCM token to backend for push notifications
+        _saveFcmToken(token);
         return true;
       }
       return false;
@@ -402,12 +412,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
         },
         isLoading: false,
       );
+      // Save FCM token to backend for push notifications
+      _saveFcmToken(response.token);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
       );
       rethrow;
+    }
+  }
+
+  /// Save FCM token to backend after login
+  Future<void> _saveFcmToken(String authToken) async {
+    try {
+      final fcmToken = await PushNotificationService.getToken();
+      if (fcmToken == null || fcmToken.isEmpty) return;
+
+      await http.post(
+        Uri.parse('${ApiEndpoints.baseUrl}/auth/update-fcm-token'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'fcmToken': fcmToken}),
+      );
+      debugPrint('[auth] FCM token saved to backend ✅');
+    } catch (e) {
+      debugPrint('[auth] Failed to save FCM token: $e');
     }
   }
 

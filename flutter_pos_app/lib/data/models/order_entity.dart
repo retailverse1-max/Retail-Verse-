@@ -5,6 +5,8 @@ class OrderEntity {
   final String id;
   final String? customerName;
   final double totalAmount;
+  final double discount;
+  final double tax;
   final String status;
   final DateTime createdAt;
   final bool synced;
@@ -13,6 +15,8 @@ class OrderEntity {
     required this.id,
     this.customerName,
     required this.totalAmount,
+    this.discount = 0.0,
+    this.tax = 0.0,
     required this.status,
     required this.createdAt,
     this.synced = false,
@@ -24,6 +28,8 @@ class OrderEntity {
       'id': id,
       'customer_name': customerName,
       'total_amount': totalAmount,
+      'discount': discount,
+      'tax': tax,
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'synced': synced ? 1 : 0,
@@ -36,6 +42,8 @@ class OrderEntity {
       id: map['id'] ?? '',
       customerName: map['customer_name'],
       totalAmount: (map['total_amount'] ?? 0).toDouble(),
+      discount: (map['discount'] ?? 0).toDouble(),
+      tax: (map['tax'] ?? 0).toDouble(),
       status: map['status'] ?? 'Pending',
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])
@@ -49,6 +57,8 @@ class OrderEntity {
     String? id,
     String? customerName,
     double? totalAmount,
+    double? discount,
+    double? tax,
     String? status,
     DateTime? createdAt,
     bool? synced,
@@ -57,6 +67,8 @@ class OrderEntity {
       id: id ?? this.id,
       customerName: customerName ?? this.customerName,
       totalAmount: totalAmount ?? this.totalAmount,
+      discount: discount ?? this.discount,
+      tax: tax ?? this.tax,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       synced: synced ?? this.synced,

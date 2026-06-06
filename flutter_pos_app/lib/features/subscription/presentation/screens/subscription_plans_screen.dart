@@ -114,11 +114,16 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
       if (verifyRes['success'] == true) {
         // Now hit the subscription upgrade endpoint
         final repo = ref.read(subscriptionRepositoryProvider);
-        await repo.upgradeSubscription(_selectedPlan!.id);
+        final newExpiry = await repo.upgradeSubscription(_selectedPlan!.id);
+        
+        // Calculate a new expiry date if backend didn't return one
+        final expiryToSave = newExpiry ?? 
+            DateTime.now().add(const Duration(days: 30)).toIso8601String();
         
         await ref.read(authProvider.notifier).updateLocalUser({
           'subscriptionPlan': _selectedPlan!.name,
           'subscriptionStatus': 'active',
+          'subscriptionExpiry': expiryToSave,
         });
         
         if (mounted) {
@@ -169,7 +174,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
       ),
       body: plansAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        error: (err, _) => Center(child: Text(err.toString().contains('SocketException') || err.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $err')),
         data: (plans) {
           return SafeArea(
             child: Center(
@@ -200,30 +205,35 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                     ),
                     const SizedBox(height: 48),
             
-                    // Plans Row (Horizontally Scrollable)
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        return SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          clipBehavior: Clip.none,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    // Plans Layout
+                    Builder(
+                      builder: (context) {
+                        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                        if (isLandscape) {
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            clipBehavior: Clip.none,
                             child: IntrinsicHeight(
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: plans.asMap().entries.map((entry) {
                                   final index = entry.key;
-                                  final plan = entry.value;
                                   return Padding(
                                     padding: EdgeInsets.only(right: index == plans.length - 1 ? 0 : 24.0),
-                                    child: _buildPlanCard(plan),
+                                    child: _buildPlanCard(entry.value),
                                   );
                                 }).toList(),
                               ),
                             ),
-                          ),
+                          );
+                        }
+                        return Column(
+                          children: plans.map((plan) => Padding(
+                            padding: const EdgeInsets.only(bottom: 24.0),
+                            child: _buildPlanCard(plan),
+                          )).toList(),
                         );
                       },
                     ),
@@ -329,7 +339,6 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                     ],
                   ),
                 )),
-            const Spacer(),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,

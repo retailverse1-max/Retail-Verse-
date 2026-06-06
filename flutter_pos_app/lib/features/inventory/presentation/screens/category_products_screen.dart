@@ -28,6 +28,15 @@ class _CategoryProductsScreenState
     extends ConsumerState<CategoryProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _isSnackBarActive = false;
+
+  void _showLocalSnackBar(SnackBar snackBar) {
+    if (!mounted) return;
+    setState(() => _isSnackBarActive = true);
+    ScaffoldMessenger.of(context).showSnackBar(snackBar).closed.then((_) {
+      if (mounted) setState(() => _isSnackBarActive = false);
+    });
+  }
 
   @override
   void dispose() {
@@ -64,12 +73,28 @@ class _CategoryProductsScreenState
       );
       return;
     }
-    await context.push(
+    final result = await context.push(
       '/inventory/${widget.category.id}/add-product',
       extra: widget.category,
     );
     if (mounted) {
       ref.invalidate(categoryProductsProvider(widget.category.name));
+      if (result != null) {
+        _showLocalSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Product saved successfully!', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
     }
   }
 
@@ -503,7 +528,9 @@ class _CategoryProductsScreenState
     final isTablet = screenWidth >= 600 && screenWidth < 900;
     final isDesktop = screenWidth >= 900;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_isSnackBarActive,
+      child: Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
         elevation: 0,
@@ -751,6 +778,7 @@ class _CategoryProductsScreenState
           );
         },
       ),
+    ),
     );
   }
 

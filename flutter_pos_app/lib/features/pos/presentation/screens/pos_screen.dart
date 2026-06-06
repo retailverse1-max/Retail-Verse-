@@ -48,30 +48,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  // Intercept back navigation to confirm exit
-  Future<bool> _onWillPop() async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Leave App'),
-        content: const Text('Do you want to leave the app?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(c).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(c).pop(true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-    if (shouldExit == true) {
-      SystemNavigator.pop();
-    }
-    return false; // Prevent default pop
-  }
+
 
 
   Future<void> _handleRefresh() async {
@@ -160,8 +137,13 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (bool _, dynamic __) {
-        _onWillPop();
+      onPopInvokedWithResult: (bool didPop, dynamic _) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/dashboard');
+        }
       },
       child: Scaffold(
       key: _posScaffoldKey,
@@ -585,7 +567,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     final productsAsync = ref.watch(productsProvider);
     return productsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')),
       data: (products) {
         final filter = GoRouterState.of(context).uri.queryParameters['filter'];
         
@@ -816,19 +798,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                 Bounceable(
                                   onTap: () {
                                     if (isOutOfStock) {
-                                      ref.read(notificationProvider.notifier).requestRestock(product.id, product.name).then((success) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(success
-                                                  ? 'Manager notified about ${product.name} stock.'
-                                                  : 'Failed to notify manager.'),
-                                              backgroundColor: success ? AppColors.primary : AppColors.error,
-                                              behavior: SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        }
-                                      });
+                                      ref.read(notificationProvider.notifier).requestRestock(product.id, product.name, isFromPos: true);
                                     } else {
                                       ref.read(cartProvider.notifier).addItem(product);
                                       final isTabletW = MediaQuery.of(context).size.width >= 900;

@@ -20,7 +20,9 @@ class QuoteEditScreen extends ConsumerStatefulWidget {
 class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
   late List<OrderItem> _items;
   double _discount = 0.0;
+  double _extraCharges = 0.0;
   final TextEditingController _discountController = TextEditingController();
+  final TextEditingController _extraChargesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String _productSearchQuery = '';
 
@@ -29,12 +31,15 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
     super.initState();
     _items = List<OrderItem>.from(widget.order.items);
     _discount = widget.order.discount;
+    _extraCharges = widget.order.extraCharges;
     _discountController.text = _discount > 0 ? _discount.toStringAsFixed(2) : '';
+    _extraChargesController.text = _extraCharges > 0 ? _extraCharges.toStringAsFixed(2) : '';
   }
 
   @override
   void dispose() {
     _discountController.dispose();
+    _extraChargesController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -48,7 +53,7 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
   }
 
   double get _total {
-    final t = _subtotal + _tax - _discount;
+    final t = _subtotal + _tax + _extraCharges - _discount;
     return t < 0 ? 0.0 : t;
   }
 
@@ -115,26 +120,36 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      builder: (ctx) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
 
-    final success = await ref.read(orderCreationProvider.notifier).updateOrder(
-      orderId: widget.order.id,
-      items: _items,
-      status: 'pending',
-      paymentMethod: widget.order.paymentMethod,
-      paymentStatus: 'pending',
-      converted: false,
-      customerName: widget.order.customerName,
-      customerPhone: widget.order.customerPhone,
-      customerEmail: widget.order.customerEmail,
-      customerAddress: widget.order.customerAddress,
-      orderNotes: widget.order.notes,
-      discount: _discount,
-    );
+    // Adding a small delay of 0.5 seconds as requested
+    final results = await Future.wait([
+      ref.read(orderCreationProvider.notifier).updateOrder(
+        orderId: widget.order.id,
+        items: _items,
+        status: 'pending',
+        paymentMethod: widget.order.paymentMethod,
+        paymentStatus: 'pending',
+        converted: false,
+        customerName: widget.order.customerName,
+        customerPhone: widget.order.customerPhone,
+        customerEmail: widget.order.customerEmail,
+        customerAddress: widget.order.customerAddress,
+        orderNotes: widget.order.notes,
+        discount: _discount,
+        extraCharges: _extraCharges,
+      ),
+      Future.delayed(const Duration(milliseconds: 500)),
+    ]);
+    
+    final success = results[0] as bool;
 
     if (context.mounted) {
-      Navigator.pop(context); // Pop loading dialog
+      Navigator.of(context, rootNavigator: true).pop(); // Pop loading dialog
     }
 
     if (success) {
@@ -153,7 +168,7 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
         final errorMsg = ref.read(orderCreationProvider).error ?? 'Failed to update quote';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $errorMsg'),
+            content: Text(errorMsg.toString().contains('SocketException') || errorMsg.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $errorMsg'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -471,6 +486,30 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
           ),
           const SizedBox(height: 12),
           TextField(
+            controller: _extraChargesController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (v) {
+              setState(() {
+                _extraCharges = double.tryParse(v) ?? 0.0;
+              });
+            },
+            decoration: InputDecoration(
+              labelText: 'Extra Charges (Rs.)',
+              hintText: 'e.g. 50',
+              prefixText: '₹ ',
+              labelStyle: TextStyle(color: AppColors.primary),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.cardBorder, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
             controller: _discountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (v) {
@@ -497,6 +536,10 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
           _buildRow('Subtotal', AppFormatters.formatCurrency(_subtotal)),
           const SizedBox(height: 6),
           _buildRow('Tax (18%)', AppFormatters.formatCurrency(_tax)),
+          if (_extraCharges > 0) ...[
+            const SizedBox(height: 6),
+            _buildRow('Extra Charges', '+ ${AppFormatters.formatCurrency(_extraCharges)}'),
+          ],
           if (_discount > 0) ...[
             const SizedBox(height: 6),
             _buildRow('Discount', '- ${AppFormatters.formatCurrency(_discount)}', isNegative: true),

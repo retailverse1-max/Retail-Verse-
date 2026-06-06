@@ -18,11 +18,13 @@ class SyncService {
   final SyncQueueLocalService _syncQueueService;
   final OrderLocalService _orderLocalService;
   final http.Client _httpClient;
+  final VoidCallback? onSyncComplete;
 
   SyncService({
     required SyncQueueLocalService syncQueueService,
     required OrderLocalService orderLocalService,
     http.Client? httpClient,
+    this.onSyncComplete,
   }) : _syncQueueService = syncQueueService,
        _orderLocalService = orderLocalService,
        _httpClient = httpClient ?? http.Client();
@@ -45,9 +47,15 @@ class SyncService {
       }
 
       debugPrint('Processing ${pendingItems.length} sync queue items');
+      bool anySynced = false;
 
       for (final item in pendingItems) {
-        await _processSingleItem(item);
+        final success = await _processSingleItem(item);
+        if (success) anySynced = true;
+      }
+      
+      if (anySynced) {
+        onSyncComplete?.call();
       }
     } catch (e) {
       debugPrint('Error processing sync queue: $e');
@@ -55,7 +63,7 @@ class SyncService {
   }
 
   /// Process a single sync queue item
-  Future<void> _processSingleItem(SyncQueueEntity item) async {
+  Future<bool> _processSingleItem(SyncQueueEntity item) async {
     try {
       // Mark as syncing
       await _syncQueueService.markAsSyncing(item.id);
@@ -87,9 +95,11 @@ class SyncService {
           'Failed to sync item: ${item.id}, retry count: ${item.retryCount + 1}',
         );
       }
+      return success;
     } catch (e) {
       debugPrint('Error processing item ${item.id}: $e');
       await _syncQueueService.incrementRetry(item.id);
+      return false;
     }
   }
 

@@ -5,7 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
   static Database? _database;
-  static const int _dbVersion = 2; // Incremented for categories table
+  static const int _dbVersion = 5; // Incremented for discount and tax columns
 
   static Future<Database> get database async {
     if (_database != null) return _database!;
@@ -59,6 +59,29 @@ class AppDatabase {
         rethrow;
       }
     }
+
+    if (oldVersion < 4) {
+      // Add description and is_active columns to products table
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN description TEXT;');
+        await db.execute('ALTER TABLE products ADD COLUMN is_active INTEGER DEFAULT 1;');
+        debugPrint('✅ Products table columns added successfully');
+      } catch (e) {
+        debugPrint('❌ Error updating products table: $e');
+        // ignore if columns already exist
+      }
+    }
+
+    if (oldVersion < 5) {
+      // Add discount and tax columns to orders table
+      try {
+        await db.execute('ALTER TABLE orders ADD COLUMN discount REAL DEFAULT 0.0;');
+        await db.execute('ALTER TABLE orders ADD COLUMN tax REAL DEFAULT 0.0;');
+        debugPrint('✅ Orders table columns (discount, tax) added successfully');
+      } catch (e) {
+        debugPrint('❌ Error updating orders table: $e');
+      }
+    }
   }
 
   /// Create database tables
@@ -77,6 +100,8 @@ class AppDatabase {
         unit TEXT NOT NULL,
         barcode TEXT,
         image_url TEXT,
+        description TEXT,
+        is_active INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         is_deleted INTEGER DEFAULT 0
@@ -97,12 +122,14 @@ class AppDatabase {
       )
     ''');
 
-    // ORDERS TABLE
+    // ORDERS TABLE - matches OrderEntity fields
     await db.execute('''
       CREATE TABLE orders(
         id TEXT PRIMARY KEY,
         customer_name TEXT,
         total_amount REAL NOT NULL,
+        discount REAL DEFAULT 0.0,
+        tax REAL DEFAULT 0.0,
         status TEXT NOT NULL,
         created_at TEXT NOT NULL,
         synced INTEGER DEFAULT 0

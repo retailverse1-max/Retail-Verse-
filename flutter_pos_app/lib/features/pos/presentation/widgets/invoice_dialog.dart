@@ -363,11 +363,12 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
           Container(
             constraints: const BoxConstraints(maxWidth: 450),
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Top Success Header
-                const SizedBox(height: 8),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top Success Header
+                  const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -392,20 +393,19 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                 const SizedBox(height: 16),
 
                 // Receipt Ticket Paper
-                Flexible(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border.withOpacity(0.8)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border.withOpacity(0.8)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                             // Store & Receipt Header Info
                             const Text(
                               'RETAIL VERSE STORE',
@@ -603,7 +603,6 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 20),
 
                 // Invoice Options label
@@ -667,6 +666,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
               ],
             ),
           ),
+        ),
 
           // Loading/Action Overlay during print, SMS, email sending simulation
           if (_isActionRunning)

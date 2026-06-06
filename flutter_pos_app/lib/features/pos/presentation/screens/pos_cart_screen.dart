@@ -310,7 +310,11 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
 
         _razorpay.open(options);
       } catch (e) {
-        _showError('Checkout initiation failed: $e');
+        final errorStr = e.toString();
+        final errorMsg = errorStr.contains('ApiException:') 
+            ? errorStr.split('ApiException:').last.trim() 
+            : errorStr;
+        _showError('Checkout initiation failed:\n$errorMsg');
         setState(() => _isProcessingRazorpay = false);
       }
       return;
@@ -382,9 +386,14 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
       final createdOrder = ref.read(orderCreationProvider).createdOrder;
       if (createdOrder != null) {
         if (createdOrder.customerPhone != null && createdOrder.customerPhone!.isNotEmpty) {
-                // Auto-send SMS invoice after order is placed
-                await _notificationService.sendSmsInvoice(phone: createdOrder.customerPhone!, order: createdOrder);
-              }
+          // Auto-send SMS invoice after order is placed
+          try {
+            await _notificationService.sendSmsInvoice(phone: createdOrder.customerPhone!, order: createdOrder);
+          } catch (e) {
+            debugPrint('Could not send SMS invoice: $e');
+            // Do not block the UI if SMS fails (e.g. offline)
+          }
+        }
               await showDialog<void>(
           context: context,
           barrierColor: Colors.black.withOpacity(0.8),

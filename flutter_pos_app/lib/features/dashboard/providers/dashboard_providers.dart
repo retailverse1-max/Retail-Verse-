@@ -14,8 +14,11 @@ import '../../../data/models/product_model.dart';
 import '../../../data/models/recent_activity_model.dart';
 import '../../../data/models/customer_model.dart';
 import '../../../data/repositories/dashboard_repository.dart';
+import '../../../data/local/product_local_service.dart';
+import '../../../data/local/sync_queue_local_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../pos/providers/product_providers.dart';
+import '../../pos/providers/order_providers.dart';
 
 final httpClientProvider = Provider<http.Client>((ref) {
   return http.Client();
@@ -94,11 +97,24 @@ final dashboardProductsProvider = FutureProvider<List<Product>>((ref) async {
   }
 
   try {
+    final pendingCount = await SyncQueueLocalService().getPendingCount();
+    if (pendingCount > 0) {
+      final localProducts = await ProductLocalService().getAllProducts();
+      if (localProducts.isNotEmpty) return localProducts;
+    }
+  } catch (_) {}
+
+  try {
     return await repository.getProducts(token);
   } catch (e) {
     if (kDebugMode) {
-      debugPrint('dashboardProductsProvider: empty after error: $e');
+      debugPrint('dashboardProductsProvider: fallback to local DB due to error: $e');
     }
+    try {
+      final localService = ProductLocalService();
+      final localProducts = await localService.getAllProducts();
+      if (localProducts.isNotEmpty) return localProducts;
+    } catch (_) {}
     return [];
   }
 });
@@ -129,13 +145,38 @@ final dashboardOrdersProvider =
       }
 
       final repository = ref.watch(dashboardRepositoryProvider);
+      List<DashboardOrderSummaryModel> remoteOrders = [];
       try {
-        return await repository.getOrders(token);
+        remoteOrders = await repository.getOrders(token);
       } catch (e) {
         if (kDebugMode) {
           debugPrint('dashboardOrdersProvider: empty after error: $e');
         }
-        return [];
+      }
+      
+      try {
+        // We import 'package:retail_verse_pos/features/pos/providers/order_providers.dart' at the top? Wait, orderLocalServiceProvider might need import
+        final localService = ref.watch(orderLocalServiceProvider);
+        final unsyncedEntities = await localService.getUnsyncedOrders();
+        
+        final localOrders = unsyncedEntities.map((entity) => DashboardOrderSummaryModel(
+          id: entity.id,
+          orderNumber: entity.id.length > 8 ? entity.id.substring(0, 8) : entity.id,
+          createdByName: entity.customerName ?? 'Walk-In Customer',
+          total: entity.totalAmount,
+          paymentMethod: 'cash', // OrderEntity doesn't store this currently
+          status: entity.status,
+          createdAt: entity.createdAt,
+          items: [], // Empty since we just need summary
+        )).toList();
+
+        final localIds = localOrders.map((o) => o.id).toSet();
+        remoteOrders.removeWhere((o) => localIds.contains(o.id));
+        
+        return [...localOrders, ...remoteOrders]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } catch (e) {
+        debugPrint('dashboardOrdersProvider: failed to fetch local orders: $e');
+        return remoteOrders;
       }
     });
 

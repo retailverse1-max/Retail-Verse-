@@ -75,31 +75,35 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: IconButton(
-                        onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBorder.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(12),
+              Expanded(
+                child: Row(
+                  children: [
+                    if (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: IconButton(
+                          onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBorder.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                           ),
-                          child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
                         ),
                       ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Subscriptions', style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                          Text('Manage revenue and client access', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
                     ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Subscriptions', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
-                      Text('Manage revenue and client access', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
               IconButton(
                 onPressed: () {}, // Future: Open detailed analytics

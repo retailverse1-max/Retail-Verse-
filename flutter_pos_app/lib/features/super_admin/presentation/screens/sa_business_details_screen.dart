@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
@@ -34,7 +35,12 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('Client Insight', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+        title: Text('Client Insight', style: GoogleFonts.outfit(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          letterSpacing: -0.5,
+        )),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => context.pop(),
@@ -47,7 +53,20 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            final errStr = snapshot.error.toString().toLowerCase();
+            final isOffline = errStr.contains('socketexception') || 
+                              errStr.contains('failed host lookup') || 
+                              errStr.contains('offline') || 
+                              errStr.contains('unreachable');
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  isOffline ? 'You are offline. Please check your internet connection to view client details.' : 'Error: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
 
           final data = snapshot.data!;
@@ -174,8 +193,16 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
 
   Widget _buildSubscriptionCard(Map<String, dynamic> data, DateTime? expiry) {
     final plan = data['subscriptionPlan']?.toString().toUpperCase() ?? 'FREE';
-    final status = data['subscriptionStatus']?.toString().toUpperCase() ?? 'ACTIVE';
     final isPro = plan == 'PRO';
+
+    bool isExpired = false;
+    int daysAgo = 0;
+    if (expiry != null) {
+      isExpired = DateTime.now().isAfter(expiry);
+      if (isExpired) {
+        daysAgo = DateTime.now().difference(expiry).inDays;
+      }
+    }
 
     return Container(
       width: double.infinity,
@@ -211,14 +238,27 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Text(
-            status == 'ACTIVE' ? 'Status: Active' : 'Status: Expired',
-            style: AppTypography.headlineSmall.copyWith(color: isPro ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w900),
+          Row(
+            children: [
+              Text(
+                'Status: ',
+                style: AppTypography.headlineSmall.copyWith(color: isPro ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w900),
+              ),
+              Text(
+                isExpired ? 'Expired' : 'Active',
+                style: AppTypography.headlineSmall.copyWith(
+                  color: isExpired ? Colors.redAccent : (isPro ? Colors.greenAccent : Colors.green), 
+                  fontWeight: FontWeight.w900
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
             expiry != null 
-              ? 'Ends on: ${DateFormat('dd MMM yyyy').format(expiry)}' 
+              ? (isExpired 
+                  ? 'Expired on: ${DateFormat('dd MMM yyyy').format(expiry)} ($daysAgo days ago)'
+                  : 'Ends on: ${DateFormat('dd MMM yyyy').format(expiry)}')
               : 'Ends on: No Expiry Set',
             style: AppTypography.bodyMedium.copyWith(color: isPro ? Colors.white70 : AppColors.textSecondary),
           ),

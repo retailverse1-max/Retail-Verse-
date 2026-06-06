@@ -818,29 +818,7 @@ class SettingsPageContent extends ConsumerWidget {
                     );
                   },
                 ),
-                const SettingsDividerInset(),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final ok = ref.watch(settingsBackendReachableProvider);
-                    return SettingsValueTile(
-                      icon: Icons.dns_rounded,
-                      title: 'Backend connection',
-                      subtitle: ApiEndpoints.baseUrl,
-                      valueLabel: ok.when(
-                        data: (v) => v ? 'Online' : 'Unreachable',
-                        loading: () => 'Checking…',
-                        error: (_, __) => 'Error',
-                      ),
-                      onTap: () =>
-                          ref.invalidate(settingsBackendReachableProvider),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: SettingsApiNetworkSection(),
-                ),
+
               ],
             ),
           ),
@@ -1360,6 +1338,7 @@ void _legalSheet(BuildContext context, String title, String body) {
           ),
           const SizedBox(height: 12),
           Text(body, style: AppTypography.bodyMedium),
+          const SizedBox(height: 80),
         ],
       ),
     ),

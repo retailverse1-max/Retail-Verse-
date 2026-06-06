@@ -38,6 +38,7 @@ class OrderRepository {
     String paymentMethod = 'Cash',
     double discount = 0.0,
     double taxRate = 0.18, // 18% GST default
+    String status = 'Completed', // Added status parameter
   }) async {
     if (cartItems.isEmpty) {
       throw Exception('Cart is empty');
@@ -47,18 +48,23 @@ class OrderRepository {
 
     return await db.transaction<OrderEntity>((txn) async {
       try {
-        // Step 1: Validate and check stock for all products
+        // Step 1: Validate and check stock for all products (Skip stock check for quotes)
         for (final cartItem in cartItems) {
-          final product = await _getProductById(txn, cartItem.product.id);
+          final productMap = await _getProductById(txn, cartItem.product.id);
 
-          if (product == null) {
-            throw Exception('Product not found: ${cartItem.product.name}');
-          }
-
-          if (product.stock < cartItem.quantity) {
-            throw Exception(
-              'Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${cartItem.quantity}',
-            );
+          if (productMap == null) {
+            // Product not in local DB (e.g. added offline but not fully synced, or fetched from API)
+            // Insert it into local DB to allow offline order to proceed
+            await txn.insert('products', cartItem.product.toMap());
+          } else {
+            if (status.toLowerCase() != 'pending') {
+              final int stock = productMap['stock'] as int? ?? 0;
+              if (stock < cartItem.quantity) {
+                throw Exception(
+                  'Insufficient stock for ${cartItem.product.name}. Available: $stock, Requested: ${cartItem.quantity}',
+                );
+              }
+            }
           }
         }
 
@@ -76,7 +82,9 @@ class OrderRepository {
           id: orderId,
           customerName: customerName,
           totalAmount: totalAmount,
-          status: 'Completed',
+          discount: discount,
+          tax: taxAmount,
+          status: status,
           createdAt: DateTime.now(),
           synced: false, // Mark as not synced initially
         );
@@ -95,24 +103,25 @@ class OrderRepository {
             price: cartItem.product.price,
           );
           orderItems.add(orderItem);
+          await txn.insert('order_items', orderItem.toMap());
         }
 
-        // Batch insert order items
-        final batch = txn.batch();
-        for (final item in orderItems) {
-          batch.insert('order_items', item.toMap());
-        }
-        await batch.commit(noResult: true);
-
-        // Step 6: Reduce product stock
-        for (final cartItem in cartItems) {
-          final newStock = cartItem.product.stock - cartItem.quantity;
-          await txn.update(
-            'products',
-            {'stock': newStock, 'updated_at': DateTime.now().toIso8601String()},
-            where: 'id = ?',
-            whereArgs: [cartItem.product.id],
-          );
+        // Step 6: Deduct stock (Only if not a quote)
+        if (status.toLowerCase() != 'pending') {
+          for (final cartItem in cartItems) {
+            final productMap = await _getProductById(txn, cartItem.product.id);
+            if (productMap != null) {
+              final int stock = productMap['stock'] as int? ?? 0;
+              final int newStock = stock - cartItem.quantity;
+              
+              await txn.update(
+                'products',
+                {'stock': newStock, 'updated_at': DateTime.now().toIso8601String()},
+                where: 'id = ?',
+                whereArgs: [cartItem.product.id],
+              );
+            }
+          }
         }
 
         // Step 7: Create sync queue entry
