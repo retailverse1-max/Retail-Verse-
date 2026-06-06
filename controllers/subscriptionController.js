@@ -80,7 +80,7 @@ exports.upgradeSubscription = async (req, res) => {
     }
 
     // Update business
-    const business = await Business.findOne({ clientId });
+    const business = await Business.findById(clientId);
     if (!business) {
       return res.status(404).json({ message: "Business not found" });
     }
