@@ -34,7 +34,7 @@ try {
 const sendPushNotificationToTokens = async (tokens, title, body, data = {}) => {
   if (!isInitialized || !tokens || tokens.length === 0) return;
 
-  const validTokens = tokens.filter((t) => t && t.trim() !== "");
+  const validTokens = [...new Set(tokens.filter((t) => t && t.trim() !== ""))];
   if (validTokens.length === 0) return;
 
   const message = {

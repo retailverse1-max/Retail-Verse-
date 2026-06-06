@@ -31,6 +31,7 @@ const createAndSendNotification = async ({
       type,
       targetRoles: finalRoles,
       clientId,
+      data,
     });
 
     // 3. Find Users to send Push Notifications
