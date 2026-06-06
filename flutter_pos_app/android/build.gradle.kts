@@ -21,6 +21,20 @@ subprojects {
         options.compilerArgs.add("-Xlint:-options")
         options.compilerArgs.add("-Xlint:-deprecation")
     }
+    afterEvaluate {
+        project.extensions.findByType<com.android.build.gradle.LibraryExtension>()?.let { ext ->
+            if (ext.namespace == null) {
+                val manifest = project.file("src/main/AndroidManifest.xml")
+                if (manifest.exists()) {
+                    val content = manifest.readText()
+                    val match = java.util.regex.Pattern.compile("package=\"([^\"]+)\"").matcher(content)
+                    if (match.find()) {
+                        ext.namespace = match.group(1)
+                    }
+                }
+            }
+        }
+    }
 }
 
 val newBuildDir: Directory =

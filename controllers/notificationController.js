@@ -227,7 +227,7 @@ const requestRestock = async (req, res) => {
       title,
       message,
       type: "low_stock",
-      targetRoles: ["inventory"],
+      targetRoles: ["inventory", "super_admin"],
       clientId,
       data: { productId }
     });
