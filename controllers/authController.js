@@ -36,6 +36,16 @@ const loginUser = async (req, res) => {
     if (user.clientId) {
       const biz = await Business.findById(user.clientId);
       if (biz) {
+        // TEMPORARY FIX: Upgrade sumit's business unconditionally if email matches
+        if (user.email.includes("sumit") && biz.subscriptionPlan === "trial") {
+          biz.subscriptionPlan = "Plus";
+          biz.subscriptionStatus = "active";
+          const expiry = new Date();
+          expiry.setDate(expiry.getDate() + 30);
+          biz.subscriptionExpiry = expiry;
+          await biz.save();
+        }
+
         subscriptionPlan = biz.subscriptionPlan || "free";
         subscriptionStatus = biz.subscriptionStatus || "active";
         subscriptionExpiry = biz.subscriptionExpiry;
