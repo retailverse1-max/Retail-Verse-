@@ -20,6 +20,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
   late TabController _tabC;
   String _q = '';
   final _searchC = TextEditingController();
+  String _selectedPlanCode = 'premium';
 
   @override
   void initState() {
@@ -432,6 +433,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
     final code = p['code']?.toString() ?? 'PLAN';
     final price = p['price']?.toString() ?? '0';
     final period = p['billingPeriod']?.toString() ?? 'month';
+    final isSelected = _selectedPlanCode == code;
     final isPremium = code.toLowerCase().contains('premium') || code.toLowerCase().contains('enterprise');
     final features = (p['features'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [
       'Advanced Inventory Control',
@@ -440,16 +442,24 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
       'Priority Support Access'
     ];
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(40),
-        boxShadow: AppColors.shadowSubtle,
-        border: Border.all(color: isPremium ? AppColors.primary.withOpacity(0.5) : AppColors.cardBorder, width: isPremium ? 2 : 1),
+        boxShadow: isSelected 
+            ? [BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 8))] 
+            : AppColors.shadowSubtle,
+        border: Border.all(color: isSelected ? AppColors.primary.withOpacity(0.8) : AppColors.cardBorder, width: isSelected ? 2 : 1),
       ),
       child: InkWell(
-        onTap: () {}, // Action for editing/viewing plan
+        onTap: () {
+          setState(() {
+            _selectedPlanCode = code;
+          });
+        },
         borderRadius: BorderRadius.circular(40),
         child: Stack(
           children: [
@@ -458,9 +468,9 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                 right: 24,
                 top: 24,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
-                  child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+                  child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
               ),
             Padding(
@@ -470,13 +480,17 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                 children: [
                   Row(
                     children: [
-                      Container(
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-                        child: Icon(isPremium ? Icons.auto_awesome_rounded : Icons.star_outline_rounded, color: AppColors.primary, size: 24),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.grey.withOpacity(0.05), 
+                          borderRadius: BorderRadius.circular(16)
+                        ),
+                        child: Icon(isPremium ? Icons.auto_awesome_rounded : Icons.star_outline_rounded, color: isSelected ? AppColors.primary : Colors.grey, size: 24),
                       ),
                       const SizedBox(width: 16),
-                      Text(code.toUpperCase(), style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      Text(code.toUpperCase(), style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -484,9 +498,9 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text('₹$price', style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-                      const SizedBox(width: 8),
-                      Text('/ $period', style: AppTypography.titleMedium.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                      Text('₹$price', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      const SizedBox(width: 6),
+                      Text('/ $period', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -494,32 +508,53 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                   const SizedBox(height: 24),
                   ...features.map((f) => _buildFeatureRow(f)),
                   const SizedBox(height: 32),
-                  SizedBox(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                                const SizedBox(width: 12),
-                                Text('${code.toUpperCase()} plan catalog updated successfully!'),
-                              ],
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      '${code.toUpperCase()} plan catalog updated successfully!',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
                             ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          child: Center(
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 300),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                fontFamily: AppTypography.titleMedium.fontFamily,
+                                color: isSelected ? Colors.white : AppColors.primary,
+                              ),
+                              child: const Text('Update Plan Catalog'),
+                            ),
                           ),
-                        );
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: isPremium ? AppColors.primary : const Color(0xFFF1F5F9),
-                        foregroundColor: isPremium ? Colors.white : AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        elevation: 0,
+                        ),
                       ),
-                      child: const Text('Update Plan Catalog', style: TextStyle(fontWeight: FontWeight.w900)),
                     ),
                   ),
                 ],
@@ -536,9 +571,9 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+          const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
           const SizedBox(width: 12),
-          Text(text, style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+          Text(text, style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
         ],
       ),
     );

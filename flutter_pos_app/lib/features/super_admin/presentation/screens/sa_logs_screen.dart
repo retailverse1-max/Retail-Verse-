@@ -21,8 +21,27 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _f = _svc.listAuditLogs(limit: 100);
+    _refresh();
     _animC = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..forward();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _f = _svc.listAuditLogs(limit: 100);
+    });
+    try {
+      await _f;
+    } catch (_) {}
+  }
+
+  bool _isOfflineError(dynamic error) {
+    final str = error.toString().toLowerCase();
+    return str.contains('socketexception') ||
+           str.contains('failed host lookup') ||
+           str.contains('connection refused') ||
+           str.contains('network is unreachable') ||
+           str.contains('clientexception') ||
+           str.contains('timeout');
   }
 
   @override
@@ -54,7 +73,7 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
-            onPressed: () => setState(() => _f = _svc.listAuditLogs(limit: 100)),
+            onPressed: _refresh,
           ),
           const SizedBox(width: 8),
         ],
@@ -70,13 +89,56 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
                 if (snap.connectionState != ConnectionState.done) {
                   return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
+                
                 if (snap.hasError) {
-                  return Center(child: Text(snap.error.toString().contains('SocketException') || snap.error.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: ${snap.error}'));
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _isOfflineError(snap.error) ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+                                size: 64,
+                                color: _isOfflineError(snap.error) ? AppColors.warning : AppColors.error,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _isOfflineError(snap.error) ? 'You are offline' : 'An error occurred',
+                                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _isOfflineError(snap.error) 
+                                    ? 'Please check your internet connection and pull down to refresh.' 
+                                    : 'Error: ${snap.error}',
+                                textAlign: TextAlign.center,
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 24),
+                              FilledButton.icon(
+                                onPressed: _refresh,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Try Again'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 List<Map<String, dynamic>> items = snap.data ?? [];
                 
-                // Real filtering logic
                 if (_activeFilter != 'All Events') {
                   items = items.where((l) {
                     final action = l['action']?.toString().toUpperCase() ?? '';
@@ -87,14 +149,23 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
                   }).toList();
                 }
 
-                if (items.isEmpty) return _buildEmptyState();
+                if (items.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                        _buildEmptyState(),
+                      ],
+                    ),
+                  );
+                }
 
                 return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() { _f = _svc.listAuditLogs(limit: 100); });
-                    await _f;
-                  },
+                  onRefresh: _refresh,
                   child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
                     itemCount: items.length,
                     itemBuilder: (context, i) => _buildTimelineLog(items[i], i == 0, i == items.length - 1),

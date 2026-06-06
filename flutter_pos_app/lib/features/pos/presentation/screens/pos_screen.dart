@@ -15,6 +15,8 @@ import 'package:retail_verse_pos/features/pos/providers/cart_provider.dart';
 import 'package:retail_verse_pos/features/pos/providers/pos_held_cart_provider.dart';
 import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
 import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
+import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
 
 class POSScreen extends ConsumerStatefulWidget {
@@ -142,7 +144,9 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
         if (context.canPop()) {
           context.pop();
         } else {
-          context.go('/dashboard');
+          final user = ref.read(authProvider).user;
+          final home = initialHomeRouteForUser(user);
+          context.go(home);
         }
       },
       child: Scaffold(
@@ -795,7 +799,9 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                Bounceable(
+                                GestureDetector(
+                                  // opaque behavior prevents this tap from bubbling up to the parent card Bounceable
+                                  behavior: HitTestBehavior.opaque,
                                   onTap: () {
                                     if (isOutOfStock) {
                                       ref.read(notificationProvider.notifier).requestRestock(product.id, product.name, isFromPos: true);

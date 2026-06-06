@@ -117,6 +117,18 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
       return;
     }
 
+    final totalWithoutDiscount = _subtotal + _tax + _extraCharges;
+    if (_discount > totalWithoutDiscount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Discount value must be lesser than grand total value'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,

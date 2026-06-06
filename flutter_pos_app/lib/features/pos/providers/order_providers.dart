@@ -257,6 +257,8 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
       ref.invalidate(todaySalesProvider);
       ref.invalidate(recentOrdersProvider);
       ref.invalidate(ordersListProvider);
+      try { ref.invalidate(saOrdersListProvider); } catch (_) {}
+
       ref.invalidate(dashboardStatsProvider);
       ref.invalidate(recentActivityProvider);
       ref.invalidate(dashboardProductsProvider);
@@ -330,6 +332,8 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
           ref.invalidate(todaySalesProvider);
           ref.invalidate(recentOrdersProvider);
           ref.invalidate(ordersListProvider);
+      try { ref.invalidate(saOrdersListProvider); } catch (_) {}
+
           ref.invalidate(dashboardStatsProvider);
           ref.invalidate(recentActivityProvider);
           ref.invalidate(dashboardProductsProvider);
@@ -406,6 +410,8 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
       ref.invalidate(todaySalesProvider);
       ref.invalidate(recentOrdersProvider);
       ref.invalidate(ordersListProvider);
+      try { ref.invalidate(saOrdersListProvider); } catch (_) {}
+
       ref.invalidate(dashboardStatsProvider);
       ref.invalidate(recentActivityProvider);
       ref.invalidate(dashboardProductsProvider);
@@ -495,6 +501,8 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
               );
 
               ref.invalidate(ordersListProvider);
+      try { ref.invalidate(saOrdersListProvider); } catch (_) {}
+
               ref.invalidate(dashboardOrdersProvider);
               return true;
             }

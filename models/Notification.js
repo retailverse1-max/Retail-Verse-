@@ -31,6 +31,10 @@ const notificationSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    data: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
   { timestamps: true }
 );

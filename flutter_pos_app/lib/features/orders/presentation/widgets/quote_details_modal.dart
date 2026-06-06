@@ -597,6 +597,7 @@ class QuoteDetailsModal extends ConsumerWidget {
       customerEmail: quote.customerEmail,
       customerAddress: quote.customerAddress,
       orderNotes: quote.notes,
+      extraCharges: quote.extraCharges,
       discount: quote.discount,
     );
 

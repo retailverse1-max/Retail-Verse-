@@ -456,6 +456,8 @@ class DashboardScreen extends ConsumerWidget {
                                                 onTap: () async {
                                                   await ref.read(notificationProvider.notifier).requestRestock(p.id, p.name);
                                                 },
+                                                // HitTestBehavior.opaque ensures this tap does NOT bubble up to parent Bounceable
+                                                behavior: HitTestBehavior.opaque,
                                                 child: Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                                   decoration: BoxDecoration(

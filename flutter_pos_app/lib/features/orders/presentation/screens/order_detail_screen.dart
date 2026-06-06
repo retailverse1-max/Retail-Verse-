@@ -322,6 +322,13 @@ class OrderDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           _buildTotalRow('Tax (18%)', AppFormatters.formatCurrency(order.tax)),
+          if (order.extraCharges > 0) ...[
+            const SizedBox(height: 8),
+            _buildTotalRow(
+              'Extra Charges',
+              '+${AppFormatters.formatCurrency(order.extraCharges)}',
+            ),
+          ],
           if (order.discount > 0) ...[
             const SizedBox(height: 8),
             _buildTotalRow(
@@ -533,6 +540,7 @@ class OrderDetailScreen extends ConsumerWidget {
       customerEmail: order.customerEmail,
       customerAddress: order.customerAddress,
       orderNotes: order.notes,
+      extraCharges: order.extraCharges,
       discount: order.discount,
     );
 

@@ -185,6 +185,8 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                     ),
                     SliverToBoxAdapter(
                       child: ordersAsync.when(
+                      skipLoadingOnReload: true,
+                      skipLoadingOnRefresh: true,
                         loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
                         error: (e, _) => Center(child: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')),
                         data: (orders) => _buildStatsRow(orders),
@@ -192,6 +194,8 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 12)),
                     ordersAsync.when(
+                      skipLoadingOnReload: true,
+                      skipLoadingOnRefresh: true,
                       loading: () => const SliverToBoxAdapter(child: SizedBox()),
                       error: (e, _) => const SliverToBoxAdapter(child: SizedBox()),
                       data: (orders) {

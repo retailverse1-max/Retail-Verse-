@@ -204,17 +204,30 @@ const requestRestock = async (req, res) => {
   try {
     const { productId, note } = req.body;
     const clientId = req.user.clientId;
-    
-    // In a real scenario, you'd fetch the product name, but we can just use generic if needed.
-    // For now, simple text:
+
+    // Prevent duplicate notifications for the same product within a 1-minute window
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const recentDuplicate = await Notification.findOne({
+      type: "low_stock",
+      "data.productId": productId,
+      clientId: clientId || null,
+      createdAt: { $gte: oneMinuteAgo },
+    });
+
+    if (recentDuplicate) {
+      return res.status(200).json({ success: true, message: "Restock notification already sent recently. Skipping duplicate." });
+    }
+
     const title = "Restock Requested 🚨";
     const message = `A restock was requested by ${req.user.name || 'Cashier'} ${note ? '- Note: ' + note : ''}`;
     
+    // Target only inventory_manager (and admin gets auto-added by notificationService)
+    // super_admin is NOT targeted — this is a store-level notification only
     await createAndSendNotification({
       title,
       message,
       type: "low_stock",
-      targetRoles: ["inventory", "admin"],
+      targetRoles: ["inventory"],
       clientId,
       data: { productId }
     });
