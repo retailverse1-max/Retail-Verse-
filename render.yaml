@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: retail-verse-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node app.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        fromSecret: true
+      - key: GEMINI_API_KEY
+        fromSecret: true
+      - key: MONGODB_URI
+        fromSecret: true
