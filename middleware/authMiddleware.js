@@ -19,10 +19,13 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    // Attach clientId from JWT payload (or fallback to DB) for all users
+    req.user.clientId = decoded.clientId || user.clientId;
     if (req.user.role === 'super_admin' && req.headers['x-client-id']) {
       req.user.originalRole = 'super_admin';
       req.user.role = 'admin';
-      req.user.clientId = req.headers['x-client-id'];
+      // Keep existing fallback only if JWT didn't provide clientId
+      req.user.clientId = req.user.clientId || req.headers['x-client-id'];
     }
     next();
   } catch (error) {

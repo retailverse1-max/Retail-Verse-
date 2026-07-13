@@ -24,7 +24,7 @@ const loginUser = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, clientId: user.clientId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -87,7 +87,7 @@ const googleLogin = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, clientId: user.clientId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -223,7 +223,7 @@ const phoneLogin = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, clientId: user.clientId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );

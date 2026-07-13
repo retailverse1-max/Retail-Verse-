@@ -8,7 +8,7 @@ const initializeDummyPlans = async () => {
     // Auto-migrate old names to new names
     await SubscriptionPlan.updateMany({ name: "Pro" }, { $set: { name: "Plus" } });
     await SubscriptionPlan.updateMany({ name: "Enterprise" }, { $set: { name: "Premium" } });
-    await SubscriptionPlan.updateMany({ name: "Basic" }, { $set: { price: 1 } });
+    await SubscriptionPlan.updateMany({ name: "Basic" }, { $set: { price: 999 } });
 
     const defaultPlans = [
       {
