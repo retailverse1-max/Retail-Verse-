@@ -2,6 +2,7 @@ services:
   - type: web
     name: retail-verse-backend
     env: node
+    rootDir: backend
     buildCommand: npm install
     startCommand: node app.js
     healthCheckPath: /health

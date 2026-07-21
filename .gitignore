@@ -1,7 +1,7 @@
 node_modules/
 .env
 firebaseServiceAccountKey.json
-backend/
+
 flutter_pos_app/
 patch_exact.py
 patch_multiline.py
