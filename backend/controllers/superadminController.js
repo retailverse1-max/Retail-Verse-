@@ -246,9 +246,14 @@ exports.createUser = async (req, res) => {
 
         const currentUsers = await User.countDocuments({ clientId });
         if (currentUsers >= maxUsers) {
+          let nextPlan = "Premium";
+          if (planName.toLowerCase() === "free") nextPlan = "Basic";
+          else if (planName.toLowerCase() === "basic") nextPlan = "Plus";
+          else if (planName.toLowerCase() === "plus") nextPlan = "Premium";
+
           return res.status(403).json({ 
             success: false, 
-            message: `User limit reached for ${planName} plan. Please upgrade to add more users.` 
+            message: `Limit reach to add member. Upgrade to ${nextPlan} plan.` 
           });
         }
       }
