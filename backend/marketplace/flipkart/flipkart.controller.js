@@ -84,3 +84,13 @@ exports.handleOrderWebhook = async (req, res) => {
         res.status(500).send("Error processing webhook");
     }
 };
+
+// 4. Category Mapping Controllers (Placeholders)
+exports.saveCategoryMapping = async (req, res) => {
+    res.status(200).json({ success: true, message: "Category mapping saved (stub)" });
+};
+
+exports.getCategoryMappings = async (req, res) => {
+    res.status(200).json({ success: true, data: [] });
+};
+
