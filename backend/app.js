@@ -13,7 +13,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
-// const flipkartRoutes = require("./marketplace/flipkart/flipkart.routes");
+const flipkartRoutes = require("./marketplace/flipkart/flipkart.routes");
 const shopifyRoutes = require("./marketplace/shopify/shopify.routes");
 const app = express();
 
@@ -47,7 +47,7 @@ app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/categories", categoryRoutes);
 
 // Marketplace Routes
-// app.use("/api/marketplace/flipkart", flipkartRoutes);
+app.use("/api/marketplace/flipkart", flipkartRoutes);
 app.use("/api/marketplace/shopify", shopifyRoutes);
 
 module.exports = app;

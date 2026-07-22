@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect: authMiddleware } = require('../../../middleware/authMiddleware');
+const { protect: authMiddleware } = require('../../middleware/authMiddleware');
 const flipkartController = require('./flipkart.controller');
 
 // ==========================================
