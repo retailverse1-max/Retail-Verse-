@@ -7,10 +7,10 @@ import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/core/widgets/common/status_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retail_verse_pos/data/remote/notification_service.dart';
-import 'package:pdf/pdf.dart';
+
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+
 
 class InvoiceDetailsModal extends ConsumerWidget {
   final Order order;
@@ -475,11 +475,11 @@ class InvoiceDetailsModal extends ConsumerWidget {
 
       Directory? directory;
       if (Platform.isAndroid) {
-        var status = await Permission.storage.status;
-        if (!status.isGranted) {
-          status = await Permission.storage.request();
-        }
-        
+        // On Android 10+ (API 29+), WRITE_EXTERNAL_STORAGE is not required to
+        // write to the public Downloads directory via MediaStore, and on
+        // Android 13+ (API 33) the permission no longer exists at all.
+        // We attempt the Downloads dir directly and fall back to the app's
+        // external storage directory if the write fails (see catch block below).
         final downloadDir = Directory('/storage/emulated/0/Download');
         if (await downloadDir.exists()) {
           directory = downloadDir;

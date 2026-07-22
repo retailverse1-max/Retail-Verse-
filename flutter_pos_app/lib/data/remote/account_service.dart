@@ -69,5 +69,35 @@ class AccountService {
       );
     }
   }
+
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final token = await _token();
+    final res = await _client
+        .post(
+          Uri.parse('${ApiEndpoints.baseUrl}/auth/change-password'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+          body: jsonEncode({
+            'oldPassword': oldPassword,
+            'newPassword': newPassword,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    final decoded = ApiResponseHandler.decodeJsonResponse(
+      res,
+      action: 'change password',
+    );
+
+    if (res.statusCode != 200) {
+      throw ApiResponseHandler.errorFromResponse(
+        res,
+        action: 'change password',
+        decodedBody: decoded,
+      );
+    }
+  }
 }
 

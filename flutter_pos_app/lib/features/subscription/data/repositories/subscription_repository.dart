@@ -38,13 +38,13 @@ class SubscriptionRepository {
         }
         List<SubscriptionPlan> plans = data.map((e) => SubscriptionPlan.fromJson(e)).toList();
         
-        // Force Basic plan to 1 rs as per user request
+        // Force Basic plan to 999 rs as per user request
         for (int i = 0; i < plans.length; i++) {
           if (plans[i].name.toLowerCase() == 'basic') {
             plans[i] = SubscriptionPlan(
               id: plans[i].id,
               name: plans[i].name,
-              price: 1,
+              price: 999,
               billingCycle: plans[i].billingCycle,
               features: plans[i].features,
               maxProducts: plans[i].maxProducts,
@@ -59,11 +59,11 @@ class SubscriptionRepository {
           plans.add(SubscriptionPlan(
             id: 'basic_fallback',
             name: 'Basic',
-            price: 1,
+            price: 999,
             billingCycle: 'monthly',
-            features: const ["Up to 100 Products", "3 Admin Users", "Basic POS", "Email Support"],
+            features: const ["Up to 100 Products", "4 Admin Users", "Basic POS", "Email Support"],
             maxProducts: 100,
-            maxUsers: 3,
+            maxUsers: 4,
           ));
         }
         if (!planNames.contains('plus')) {
@@ -72,9 +72,9 @@ class SubscriptionRepository {
             name: 'Plus',
             price: 1999,
             billingCycle: 'monthly',
-            features: const ["Unlimited Products", "10 Admin Users", "Advanced POS & Inventory", "Priority Support", "Analytics"],
+            features: const ["Unlimited Products", "20 Admin Users", "Advanced POS & Inventory", "Priority Support", "Analytics"],
             maxProducts: 999999,
-            maxUsers: 10,
+            maxUsers: 20,
           ));
         }
         if (!planNames.contains('premium')) {
@@ -83,9 +83,9 @@ class SubscriptionRepository {
             name: 'Premium',
             price: 4999,
             billingCycle: 'monthly',
-            features: const ["Unlimited Everything", "Custom Domain", "Dedicated Account Manager", "Custom Integrations", "24/7 Support"],
+            features: const ["Unlimited Everything", "Custom Domain", "Dedicated Account Manager", "Unlimited Admin Users", "24/7 Support"],
             maxProducts: 9999999,
-            maxUsers: 999,
+            maxUsers: 999999,
           ));
         }
 

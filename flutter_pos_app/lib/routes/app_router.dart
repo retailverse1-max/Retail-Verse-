@@ -942,20 +942,24 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         }
         
         final home = initialHomeRouteForUser(ref.read(authProvider).user);
+        final canPopGoRouter = GoRouter.of(context).canPop();
         
-        // If we are on the dashboard/home, always ask to exit.
-        if (path == home) {
-          await _showExitDialog(context);
-          return;
-        }
-
-        if (GoRouter.of(context).canPop()) {
+        // If we can pop the router, do it
+        if (canPopGoRouter) {
           context.pop();
           return;
         }
-        
-        // Otherwise, go back to home instead of exiting
-        context.go(home);
+
+        // If we are already on the home tab, or if we cannot pop any further,
+        // it means pressing back would exit the app.
+        if (path == home) {
+          await _showExitDialog(context);
+        } else {
+          // If we are on another tab (e.g. Products) and can't pop,
+          // usually we go back to home tab. But if the user prefers exiting, 
+          // we can ask to exit here too. For now, let's go back to home tab first.
+          context.go(home);
+        }
       },
       child: body,
     );

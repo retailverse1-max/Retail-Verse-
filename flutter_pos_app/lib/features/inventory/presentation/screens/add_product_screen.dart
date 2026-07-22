@@ -6,9 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/navigation/role_route_guard.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -21,7 +19,7 @@ import '../../data/models/category_entity.dart';
 import '../../data/models/category.dart' as inv;
 import '../../providers/category_providers.dart';
 import '../../data/models/product.dart';
-
+import '../../../../data/repositories/marketplace_repository.dart';
 /// Add Product Screen - Professional product creation form with AI integration
 class AddProductScreen extends ConsumerStatefulWidget {
   final inv.Category? category;
@@ -69,6 +67,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   bool _isLoadingCategories = false;
 
   bool _isSaving = false;
+  bool _publishToFlipkart = false;
 
   // Unit options
   final List<String> _unitOptions = [
@@ -194,14 +193,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
 
     if (Platform.isAndroid) {
-      final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
-      if (sdk >= 33) {
-        final r = await Permission.photos.request();
-        if (r.isGranted || r.isLimited) return true;
-      } else {
-        final r = await Permission.storage.request();
-        if (r.isGranted) return true;
-      }
+      // The image_picker plugin uses the Android Photo Picker (Android 13+)
+      // or ACTION_GET_CONTENT (older Android), neither of which requires
+      // READ_MEDIA_IMAGES or READ_EXTERNAL_STORAGE.
+      return true;
     } else {
       final r = await Permission.photos.request();
       if (r.isGranted || r.isLimited) return true;
@@ -522,6 +517,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ref.invalidate(categoriesProvider);
         }
       }
+
+      // Phase 12: Trigger Flipkart Push API if toggle is ON
+      if (_publishToFlipkart) {
+        try {
+          final token = ref.read(authProvider).token;
+          if (token != null) {
+            await MarketplaceRepository().pushProductToFlipkart(
+              productId: created.id, 
+              token: token
+            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Successfully pushed to Flipkart!'), backgroundColor: AppColors.success),
+              );
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error, duration: const Duration(seconds: 4)),
+            );
+          }
+        }
+      }
+
       context.pop(legacy);
     } catch (e) {
       if (mounted) {
@@ -699,6 +719,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 ),
 
                 const SizedBox(height: 32),
+
+                // Flipkart Integration Toggle
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: SwitchListTile(
+                    title: Text('Publish to Flipkart', style: AppTypography.titleMedium.copyWith(color: Colors.blue.shade900, fontWeight: FontWeight.bold)),
+                    subtitle: Text('Automatically sync this product to your Flipkart seller account', style: AppTypography.bodySmall.copyWith(color: Colors.blue.shade700)),
+                    value: _publishToFlipkart,
+                    onChanged: (val) => setState(() => _publishToFlipkart = val),
+                    activeColor: Colors.blue,
+                    secondary: const Icon(Icons.shopping_bag, color: Colors.blue),
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
 
                 // Save Button
                 SizedBox(

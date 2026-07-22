@@ -109,7 +109,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         _showSuccessAndNavigate('Google Sign-Up successful');
       }
     } catch (e) {
-      _showErrorSnackBar('Google Sign-Up failed: $e');
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('not found') || 
+          errorMsg.contains('invalid') || 
+          errorMsg.contains('user not exist') || 
+          errorMsg.contains('no user')) {
+        _showErrorSnackBar('Invalid Email');
+      } else {
+        _showErrorSnackBar('Google Sign-Up failed: $e');
+      }
     }
   }
 
@@ -172,12 +180,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Image.asset(
-                          'assets/images/logopos.png',
-                          fit: BoxFit.contain,
-                        ),
+                      child: const Icon(
+                        Icons.point_of_sale_rounded,
+                        color: Colors.white,
+                        size: 40,
                       ),
                     ),
                     const SizedBox(height: 24),

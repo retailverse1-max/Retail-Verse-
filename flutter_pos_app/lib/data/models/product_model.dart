@@ -60,6 +60,7 @@ class Product {
   /// Optional long text from API (`description` / `desc`).
   final String? description;
   final bool isActive;
+  final bool isFlipkartSynced;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -77,6 +78,7 @@ class Product {
     this.imageUrl,
     this.description,
     this.isActive = true,
+    this.isFlipkartSynced = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -115,6 +117,7 @@ class Product {
     String? imageUrl,
     String? description,
     bool? isActive,
+    bool? isFlipkartSynced,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -132,6 +135,7 @@ class Product {
       imageUrl: imageUrl ?? this.imageUrl,
       description: description ?? this.description,
       isActive: isActive ?? this.isActive,
+      isFlipkartSynced: isFlipkartSynced ?? this.isFlipkartSynced,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -153,6 +157,7 @@ class Product {
       'imageUrl': imageUrl,
       'description': description,
       'isActive': isActive,
+      'isFlipkartSynced': isFlipkartSynced,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -176,6 +181,7 @@ class Product {
       imageUrl: _pickImageUrl(json),
       description: _pickDescription(json),
       isActive: json['isActive'] == null ? true : (json['isActive'] as bool? ?? true),
+      isFlipkartSynced: json['isFlipkartSynced'] == true,
       createdAt: _coerceDateTime(json['createdAt'] ?? json['created_at']),
       updatedAt: _coerceDateTime(json['updatedAt'] ?? json['updated_at']),
     );

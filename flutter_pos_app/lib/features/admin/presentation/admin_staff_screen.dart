@@ -403,7 +403,13 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
         await _svc.createStaff(name: nameC.text, email: emailC.text, password: passC.text, role: role);
         if (mounted) setState(() { _f = _svc.listUsers(); });
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
+        if (mounted) {
+          final errStr = e.toString();
+          final cleanErr = errStr.contains('SocketException') || errStr.contains('Failed host lookup')
+              ? 'You are offline. Please check your internet connection.'
+              : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanErr)));
+        }
       }
     }
   }

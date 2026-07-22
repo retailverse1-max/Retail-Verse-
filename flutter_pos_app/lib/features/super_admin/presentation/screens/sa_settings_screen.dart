@@ -13,40 +13,43 @@ import 'package:retail_verse_pos/features/super_admin/presentation/screens/sa_sh
 const String _privacyPolicyText = '''
 Privacy Policy for Retail Verse POS
 
-Effective Date: January 1, 2024
+Effective Date: January 1, 2026
 
 1. Introduction
-Welcome to Retail Verse POS ("we", "our", or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the "App"). By using the App, you agree to the collection and use of information in accordance with this policy.
+Welcome to Retail Verse POS ("we", "our", or "us"). We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the "App").
 
 2. Information We Collect
 We may collect information about you in a variety of ways. The information we may collect via the App includes:
-- Personal Data: Personally identifiable information, such as your name, shipping address, email address, and telephone number that you voluntarily give to us when you register with the App.
+- Personal Data: Store name, business owner name, email address, phone number, and business profile information for account management and billing.
 - Store & Inventory Data: Information related to your store, inventory, customers, and transactions entered into the Point of Sale system.
-- Device Data: Information our servers automatically collect when you access the App, such as your native actions that are integral to the App, as well as device type, operating system, and device ID.
+- Device Permissions:
+  • Camera: Used exclusively for barcode and QR code scanning. Images are not stored or uploaded unless explicitly required by the user.
+  • Bluetooth: Used only to connect compatible thermal printers and other POS hardware.
+  These permissions are processed locally and are never used for advertising or tracking purposes.
 
-3. How We Use Your Information
-Having accurate information about you permits us to provide you with a smooth, efficient, and customized experience. Specifically, we may use information collected about you via the App to:
-- Create and manage your account.
-- Process transactions, invoices, and send related information.
-- Manage store inventory and customer databases on your behalf.
-- Send you administrative information, such as updates, security alerts, and support messages.
-- Improve our App's functionality and user experience.
+3. User-Selected Photos (No Broad Gallery Access)
+We do not request broad permissions to access your device's photo gallery (e.g., READ_EXTERNAL_STORAGE). Instead, we use the secure system photo picker. This means our app only gets access to the specific product or profile images that you manually select and upload. These specific images are uploaded securely to our servers and are never shared publicly or used for advertising.
 
-4. Disclosure of Your Information
-We do not sell, trade, or rent your personal identification information to others. We may share information we have collected about you in certain situations:
-- By Law or to Protect Rights: If we believe the release of information about you is necessary to respond to legal process, to investigate or remedy potential violations of our policies, or to protect the rights, property, and safety of others.
-- Third-Party Service Providers: We may share your information with third parties that perform services for us or on our behalf, such as data analysis, email delivery, hosting services, and customer service.
+4. Third-Party Services
+Our application uses third-party services that may collect information used to identify you, authenticate your account, or provide analytics and notifications. These services include:
+- Google Play Services
+- Google Analytics for Firebase
+- Firebase Cloud Messaging
+- Facebook (Meta) SDK
 
-5. Data Security
-We use administrative, technical, and physical security measures to help protect your personal information. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable, and no method of data transmission can be guaranteed against any interception or other type of misuse.
+5. How We Use Your Information
+We use the information collected to create and manage your account, process transactions, manage store inventory, send administrative updates, and improve our App's functionality.
 
-6. User Rights & Data Deletion
-You have the right to request access to, correction of, or deletion of your personal data. If you wish to delete your account or any associated data, please contact our support team. We will process your request in accordance with applicable privacy laws.
+6. Disclosure of Your Information
+We do not sell, trade, or rent your business data to others. We may share information to comply with legal obligations or with third-party service providers acting on our behalf.
 
-7. Changes to This Privacy Policy
-We may update this Privacy Policy from time to time. We will notify you of any changes by updating the "Effective Date" of this Privacy Policy. You are encouraged to periodically review this Privacy Policy to stay informed of updates.
+7. Data Security
+We take appropriate technical and organizational measures to protect business information. While we strive to protect your personal information, no security system is impenetrable.
 
-8. Contact Us
+8. User Rights & Data Deletion
+Users may permanently delete their Retail Verse account and associated business data by navigating to Settings → Delete Account, or by contacting our support team. Once deletion is completed, data will be removed in accordance with our data retention policies.
+
+9. Contact Us
 If you have questions or comments about this Privacy Policy, please contact us at:
 platform@retailverse.com
 ''';
@@ -54,13 +57,13 @@ platform@retailverse.com
 const String _termsAndConditionsText = '''
 Terms and Conditions for Retail Verse POS
 
-Effective Date: January 1, 2024
+Effective Date: January 1, 2026
 
 1. Acceptance of Terms
 By accessing or using the Retail Verse POS mobile application and platform (the "Service"), you agree to be bound by these Terms and Conditions. If you do not agree to all the terms and conditions, then you may not access the Service.
 
 2. License to Use
-We grant you a limited, non-exclusive, non-transferable, and revocable license to use our Service for your business operations, in accordance with your subscription plan. You may not copy, modify, distribute, sell, or lease any part of our Services or included software.
+We grant you a limited, non-exclusive, non-transferable, and revocable license to use our Service for your business operations. You may not copy, modify, distribute, sell, or lease any part of our Services or included software.
 
 3. Account Responsibilities
 You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password. You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.
@@ -72,8 +75,8 @@ You agree not to use the Service to:
 - Interfere with or disrupt the integrity or performance of the Service.
 - Attempt to gain unauthorized access to the Service or its related systems.
 
-5. Fees and Payment
-Certain features of the Service are billed on a subscription basis. You will be billed in advance on a recurring and periodic basis depending on your subscription plan.
+5. Third-Party Integrations
+The Service may offer integrations with third-party platforms (e.g., e-commerce marketplaces). We are not responsible for the availability, accuracy, or policies of these third-party services.
 
 6. Termination
 We may terminate or suspend your account and bar access to the Service immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever, including a breach of these Terms.

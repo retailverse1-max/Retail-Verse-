@@ -400,5 +400,36 @@ const deleteProfile = async (req, res) => {
     res.status(500).json({ message: "Failed to delete profile" });
   }
 };
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "Old and new password are required" });
+    }
 
-module.exports = { loginUser, googleLogin, registerUser, phoneLogin, updateFcmToken, forgotPassword, resetPassword, updateProfile, deleteProfile };
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({ message: "User does not have a password set (e.g. Google Login)" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect old password" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    res.status(500).json({ message: "Failed to change password" });
+  }
+};
+
+module.exports = { loginUser, googleLogin, registerUser, phoneLogin, updateFcmToken, forgotPassword, resetPassword, changePassword, updateProfile, deleteProfile };

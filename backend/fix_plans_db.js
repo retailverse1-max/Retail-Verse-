@@ -18,9 +18,9 @@ async function fixDatabaseBug() {
 
   // 2. Now properly create/update the plans (including Premium)
   console.log("Updating Plan Limits...");
-  await SubscriptionPlan.updateOne({ name: "Premium" }, { $set: { maxUsers: 999999, price: 99 } }, { upsert: true });
-  await SubscriptionPlan.updateOne({ name: "Plus" }, { $set: { maxUsers: 20, price: 49 } }, { upsert: true });
-  await SubscriptionPlan.updateOne({ name: "Basic" }, { $set: { maxUsers: 4, price: 0 } }, { upsert: true });
+  await SubscriptionPlan.updateOne({ name: "Premium" }, { $set: { maxUsers: 999999, price: 4999 } }, { upsert: true });
+  await SubscriptionPlan.updateOne({ name: "Plus" }, { $set: { maxUsers: 20, price: 1999 } }, { upsert: true });
+  await SubscriptionPlan.updateOne({ name: "Basic" }, { $set: { maxUsers: 4, price: 999 } }, { upsert: true });
 
   console.log("Database fixed completely! Premium plan now exists with 999999 limit.");
   process.exit();

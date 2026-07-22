@@ -27,6 +27,8 @@ String initialHomeRouteForUser(Map<String, dynamic>? user) {
     case 'seo_manager':
       return '/inventory';
     case 'cashier':
+    case 'user':
+    case 'unknown':
       return '/pos';
     case 'customer':
       return '/store';
@@ -41,6 +43,7 @@ bool canAccessPosBilling(String role) {
   return r == 'super_admin' ||
       r == 'admin' ||
       r == 'cashier' ||
+      r == 'user' ||
       r == 'inventory_manager' ||
       r == 'seo_manager' ||
       r == 'unknown';
@@ -86,6 +89,11 @@ bool isRouteAllowedForShell(String location, String role) {
     case 'super_admin':
     case 'admin':
       return true;
+    case 'user':
+      if (location == '/pos' || location.startsWith('/pos/')) {
+        return true;
+      }
+      return false;
     case 'cashier':
     case 'unknown':
       if (location == '/dashboard' || location.startsWith('/dashboard/')) {
@@ -211,6 +219,8 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
       return [dash, pos, billing, allProducts, inv, platform, support, customDomain, userRole, settings];
     case 'admin':
       return [dash, pos, billing, allProducts, inv, support, customDomain, userRole, settings];
+    case 'user':
+      return [pos];
     case 'cashier':
     case 'unknown':
       return [pos, orders, support, settings];
@@ -366,6 +376,8 @@ List<DrawerNavItem> drawerNavItemsForRole(String role) {
         userManagement,
         settings,
       ];
+    case 'user':
+      return [sales];
     case 'cashier':
     case 'unknown':
       return [sales, reports, support, settings];

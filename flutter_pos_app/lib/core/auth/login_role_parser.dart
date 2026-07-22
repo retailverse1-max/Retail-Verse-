@@ -13,7 +13,7 @@ String? canonicalUiRole(String? raw) {
   if (s == 'seo' || s == 'seo manager') s = 'seo_manager';
   if (s == 'client') s = 'admin';
   if (s == 'employee') s = 'cashier';
-  const known = {'super_admin', 'admin', 'cashier', 'inventory_manager', 'seo_manager', 'customer'};
+  const known = {'super_admin', 'admin', 'cashier', 'inventory_manager', 'seo_manager', 'customer', 'user'};
   if (known.contains(s)) return s;
   return null;
 }

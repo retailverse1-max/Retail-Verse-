@@ -234,9 +234,9 @@ class AccountScreen extends ConsumerWidget {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('Delete account?'),
+                  title: const Text('Are you sure?'),
                   content: const Text(
-                    'This will deactivate your account and sign you out.',
+                    'Do you really want to delete your account? This action cannot be undone.',
                   ),
                   actions: [
                     TextButton(

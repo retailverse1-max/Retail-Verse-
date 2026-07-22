@@ -38,7 +38,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
     final isTablet = screenWidth >= 600 && screenWidth < 900;
     final isDesktop = screenWidth >= 900;
     final role = effectiveUserRole(ref.watch(authProvider).user);
-    final canAddProduct = role == 'admin' || role == 'super_admin' || role == 'inventory_manager';
+    final canAddProduct = role == 'admin' || role == 'inventory_manager';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -69,9 +69,9 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
 
                   // Stats calculation
                   final totalCount = products.length;
-                  final outOfStockCount = products.where((p) => p.stock == 0).length;
-                  // Heuristic for best sellers: products with price > 1000 or some other criteria
-                  final bestSellersCount = products.where((p) => p.price > 1000 && p.stock > 0).length;
+                  final lowStockCount = products.where((p) => p.stock <= 10).length;
+                  // Heuristic for best sellers: products with price > 100
+                  final bestSellersCount = products.where((p) => p.price > 100).length;
 
                   return RefreshIndicator(
                     onRefresh: () => ref.refresh(productsProvider.future),
@@ -83,7 +83,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           child: _buildSummarySection(
                             totalCount: totalCount,
                             bestSellersCount: bestSellersCount,
-                            outOfStockCount: outOfStockCount,
+                            lowStockCount: lowStockCount,
                             isTablet: isTablet,
                           ),
                         ),
@@ -255,7 +255,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
   Widget _buildSummarySection({
     required int totalCount,
     required int bestSellersCount,
-    required int outOfStockCount,
+    required int lowStockCount,
     required bool isTablet,
   }) {
     return Padding(
@@ -272,14 +272,14 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
           _buildSummaryCard(
             'Best Sellers',
             bestSellersCount.toString(),
-            Icons.auto_graph_rounded,
+            Icons.trending_up_rounded,
             AppColors.success,
           ),
           const SizedBox(width: 12),
           _buildSummaryCard(
-            'Out of Stock',
-            outOfStockCount.toString(),
-            Icons.block_rounded,
+            'Low Stock',
+            lowStockCount.toString(),
+            Icons.warning_amber_rounded,
             AppColors.error,
           ),
         ],
@@ -395,6 +395,25 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           ),
                         ),
                       ),
+                    
+                    // Flipkart Sync Badge
+                    if (product.isFlipkartSynced)
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
+                            ],
+                          ),
+                          child: const Icon(Icons.shopping_bag, color: Colors.blue, size: 16),
+                        ),
+                      ),
+
                     // Price Tag
                     Positioned(
                       top: 10,

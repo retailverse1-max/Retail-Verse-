@@ -7,7 +7,8 @@ import '../../data/models/subscription_plan.dart';
 import '../../data/repositories/subscription_repository.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/data/remote/payment_service.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+// Using native dialogs instead of Razorpay for compliance
+import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionPlansScreen extends ConsumerStatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -20,142 +21,61 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
   SubscriptionPlan? _selectedPlan;
   bool _isProcessing = false;
 
-  late Razorpay _razorpay;
   final PaymentService _paymentService = PaymentService();
 
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
   @override
   void dispose() {
-    _razorpay.clear();
     super.dispose();
   }
 
-  void _showError(String message, {Duration duration = const Duration(seconds: 4)}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(child: Text(message)),
-            ],
+  void _showError(String message, {Duration? duration}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        duration: duration ?? const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showUpgradeDialog(SubscriptionPlan plan) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Upgrade Your Plan'),
+        content: Text('To upgrade to the ${plan.name} plan, please visit our website at retailverse.com from your computer, or contact our support team.'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Got it'),
           ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          duration: duration,
-        ),
-      );
-    }
+        ],
+      ),
+    );
   }
 
-  Future<void> _startRazorpayPayment(SubscriptionPlan plan) async {
-    setState(() => _isProcessing = true);
-    try {
-      // 1. Create razorpay order from our backend
-      final orderRes = await _paymentService.createRazorpayOrder(
-        amount: plan.price,
-        currency: 'INR',
-        receipt: 'sub_${DateTime.now().millisecondsSinceEpoch}',
-      );
-
-      final razorpayOrderId = orderRes['razorpayOrderId'];
-      final razorpayKeyId = orderRes['keyId'];
-
-      if (razorpayOrderId == null || razorpayKeyId == null) {
-        throw Exception('Invalid response from payment server');
-      }
-
-      // 2. Open razorpay SDK
-      final auth = ref.read(authProvider);
-      final user = auth.user ?? {};
-      
-      var options = {
-        'key': razorpayKeyId,
-        'amount': orderRes['amount'], // paise from backend
-        'name': 'Retail Verse',
-        'description': 'Upgrade to ${plan.name} Plan',
-        'order_id': razorpayOrderId,
-        'retry': {'enabled': true, 'max_count': 1},
-        'send_sms_hash': true,
-        'prefill': {
-          'contact': user['phone'] ?? '',
-          'email': user['email'] ?? '',
-          'name': user['name'] ?? ''
-        },
-        'theme': {'color': '#163F6B'},
-      };
-
-      _razorpay.open(options);
-    } catch (e) {
-      _showError('Failed to start payment: $e');
-      setState(() => _isProcessing = false);
-    }
-  }
-
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    debugPrint('✅ Razorpay Success: ${response.paymentId}');
-    try {
-      // Step 3: Verify payment on backend
-      final verifyRes = await _paymentService.verifyRazorpayPayment(
-        orderId: response.orderId!,
-        paymentId: response.paymentId!,
-        signature: response.signature!,
-      );
-
-      if (verifyRes['success'] == true) {
-        // Now hit the subscription upgrade endpoint
-        final repo = ref.read(subscriptionRepositoryProvider);
-        final newExpiry = await repo.upgradeSubscription(_selectedPlan!.id);
+  Future<void> _launchUpgradeUrl() async {
+    final auth = ref.read(authProvider);
+    final user = auth.user ?? {};
+    final email = user['email'] ?? '';
+    
+    final urlString = email.isNotEmpty 
+        ? 'https://www.retailverse.in/dashboard/subscription?email=$email'
+        : 'https://www.retailverse.in/dashboard/subscription';
         
-        // Calculate a new expiry date if backend didn't return one
-        final expiryToSave = newExpiry ?? 
-            DateTime.now().add(const Duration(days: 30)).toIso8601String();
-        
-        await ref.read(authProvider.notifier).updateLocalUser({
-          'subscriptionPlan': _selectedPlan!.name,
-          'subscriptionStatus': 'active',
-          'subscriptionExpiry': expiryToSave,
-        });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Successfully upgraded to ${_selectedPlan!.name}!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          context.go('/dashboard'); 
-        }
-      } else {
-        _showError('Payment verification failed. Please contact support.');
-      }
-    } catch (e) {
-      _showError('Payment verification error: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
+    final url = Uri.parse(urlString);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      _showError('Could not open the website.');
     }
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    debugPrint('❌ Razorpay Error: ${response.message}');
-    _showError('Payment Cancelled', duration: const Duration(seconds: 2));
-    setState(() => _isProcessing = false);
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    _showError('External wallets are not supported yet.');
-    setState(() => _isProcessing = false);
   }
 
   @override
@@ -344,12 +264,24 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
               width: double.infinity,
               height: 52,
               child: FilledButton(
-                onPressed: _isProcessing
-                    ? null
-                    : () {
-                        setState(() => _selectedPlan = plan);
-                        _startRazorpayPayment(plan);
-                      },
+                onPressed: () {
+                  setState(() => _selectedPlan = plan);
+                  // Disabled web link for Play Store compliance
+                  // _launchUpgradeUrl();
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Coming Soon'),
+                      content: const Text('this feature come in next version'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
                 style: FilledButton.styleFrom(
                   backgroundColor: isSelected ? AppColors.primary : AppColors.cardBorder,
                   foregroundColor: isSelected ? Colors.white : AppColors.textPrimary,
@@ -363,7 +295,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : Text(
-                        'Select Plan',
+                        'GO',
                         style: AppTypography.titleMedium.copyWith(
                           color: isSelected ? Colors.white : AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
@@ -377,4 +309,3 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
     );
   }
 }
-

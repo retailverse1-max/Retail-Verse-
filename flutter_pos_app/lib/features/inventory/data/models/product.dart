@@ -11,6 +11,7 @@ class Product {
   final String description;
   final String categoryId;
   final String categoryName;
+  final bool isFlipkartSynced;
 
   const Product({
     required this.id,
@@ -22,6 +23,7 @@ class Product {
     required this.description,
     required this.categoryId,
     required this.categoryName,
+    this.isFlipkartSynced = false,
   });
 
   /// Check if product is in stock
@@ -59,6 +61,7 @@ class Product {
             'High-quality ${category.name.toLowerCase()} component. Professional grade.',
         categoryId: category.id,
         categoryName: category.name,
+        isFlipkartSynced: index % 3 == 0, // Mock some products as synced for UI demonstration
       );
     });
   }

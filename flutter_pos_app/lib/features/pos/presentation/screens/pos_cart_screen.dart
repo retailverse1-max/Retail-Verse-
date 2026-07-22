@@ -1155,27 +1155,34 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                       return;
                     }
 
-                    // 1. Show loading
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) => const Center(child: CircularProgressIndicator()),
-                    );
+                    final cart = ref.read(cartProvider);
+                    final isWalkIn = cart.customerName.isEmpty;
+
+                    if (isWalkIn) {
+                      // 1. Show loading only for network request
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+                      );
+                    }
 
                     try {
-                      // 2. Save to Remote DB
-                      final token = ref.read(authProvider).token;
-                      if (token != null && token.isNotEmpty) {
-                        final repo = ref.read(dashboardRepositoryProvider);
-                        await repo.addCustomer(
-                          token: token,
-                          name: name,
-                          phone: phone,
-                          email: email.isNotEmpty ? email : null,
-                          address: address,
-                        );
-                        ref.invalidate(customersProvider);
-                        ref.invalidate(dashboardStatsProvider);
+                      // 2. Save to Remote DB only if it's a walk-in (new customer)
+                      if (isWalkIn) {
+                        final token = ref.read(authProvider).token;
+                        if (token != null && token.isNotEmpty) {
+                          final repo = ref.read(dashboardRepositoryProvider);
+                          await repo.addCustomer(
+                            token: token,
+                            name: name,
+                            phone: phone,
+                            email: email.isNotEmpty ? email : null,
+                            address: address,
+                          );
+                          ref.invalidate(customersProvider);
+                          ref.invalidate(dashboardStatsProvider);
+                        }
                       }
 
                       // 3. Update Cart State
@@ -1187,7 +1194,9 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                       );
 
                       if (mounted) {
-                        Navigator.pop(context); // Close loading dialog
+                        if (isWalkIn) {
+                          Navigator.pop(context); // Close loading dialog
+                        }
                         Navigator.pop(context); // Close bottom sheet
                         
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1204,7 +1213,9 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                       }
                     } catch (e) {
                       if (mounted) {
-                        Navigator.pop(context); // Close loading dialog
+                        if (isWalkIn) {
+                          Navigator.pop(context); // Close loading dialog
+                        }
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Error saving details: $e'),

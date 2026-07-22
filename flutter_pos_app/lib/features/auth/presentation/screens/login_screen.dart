@@ -65,7 +65,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordFocusNode.dispose();
     _phoneFocusNode.dispose();
     _otpFocusNode.dispose();
+    _otpFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _showExitDialog(BuildContext ctx) async {
+    final shouldExit = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.exit_to_app_rounded, color: AppColors.error, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Exit App?',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Do you want to leave Retail Verse?',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  child: const Text('Stay', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(true),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: AppColors.error,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Exit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true && ctx.mounted) {
+      SystemNavigator.pop();
+    }
   }
 
   void _startOtpTimer() {
@@ -284,7 +356,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _showSuccessAndNavigate('Google Sign-In successful');
       }
     } catch (e) {
-      _showErrorSnackBar('Google Sign-In failed: $e');
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('not found') || 
+          errorMsg.contains('invalid') || 
+          errorMsg.contains('user not exist') || 
+          errorMsg.contains('no user')) {
+        _showErrorSnackBar('Invalid Email');
+      } else {
+        _showErrorSnackBar('Google Sign-In failed: $e');
+      }
     }
   }
 
@@ -343,12 +423,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = _isLocalLoading || authState.isLoading;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        await _showExitDialog(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
           child: Column(
             children: [
               // ── PREMIUM DARK HEADER ────────────────────────
@@ -616,6 +702,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

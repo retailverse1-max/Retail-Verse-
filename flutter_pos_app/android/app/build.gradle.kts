@@ -28,7 +28,7 @@ android {
         applicationId = "com.hexerveSolutions.RetailVerse"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion  // Required for image_cropper 8.x and Razorpay
+        minSdk = flutter.minSdkVersion  // Minimum required by image_cropper 8.x, Razorpay & Bluetooth APIs; covers 99%+ active devices
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

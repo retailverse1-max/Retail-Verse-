@@ -26,8 +26,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   
-  // Icon cycling animation state
-  bool _showMainLogo = true;
   int _currentIconIndex = 0;
   final List<IconData> _cyclingIcons = [
     Icons.shopping_basket_rounded, // Grocery
@@ -40,53 +38,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   void initState() {
     super.initState();
-
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
       vsync: this,
+      duration: const Duration(milliseconds: 800),
     );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeIn),
+    );
 
     _fadeController.forward();
     _startSplashSequence();
-    _checkSessionAndNavigate();
   }
 
   void _startSplashSequence() async {
-    // Show main POS logo for 1.5 seconds first
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) {
-      setState(() {
-        _showMainLogo = false;
-      });
-      _startIconCycling();
-    }
-  }
+    // Start cycling immediately
+    _startIconCycling();
 
-  void _startIconCycling() async {
-    while (mounted && !_showMainLogo) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        setState(() {
-          _currentIconIndex = (_currentIconIndex + 1) % _cyclingIcons.length;
-        });
-      }
-    }
-  }
+    // Let the motion run for 2.5 seconds total (as requested by user, readable speed)
+    await Future.delayed(const Duration(milliseconds: 2500));
+    
+    // Pre-fetch session while waiting
+    final sessionFuture = SessionService.hasSession();
 
-  Future<void> _checkSessionAndNavigate() async {
+    if (!mounted) return;
+
     try {
-      // Total splash duration: 1.5s (logo) + 3s (cycling) = 4.5s
-      await Future.delayed(const Duration(milliseconds: 4500));
-
-      final hasSession = await SessionService.hasSession();
-
-      if (!mounted) return;
-
+      final hasSession = await sessionFuture;
       if (hasSession) {
         await ref.read(authProvider.notifier).restoreFromStorage();
         if (!mounted) return;
@@ -98,6 +75,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       }
     } catch (e) {
       if (mounted) context.go('/onboarding');
+    }
+  }
+
+
+
+  void _startIconCycling() async {
+    while (mounted) {
+      // Slower speed so icons can be understood (500ms per icon)
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        setState(() {
+          _currentIconIndex = (_currentIconIndex + 1) % _cyclingIcons.length;
+        });
+      }
     }
   }
 
@@ -128,7 +119,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 ),
                 child: Center(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
+                    duration: const Duration(milliseconds: 500), // smooth transition
                     transitionBuilder: (Widget child, Animation<double> animation) {
                       return ScaleTransition(
                         scale: animation, 
@@ -136,8 +127,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       );
                     },
                     child: Icon(
-                      _showMainLogo ? Icons.point_of_sale_rounded : _cyclingIcons[_currentIconIndex],
-                      key: ValueKey<String>(_showMainLogo ? 'logo' : 'icon_$_currentIconIndex'),
+                      _cyclingIcons[_currentIconIndex],
+                      key: ValueKey<String>('icon_$_currentIconIndex'),
                       color: AppColors.primary,
                       size: 70,
                     ),
@@ -151,15 +142,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   color: AppColors.primary,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 4.0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "MODERN RETAIL ECOSYSTEM",
-                style: AppTypography.labelLarge.copyWith(
-                  color: AppColors.textTertiary,
-                  letterSpacing: 2.0,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],

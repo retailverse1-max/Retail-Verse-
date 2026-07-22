@@ -55,9 +55,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
-      );
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('not found') || 
+          errorMsg.contains('invalid') || 
+          errorMsg.contains('user not exist') || 
+          errorMsg.contains('no user')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid Email'), backgroundColor: Colors.red),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

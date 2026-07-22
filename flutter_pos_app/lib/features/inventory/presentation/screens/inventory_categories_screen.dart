@@ -44,7 +44,7 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final role = effectiveUserRole(user);
-    final canManage = role == 'admin' || role == 'super_admin' || role == 'inventory_manager';
+    final canManage = role == 'admin' || role == 'inventory_manager';
 
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
