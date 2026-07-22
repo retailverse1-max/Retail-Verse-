@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../../../middleware/authMiddleware'); // Assuming this exists for Retail Verse
+const { protect: authMiddleware } = require('../../../middleware/authMiddleware');
 const flipkartController = require('./flipkart.controller');
 
 // ==========================================
