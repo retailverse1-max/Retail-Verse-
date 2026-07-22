@@ -13,8 +13,12 @@ const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user || !user.isActive) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(401).json({ message: "Email does not exist" });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ message: "Account is inactive" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
