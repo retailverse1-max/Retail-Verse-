@@ -28,7 +28,7 @@ class SalesDetailsScreen extends ConsumerWidget {
         title: Text(
           'Sales Details',
           style: AppTypography.titleLarge.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
         ),

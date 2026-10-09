@@ -125,7 +125,7 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(data['businessName'] ?? 'Unknown Store', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+              Text(data['businessName'] ?? 'Unknown Store', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -183,7 +183,7 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 16),
-            Text(value, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+            Text(value, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
             Text(label, style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary)),
           ],
         ),
@@ -242,13 +242,13 @@ class _SaBusinessDetailsScreenState extends State<SaBusinessDetailsScreen> {
             children: [
               Text(
                 'Status: ',
-                style: AppTypography.headlineSmall.copyWith(color: isPro ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w900),
+                style: AppTypography.headlineSmall.copyWith(color: isPro ? Colors.white : AppColors.textPrimary, fontWeight: FontWeight.w700),
               ),
               Text(
                 isExpired ? 'Expired' : 'Active',
                 style: AppTypography.headlineSmall.copyWith(
                   color: isExpired ? Colors.redAccent : (isPro ? Colors.greenAccent : Colors.green), 
-                  fontWeight: FontWeight.w900
+                  fontWeight: FontWeight.w700
                 ),
               ),
             ],

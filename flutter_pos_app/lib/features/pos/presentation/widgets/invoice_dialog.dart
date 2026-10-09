@@ -48,7 +48,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      SnackBar(duration: const Duration(seconds: 2),
         content: Row(
           children: [
             const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
@@ -56,7 +56,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
             Text('$title Completed Successfully!'),
           ],
         ),
-        backgroundColor: AppColors.success,
+        backgroundColor: AppColors.secondary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -80,7 +80,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
 
       if (devices.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No paired Bluetooth printers found.')),
+          const SnackBar(duration: const Duration(seconds: 2),content: Text('No paired Bluetooth printers found.')),
         );
         return;
       }
@@ -131,9 +131,9 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
           setState(() => _isActionRunning = false);
           
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            const SnackBar(duration: const Duration(seconds: 2),
               content: Text('Receipt printed successfully!'),
-              backgroundColor: AppColors.success,
+              backgroundColor: AppColors.secondary,
             ),
           );
           
@@ -143,9 +143,9 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
           if (!mounted) return;
           setState(() => _isActionRunning = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            const SnackBar(duration: const Duration(seconds: 2),
               content: Text('Failed to connect to printer.'),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.secondary,
             ),
           );
         }
@@ -154,9 +154,9 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
       if (mounted) {
         setState(() => _isActionRunning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text('Print Error: \$e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -174,18 +174,18 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
       if (!mounted) return;
       setState(() => _isActionRunning = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           content: Text('WhatsApp/SMS opened successfully!'),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.secondary,
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isActionRunning = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Text('Failed to send SMS: \$e'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
         ),
       );
     }
@@ -202,18 +202,18 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
       if (!mounted) return;
       setState(() => _isActionRunning = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           content: Text('Email request sent successfully!'),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.secondary,
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isActionRunning = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Text('Failed to send Email: \$e'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
         ),
       );
     }
@@ -264,9 +264,9 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
               Navigator.pop(ctx);
               if (phone.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  const SnackBar(duration: const Duration(seconds: 2),
                     content: Text('Phone number is required to send SMS.'),
-                    backgroundColor: AppColors.error,
+                    backgroundColor: AppColors.secondary,
                   ),
                 );
                 return;
@@ -329,9 +329,9 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
               Navigator.pop(ctx);
               if (email.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  const SnackBar(duration: const Duration(seconds: 2),
                     content: Text('Email address is required.'),
-                    backgroundColor: AppColors.error,
+                    backgroundColor: AppColors.secondary,
                   ),
                 );
                 return;
@@ -386,7 +386,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                   'Order Placed Successfully!',
                   textAlign: TextAlign.center,
                   style: AppTypography.headlineSmall.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -411,7 +411,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                               'RETAIL VERSE STORE',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 16,
                                 letterSpacing: 1.2,
                                 color: AppColors.textPrimary,
@@ -583,7 +583,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                                 const Text(
                                   'GRAND TOTAL',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 15,
                                     color: AppColors.textPrimary,
                                   ),
@@ -591,7 +591,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                                 Text(
                                   '₹${order.total.toStringAsFixed(2)}',
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 16,
                                     color: AppColors.primary,
                                   ),
@@ -637,7 +637,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                       child: _buildActionButton(
                         icon: Icons.email_rounded,
                         label: 'Email',
-                        color: AppColors.warning,
+                        color: AppColors.accent,
                         onTap: _onEmailPressed,
                       ),
                     ),
@@ -652,7 +652,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                   child: FilledButton(
                     onPressed: widget.onDone,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.amazonOrange,
+                      backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,

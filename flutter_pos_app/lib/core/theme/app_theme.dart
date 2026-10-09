@@ -50,7 +50,7 @@ class AppTheme {
         iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
         titleTextStyle: AppTypography.titleLarge.copyWith(
           color: AppColors.textPrimary,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
         ),
       ),
 
@@ -61,6 +61,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(borderRadiusLG),
           side: const BorderSide(color: AppColors.cardBorder, width: 1.5),
         ),
+      ),
+
+      radioTheme: RadioThemeData(
+        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (states.contains(MaterialState.selected)) {
+            return AppColors.primary;
+          }
+          return AppColors.textTertiary;
+        }),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(

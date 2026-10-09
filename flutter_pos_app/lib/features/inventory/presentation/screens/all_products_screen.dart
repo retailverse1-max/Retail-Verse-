@@ -157,7 +157,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                       Text(
                         'Products',
                         style: AppTypography.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -318,7 +318,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
             Text(
               value,
               style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),
             ),
@@ -388,7 +388,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                               'OUT OF STOCK',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 8,
                               ),
                             ),
@@ -434,7 +434,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           AppFormatters.formatCurrency(product.price),
                           style: const TextStyle(
                             color: AppColors.primary,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             fontSize: 11,
                           ),
                         ),
@@ -455,7 +455,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                     style: TextStyle(
                       color: AppColors.primary.withOpacity(0.7),
                       fontSize: 8,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: 1,
                     ),
                   ),

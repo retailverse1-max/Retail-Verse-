@@ -7,6 +7,11 @@ import 'package:retail_verse_pos/core/theme/app_theme.dart';
 import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/features/pos/providers/order_providers.dart';
+import 'package:retail_verse_pos/features/orders/utils/receipt_generator.dart';
+import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
+
+import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
 
 /// Order detail screen - Invoice style view
 class OrderDetailScreen extends ConsumerWidget {
@@ -16,6 +21,8 @@ class OrderDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(posSettingsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
@@ -29,18 +36,33 @@ class OrderDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.print, color: AppColors.primary),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Print feature coming soon...')),
-              );
+            onPressed: () async {
+              try {
+                final pdfData = await ReceiptGenerator.generateReceiptPdf(
+                  order,
+                  settings: settings,
+                );
+                await Printing.layoutPdf(
+                  onLayout: (format) async => pdfData,
+                  name: 'Receipt_${order.orderId}.pdf',
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(duration: const Duration(seconds: 2),content: Text('Error printing receipt: $e')),
+                  );
+                }
+              }
             },
           ),
           IconButton(
             icon: const Icon(Icons.share, color: AppColors.primary),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Share feature coming soon...')),
-              );
+              final text = 'Receipt for Order #${order.orderId}\n'
+                  'Date: ${AppFormatters.formatDateTime(order.dateTime)}\n'
+                  'Total: ${AppFormatters.formatCurrency(order.total)}\n'
+                  'Thank you for your business!';
+              Share.share(text, subject: 'Order Receipt ${order.orderId}');
             },
           ),
         ],
@@ -414,7 +436,7 @@ class OrderDetailScreen extends ConsumerWidget {
                   label: const Text('Convert to Invoice'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.success,
+                    backgroundColor: AppColors.secondary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -444,7 +466,7 @@ class OrderDetailScreen extends ConsumerWidget {
           child: ElevatedButton.icon(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invoice will be downloaded...')),
+                const SnackBar(duration: const Duration(seconds: 2),content: Text('Invoice will be downloaded...')),
               );
             },
             icon: const Icon(Icons.download),
@@ -551,9 +573,9 @@ class OrderDetailScreen extends ConsumerWidget {
     if (success) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Quote successfully converted to Invoice!'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -563,9 +585,9 @@ class OrderDetailScreen extends ConsumerWidget {
       if (context.mounted) {
         final errorMsg = ref.read(orderCreationProvider).error ?? 'Conversion failed';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(errorMsg.toString().contains('SocketException') || errorMsg.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $errorMsg'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );

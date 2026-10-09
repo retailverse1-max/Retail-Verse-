@@ -29,7 +29,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Notifications', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+        title: Text('Notifications', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -91,7 +91,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       Expanded(
                                         child: Text(
                                           notif.title,
-                                          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900),
+                                          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),

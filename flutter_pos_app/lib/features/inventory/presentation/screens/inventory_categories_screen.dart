@@ -77,7 +77,7 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                         Text(
                           'Inventory',
                           style: AppTypography.headlineMedium.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -262,7 +262,7 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                     const SizedBox(height: 16),
                     Text(
                       category.name,
-                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900),
+                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -400,9 +400,9 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                 Navigator.pop(ctx);
                 setState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  SnackBar(duration: const Duration(seconds: 2),
                     content: const Text('Category updated successfully'),
-                    backgroundColor: AppColors.success,
+                    backgroundColor: AppColors.secondary,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
@@ -433,16 +433,16 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                 Navigator.pop(ctx);
                 setState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  SnackBar(duration: const Duration(seconds: 2),
                     content: const Text('Category deleted successfully'),
-                    backgroundColor: AppColors.success,
+                    backgroundColor: AppColors.secondary,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                 );
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.secondary),
             child: const Text('Delete'),
           ),
         ],

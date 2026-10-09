@@ -52,7 +52,7 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
       if (role != 'admin' && role != 'super_admin' && role != 'inventory_manager') {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Access Denied'), backgroundColor: AppColors.error),
+            const SnackBar(duration: const Duration(seconds: 2),content: Text('Access Denied'), backgroundColor: AppColors.secondary),
           );
         }
         return;
@@ -64,14 +64,14 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Category added successfully!'), backgroundColor: AppColors.success),
+          const SnackBar(duration: const Duration(seconds: 2),content: Text('Category added successfully!'), backgroundColor: AppColors.secondary),
         );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.secondary),
         );
       }
     } finally {
@@ -84,7 +84,7 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Add Category', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+        title: Text('Add Category', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,

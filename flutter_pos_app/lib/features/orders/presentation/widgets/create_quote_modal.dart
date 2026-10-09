@@ -45,7 +45,7 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Quotation created successfully!')),
+        const SnackBar(duration: const Duration(seconds: 2),content: Text('Quotation created successfully!')),
       );
       Navigator.of(context).pop();
     } else if (mounted) {
@@ -312,7 +312,7 @@ class _CreateQuoteModalState extends ConsumerState<CreateQuoteModal> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('Total', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
-                              Text(AppFormatters.formatCurrency(totalAmount), style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, color: AppColors.primary)),
+                              Text(AppFormatters.formatCurrency(totalAmount), style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary)),
                             ],
                           ),
                         ]

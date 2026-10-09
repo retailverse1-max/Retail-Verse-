@@ -61,9 +61,9 @@ class _SupportDialogState extends ConsumerState<SupportDialog> {
         });
       } else {
         messenger.showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Support request submitted successfully! Our team will review it.'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -71,9 +71,9 @@ class _SupportDialogState extends ConsumerState<SupportDialog> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Text('Failed to create ticket: $e'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -105,7 +105,7 @@ class _SupportDialogState extends ConsumerState<SupportDialog> {
                     child: const Icon(Icons.support_agent_rounded, color: AppColors.warning, size: 24),
                   ),
                   const SizedBox(width: 16),
-                  Text('Submit Support Request', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                  Text('Submit Support Request', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
               const SizedBox(height: 24),

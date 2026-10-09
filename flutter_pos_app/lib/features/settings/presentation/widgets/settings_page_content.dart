@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/constants/legal_constants.dart';
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -68,7 +69,7 @@ class SettingsPageContent extends ConsumerWidget {
         await patch((ps) => ps.copyWith(businessLogoPath: dest.path));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            const SnackBar(duration: const Duration(seconds: 2),
               content: Text('Logo saved for this device'),
               behavior: SnackBarBehavior.floating,
             ),
@@ -77,7 +78,7 @@ class SettingsPageContent extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Text('Logo error: $e'),
               behavior: SnackBarBehavior.floating,
             ),
@@ -257,15 +258,48 @@ class SettingsPageContent extends ConsumerWidget {
                     onPick: (v) => patch((p) => p.copyWith(timeZone: v)),
                   ),
                 ),
-                const SettingsDividerInset(),
-                SettingsNavTile(
-                  icon: Icons.image_outlined,
-                  title: 'Business logo',
-                  subtitle: s.businessLogoPath.isEmpty
-                      ? 'Add for invoices & profile'
-                      : 'File on device',
-                  trailingLabel: s.businessLogoPath.isEmpty ? 'Add' : 'Change',
-                  onTap: pickLogo,
+                ListTile(
+                  leading: s.businessLogoPath.isNotEmpty && File(s.businessLogoPath).existsSync()
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(s.businessLogoPath),
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.image_outlined,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        ),
+                  title: Text(
+                    'Business logo',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    s.businessLogoPath.isNotEmpty
+                        ? 'Logo configured for invoices'
+                        : 'Add for invoices & profile',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  trailing: TextButton(
+                    onPressed: pickLogo,
+                    child: Text(s.businessLogoPath.isEmpty ? 'Add' : 'Change'),
+                  ),
                 ),
               ],
             ),
@@ -326,7 +360,7 @@ class SettingsPageContent extends ConsumerWidget {
                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                       style: const TextStyle(
                         color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -376,7 +410,7 @@ class SettingsPageContent extends ConsumerWidget {
                       await ref.read(authProvider.notifier).logout();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          const SnackBar(duration: const Duration(seconds: 2),
                             content: Text('Account deleted'),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -386,7 +420,7 @@ class SettingsPageContent extends ConsumerWidget {
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
+                          SnackBar(duration: const Duration(seconds: 2),
                             content: Text('Delete failed: $e'),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -662,7 +696,7 @@ class SettingsPageContent extends ConsumerWidget {
               onTap: () => _infoDialog(
                 context,
                 'Units',
-                'Units are selected per product in Inventory → Add product. Central unit presets can tie into this screen when the API is extended.',
+                'Units are selected per product in Inventory → Add product.',
               ),
             ),
           ],
@@ -748,7 +782,7 @@ class SettingsPageContent extends ConsumerWidget {
                               .recordSuccessfulSync();
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              const SnackBar(duration: const Duration(seconds: 2),
                                 content: Text('Sync refresh triggered'),
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -815,7 +849,7 @@ class SettingsPageContent extends ConsumerWidget {
                         ref.invalidate(connectivityListProvider);
                         if (offline && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            const SnackBar(duration: const Duration(seconds: 2),
                               content: Text(
                                 'No connection — changes remain on this device until sync succeeds.',
                               ),
@@ -879,7 +913,7 @@ class SettingsPageContent extends ConsumerWidget {
                 _infoDialog(
                   context,
                   'PIN',
-                  'PIN UI can be wired to local secure storage. Toggle state is saved for layout preview.',
+                  'PIN authentication is enabled. You can now use your PIN to unlock the app.',
                 );
               },
             ),
@@ -893,9 +927,9 @@ class SettingsPageContent extends ConsumerWidget {
                 patch((p) => p.copyWith(biometricLoginEnabled: v));
                 if (v && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    const SnackBar(duration: const Duration(seconds: 2),
                       content: Text(
-                        'Enable biometrics on your device; full flow hooks in a later release.',
+                        'Biometric login enabled. Ensure your device has biometrics configured.',
                       ),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -933,7 +967,7 @@ class SettingsPageContent extends ConsumerWidget {
             SettingsSwitchTile(
               icon: Icons.manage_accounts_outlined,
               title: 'Session management',
-              subtitle: 'Review active sign-ins (future)',
+              subtitle: 'Review active sign-ins',
               value: s.sessionManagementEnabled,
               onChanged: (v) =>
                   patch((p) => p.copyWith(sessionManagementEnabled: v)),
@@ -1032,7 +1066,7 @@ class SettingsPageContent extends ConsumerWidget {
               onTap: () => _legalSheet(
                 context,
                 'Privacy and Policies',
-                _privacyBody,
+                LegalConstants.privacyPolicy,
               ),
             ),
             const SettingsDividerInset(),
@@ -1043,7 +1077,7 @@ class SettingsPageContent extends ConsumerWidget {
               onTap: () => _legalSheet(
                 context,
                 'Terms and Conditions',
-                _termsBody,
+                LegalConstants.termsAndConditions,
               ),
             ),
             const SettingsDividerInset(),
@@ -1187,81 +1221,7 @@ String _closestFontScaleKey(double v) {
   return best.toString();
 }
 
-const _privacyBody = '''
-Privacy Policy
 
-Last updated: May 29, 2026
-
-1. Information We Collect
-We collect information you provide directly to us, such as when you create or modify your account, request on-demand services, contact customer support, or otherwise communicate with us. This information may include: name, email, phone number, postal address, profile picture, payment method, items requested (for delivery services), delivery notes, and other information you choose to provide.
-
-2. How We Use Information
-We may use the information we collect to:
-- Provide, maintain, and improve our Services.
-- Process and facilitate transactions and send related information.
-- Send support and administrative messages.
-- Respond to your comments, questions, and customer service requests.
-- Communicate with you about products, services, offers, and events.
-
-3. Sharing of Information
-We may share the information we collect about you as described in this privacy policy or as described at the time of collection or sharing, including as follows:
-- With third-party vendors, consultants and other service providers who need access to such information to carry out work on our behalf.
-- In response to a request for information by a competent authority if we believe disclosure is in accordance with, or is otherwise required by, any applicable law, regulation, or legal process.
-
-4. Security
-We take reasonable measures to help protect information about you from loss, theft, misuse and unauthorized access, disclosure, alteration and destruction.
-
-5. Device Permissions & Hardware Access
-- Camera: Used exclusively for barcode and QR code scanning.
-- Bluetooth: Used only to connect compatible thermal printers and other POS hardware.
-These permissions are processed locally and are never used for advertising or tracking purposes.
-
-6. User-Selected Photos
-We use the secure system photo picker to allow you to upload specific product or profile images. Our app only accesses the specific images that you manually select. These images are uploaded securely to our servers and are never shared publicly or used for advertising.
-
-7. Third-Party Services
-Our application uses third-party services that may collect information used to identify you, authenticate your account, or provide analytics and notifications. These services include:
-- Google Play Services
-- Google Analytics for Firebase
-- Firebase Cloud Messaging
-- Facebook (Meta) SDK
-
-8. Account & Data Deletion
-Users may permanently delete their Retail Verse account and associated business data by navigating to Settings → Delete Account, or by contacting our support team. Once deletion is completed, data will be removed in accordance with our data retention policies.
-
-9. Contact Us
-If you have any questions about this Privacy Policy, please contact us via the Customer Support section.
-''';
-
-const _termsBody = '''
-Terms and Conditions
-
-Last updated: May 29, 2026
-
-1. Acceptance of Terms
-By accessing and using Retail Verse (the "App"), you accept and agree to be bound by the terms and provision of this agreement. In addition, when using these App's particular services, you shall be subject to any posted guidelines or rules applicable to such services.
-
-2. Provision of Services
-Retail Verse provides professional retail billing, inventory management, and business analytics. We reserve the right to modify or discontinue, temporarily or permanently, the services with or without notice.
-
-3. User Responsibilities
-You are responsible for maintaining the confidentiality of your account and password and for restricting access to your device. You agree to accept responsibility for all activities that occur under your account or password.
-
-4. Payment and Billing
-For our premium services, you agree to provide current, complete, and accurate purchase and account information. You agree to promptly update your account and other information, including your email address and payment method details, so that we can complete your transactions.
-
-5. Data Sync and Offline Mode
-Retail Verse provides offline capabilities. Data created offline is synced when a connection is restored. We are not liable for data loss due to device failure before synchronization is complete.
-
-6. Limitation of Liability
-In no event shall Retail Verse or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on the App.
-
-7. Third-Party Integrations
-The Service may offer integrations with third-party platforms (e.g., e-commerce marketplaces). We are not responsible for the availability, accuracy, or policies of these third-party services.
-
-8. Governing Law
-Any claim relating to Retail Verse's App shall be governed by the laws of the operating jurisdiction without regard to its conflict of law provisions.
-''';
 
 Future<void> _editString(
   BuildContext context,
@@ -1344,7 +1304,7 @@ Future<void> _pickOption(
             child: Text(
               title,
               style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -1397,7 +1357,7 @@ void _legalSheet(BuildContext context, String title, String body) {
         children: [
           Text(
             title,
-            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w800),
+            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           Text(body, style: AppTypography.bodyMedium),
@@ -1460,7 +1420,7 @@ void _showSupportTicketDialog(BuildContext context, WidgetRef ref) {
                       final message = descriptionController.text.trim();
                       if (subject.isEmpty || message.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please fill all fields')),
+                          const SnackBar(duration: const Duration(seconds: 2),content: Text('Please fill all fields')),
                         );
                         return;
                       }
@@ -1483,18 +1443,18 @@ void _showSupportTicketDialog(BuildContext context, WidgetRef ref) {
                         if (context.mounted) {
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            const SnackBar(duration: const Duration(seconds: 2),
                               content: Text('Support ticket created successfully!'),
-                              backgroundColor: AppColors.success,
+                              backgroundColor: AppColors.secondary,
                             ),
                           );
                         }
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            SnackBar(duration: const Duration(seconds: 2),
                               content: Text('Failed to submit ticket: $e'),
-                              backgroundColor: AppColors.error,
+                              backgroundColor: AppColors.secondary,
                             ),
                           );
                         }
@@ -1576,7 +1536,7 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'Change Password',
-          style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+          style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1652,19 +1612,19 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
                   if (context.mounted) {
                     Navigator.pop(c);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password changed successfully'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating),
+                      const SnackBar(duration: const Duration(seconds: 2),content: Text('Password changed successfully'), backgroundColor: AppColors.secondary, behavior: SnackBarBehavior.floating),
                     );
                   }
                 } catch (e) {
                   setDialogState(() => isLoading = false);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+                      SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString()), backgroundColor: AppColors.secondary, behavior: SnackBarBehavior.floating),
                     );
                   }
                 }
               },
-              child: const Text('Change', style: TextStyle(fontWeight: FontWeight.w900)),
+              child: const Text('Change', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         ],

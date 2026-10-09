@@ -84,13 +84,13 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
       message = 'You are offline. Please check your internet connection.';
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+      SnackBar(duration: const Duration(seconds: 2),content: Text(message), backgroundColor: AppColors.secondary, behavior: SnackBarBehavior.floating),
     );
   }
 
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating),
+      SnackBar(duration: const Duration(seconds: 2),content: Text(message), backgroundColor: AppColors.secondary, behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -148,7 +148,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
             : const ResponsiveMenuButton(
                 isSuperAdmin: false,
               ),
-        title: Text('Domain Manager', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+        title: Text('Domain Manager', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
       ),
       body: SafeArea(
         child: _isLoading
@@ -165,7 +165,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
                       _buildDnsInstructionCard(_lastAddedDomain!),
                     ],
                     const SizedBox(height: 32),
-                    Text('YOUR DOMAINS', style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
+                    Text('YOUR DOMAINS', style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 1.5)),
                     const SizedBox(height: 16),
                     if (_domains.isEmpty)
                       _buildEmptyState()
@@ -190,7 +190,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Connect New Domain', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+          Text('Connect New Domain', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 20),
           _buildLargeDropdown(),
           const SizedBox(height: 16),
@@ -207,7 +207,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
               ),
               child: _isSubmitting 
                 ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                : const Text('CONNECT DOMAIN', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
+                : const Text('CONNECT DOMAIN', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: 1)),
             ),
           ),
         ],
@@ -306,12 +306,12 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(domain, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                      Text(domain, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                        child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900)),
+                        child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -334,15 +334,15 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
                       child: FilledButton(
                         onPressed: () => _verifyDomain(id),
                         style: FilledButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        child: const Text('VERIFY DNS', style: TextStyle(fontWeight: FontWeight.w900)),
+                        child: const Text('VERIFY DNS', style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
                     ),
                   if (isVerified)
                     Expanded(
                       child: FilledButton(
                         onPressed: () => _activateDomain(id),
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.success, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        child: const Text('ACTIVATE DOMAIN', style: TextStyle(fontWeight: FontWeight.w900)),
+                        style: FilledButton.styleFrom(backgroundColor: AppColors.secondary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        child: const Text('ACTIVATE DOMAIN', style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
                     ),
                 ],
@@ -360,7 +360,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
       children: [
         Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Text(text.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        Text(text.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
       ],
     );
   }
@@ -392,7 +392,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
             children: [
               const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 28),
               const SizedBox(width: 12),
-              Text('DNS Setup Guide', style: AppTypography.titleLarge.copyWith(color: Colors.blue.shade900, fontWeight: FontWeight.w900)),
+              Text('DNS Setup Guide', style: AppTypography.titleLarge.copyWith(color: Colors.blue.shade900, fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 16),
@@ -418,9 +418,9 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.blueGrey, letterSpacing: 1)),
+            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.blueGrey, letterSpacing: 1)),
             const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           ],
         ),
         if (canCopy)
@@ -453,7 +453,7 @@ class _SaCustomDomainsScreenState extends ConsumerState<SaCustomDomainsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Text(text, style: AppTypography.labelSmall.copyWith(color: color, fontWeight: FontWeight.w900)),
+      child: Text(text, style: AppTypography.labelSmall.copyWith(color: color, fontWeight: FontWeight.w700)),
     );
   }
 

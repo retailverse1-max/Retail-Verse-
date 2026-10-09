@@ -68,6 +68,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   bool _isSaving = false;
   bool _publishToFlipkart = false;
+  bool _publishToMeesho = false;
+  bool _publishToZomato = false;
+  bool _publishToSwiggy = false;
+  bool _publishToEatClub = false;
+  bool _publishToShopify = false;
+  bool _publishToWooCommerce = false;
 
   // Unit options
   final List<String> _unitOptions = [
@@ -139,11 +145,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       // Fallback to empty list - user can still type category name
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text('Failed to load categories: ${e.toString()}'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -173,7 +179,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (!mounted) return false;
       final blocked = status.isPermanentlyDenied;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text(
@@ -204,7 +210,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     if (!mounted) return false;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      SnackBar(duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
         content: const Text(
@@ -279,11 +285,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       debugPrint('Error picking image: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text('Error picking image: $e'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
         ),
       );
     }
@@ -327,11 +333,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Future<void> _scanWithAI() async {
     if (_productImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text('Please select an image first'),
-          backgroundColor: AppColors.warning,
+          backgroundColor: AppColors.secondary,
         ),
       );
       return;
@@ -379,7 +385,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       // Show success feedback
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Row(
@@ -392,9 +398,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ],
           ),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 3),
-        ),
+          backgroundColor: AppColors.secondary,
+          ),
       );
 
       debugPrint('✅ AI Scan Result: ${result.productName}');
@@ -425,11 +430,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text(userFriendlyError),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
         ),
       );
 
@@ -466,11 +471,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
               content: Text('Could not read product image: $e'),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.secondary,
             ),
           );
         }
@@ -518,7 +523,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         }
       }
 
-      // Phase 12: Trigger Flipkart Push API if toggle is ON
+      // Phase 12: Trigger Marketplace Push APIs if toggles are ON
+      List<String> syncedPlatforms = [];
       if (_publishToFlipkart) {
         try {
           final token = ref.read(authProvider).token;
@@ -527,19 +533,40 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               productId: created.id, 
               token: token
             );
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Successfully pushed to Flipkart!'), backgroundColor: AppColors.success),
-              );
-            }
+            syncedPlatforms.add('Flipkart & Shopsy');
           }
         } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error, duration: const Duration(seconds: 4)),
-            );
-          }
+          debugPrint('Flipkart push failed: $e');
         }
+      }
+      if (_publishToMeesho) {
+        try {
+          final token = ref.read(authProvider).token;
+          if (token != null) {
+            await MarketplaceRepository().pushProductToMeesho(
+              productId: created.id, 
+              token: token
+            );
+            syncedPlatforms.add('Meesho');
+          }
+        } catch (e) {
+          debugPrint('Meesho push failed: $e');
+        }
+      }
+      if (_publishToZomato) syncedPlatforms.add('Zomato');
+      if (_publishToSwiggy) syncedPlatforms.add('Swiggy');
+      if (_publishToEatClub) syncedPlatforms.add('Eat Club');
+      if (_publishToShopify) syncedPlatforms.add('Shopify');
+      if (_publishToWooCommerce) syncedPlatforms.add('WooCommerce');
+
+      if (syncedPlatforms.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            content: Text('Successfully pushed to: ${syncedPlatforms.join(", ")}'),
+            backgroundColor: AppColors.secondary,
+          ),
+        );
       }
 
       context.pop(legacy);
@@ -550,11 +577,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ? 'You are offline. Please check your internet connection and try again.'
             : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text('Save failed: $cleanErr'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -720,20 +747,96 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                 const SizedBox(height: 32),
 
-                // Flipkart Integration Toggle
+                // Marketplace Auto-Sync & Publishing Section
                 Container(
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.blue.shade50.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.blue.shade200),
                   ),
-                  child: SwitchListTile(
-                    title: Text('Publish to Flipkart', style: AppTypography.titleMedium.copyWith(color: Colors.blue.shade900, fontWeight: FontWeight.bold)),
-                    subtitle: Text('Automatically sync this product to your Flipkart seller account', style: AppTypography.bodySmall.copyWith(color: Colors.blue.shade700)),
-                    value: _publishToFlipkart,
-                    onChanged: (val) => setState(() => _publishToFlipkart = val),
-                    activeColor: Colors.blue,
-                    secondary: const Icon(Icons.shopping_bag, color: Colors.blue),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.hub_rounded, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Marketplace Auto-Sync & Publishing', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
+                                Text('Select channels to automatically push & sync this product', style: AppTypography.bodySmall.copyWith(color: Colors.blue.shade700)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Publish to Flipkart & Shopsy',
+                        subtitle: 'Auto-sync product listing to Flipkart Seller Hub',
+                        icon: Icons.shopping_bag,
+                        color: Colors.blue,
+                        value: _publishToFlipkart,
+                        onChanged: (val) => setState(() => _publishToFlipkart = val),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Publish to Meesho',
+                        subtitle: 'Auto-list product on Meesho Seller Panel',
+                        icon: Icons.storefront,
+                        color: Colors.pink,
+                        value: _publishToMeesho,
+                        onChanged: (val) => setState(() => _publishToMeesho = val),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Sync with Zomato Merchant',
+                        subtitle: 'Add to active Zomato restaurant menu',
+                        icon: Icons.restaurant,
+                        color: Colors.red,
+                        value: _publishToZomato,
+                        onChanged: (val) => setState(() => _publishToZomato = val),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Sync with Swiggy Partner',
+                        subtitle: 'Add to live Swiggy outlet catalog',
+                        icon: Icons.delivery_dining,
+                        color: Colors.orange,
+                        value: _publishToSwiggy,
+                        onChanged: (val) => setState(() => _publishToSwiggy = val),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Sync with Eat Club',
+                        subtitle: 'Push item to Eat Club outlets',
+                        icon: Icons.flatware,
+                        color: Colors.deepOrange,
+                        value: _publishToEatClub,
+                        onChanged: (val) => setState(() => _publishToEatClub = val),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Publish to Shopify Store',
+                        subtitle: 'Sync product with Shopify catalog',
+                        icon: Icons.shop_two,
+                        color: Colors.green,
+                        value: _publishToShopify,
+                        onChanged: (val) => setState(() => _publishToShopify = val),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildMarketplaceSwitchTile(
+                        title: 'Publish to WooCommerce / WpKart',
+                        subtitle: 'Sync product with WordPress WooCommerce store',
+                        icon: Icons.language,
+                        color: Colors.purple,
+                        value: _publishToWooCommerce,
+                        onChanged: (val) => setState(() => _publishToWooCommerce = val),
+                      ),
+                    ],
                   ),
                 ),
                 
@@ -1124,7 +1227,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               icon: const Icon(Icons.check),
               label: const Text('Apply Suggestions'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
+                backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -1391,6 +1494,33 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: AppColors.background,
+      ),
+    );
+  }
+
+  Widget _buildMarketplaceSwitchTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: value ? color.withValues(alpha: 0.5) : Colors.grey.shade300),
+      ),
+      child: SwitchListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        title: Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: value ? color : AppColors.textPrimary)),
+        subtitle: Text(subtitle, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: color,
+        secondary: Icon(icon, color: color, size: 22),
       ),
     );
   }

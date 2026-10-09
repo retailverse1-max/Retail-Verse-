@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../providers/auth_provider.dart';
+import '../widgets/privacy_policy_disclaimer.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,8 +19,15 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _isLoading = false;
+  bool _agreedToTerms = false;
 
   Future<void> _handleGoogleSignIn() async {
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),content: Text('Please agree to the Terms of Service and Privacy Policy'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
@@ -49,7 +57,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         await ref.read(authProvider.notifier).signInWithGoogle(userCred.user!);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google Sign-In successful'), backgroundColor: Colors.green),
+          const SnackBar(duration: const Duration(seconds: 2),content: Text('Google Sign-In successful'), backgroundColor: Colors.green),
         );
         context.go('/dashboard');
       }
@@ -61,11 +69,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           errorMsg.contains('user not exist') || 
           errorMsg.contains('no user')) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid Email'), backgroundColor: Colors.red),
+          const SnackBar(duration: const Duration(seconds: 2),content: Text('Invalid Email'), backgroundColor: Colors.red),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
+          SnackBar(duration: const Duration(seconds: 2),content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -112,9 +120,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             const SizedBox(height: 60),
                             
                             // ── CREATIVE HEADER ──────────────────────────
-                            TweenAnimationBuilder<double>(
+                            TweenAnimationBuilder<double>( duration: const Duration(milliseconds: 300), 
                               tween: Tween(begin: 0.0, end: 1.0),
-                              duration: const Duration(seconds: 1),
                               builder: (context, value, child) {
                                 return Opacity(
                                   opacity: value,
@@ -174,7 +181,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     textAlign: TextAlign.center,
                                     style: (isTablet ? AppTypography.displayLarge : AppTypography.displayMedium).copyWith(
                                       color: const Color(0xFF1E1B4B),
-                                      fontWeight: FontWeight.w900,
+                                      fontWeight: FontWeight.w700,
                                       letterSpacing: -1.5,
                                     ),
                                   ),
@@ -208,7 +215,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                   _buildPrimaryButton(
                                     context,
                                     title: 'Get Started',
-                                    onPressed: () => context.go('/login'),
+                                    onPressed: () {
+                                      if (!_agreedToTerms) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(duration: const Duration(seconds: 2),content: Text('Please agree to the Terms of Service and Privacy Policy'), backgroundColor: Colors.red),
+                                        );
+                                        return;
+                                      }
+                                      context.go('/login');
+                                    },
                                     isTablet: isTablet,
                                   ),
                                   const SizedBox(height: 20),
@@ -239,6 +254,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                         ),
                                       ),
                                     ],
+                                  ),
+                                  const SizedBox(height: 32),
+                                  PrivacyPolicyDisclaimer(
+                                    value: _agreedToTerms,
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _agreedToTerms = val);
+                                    },
                                   ),
                                 ],
                               ),
@@ -292,7 +314,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Text(
               title,
               style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 fontSize: isTablet ? 18 : 16,
                 color: Colors.white,
                 letterSpacing: 0.5,
@@ -367,7 +389,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       fontSize: isTablet ? 18 : 15,
                       letterSpacing: 0.2,
                     ),

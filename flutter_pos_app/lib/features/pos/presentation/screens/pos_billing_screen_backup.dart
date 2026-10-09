@@ -91,9 +91,9 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text('Failed to load products: ${e.toString()}'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -125,11 +125,11 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
           _cart[existingIndex].quantity++;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Text(
                 'Cannot add more than available stock (${product.stock})',
               ),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.secondary,
             ),
           );
           return;
@@ -147,11 +147,11 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
         item.quantity++;
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(
               'Cannot exceed available stock (${item.product.stock})',
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -194,9 +194,9 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
   Future<void> _placeOrder() async {
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Text('Cart is empty'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
         ),
       );
       return;
@@ -224,7 +224,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
             Text(
               'Place Order',
               style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -243,7 +243,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
             Text(
               'Total: ₹${_total.toStringAsFixed(2)}',
               style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 color: AppColors.primary,
               ),
             ),
@@ -296,7 +296,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Row(
               children: [
                 const Icon(Icons.check_circle_rounded, color: Colors.white),
@@ -304,7 +304,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
                 Text('Order placed successfully!'),
               ],
             ),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -315,9 +315,9 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text('Failed to place order: ${e.toString()}'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -372,7 +372,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
           Text(
             'POS Billing',
             style: AppTypography.headlineMedium.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.primary,
             ),
           ),
@@ -793,7 +793,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
                         child: Text(
                           '${item.quantity}',
                           style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -819,7 +819,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
                     '₹${item.total.toStringAsFixed(2)}',
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -910,7 +910,7 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
                     '₹${_total.toStringAsFixed(2)}',
                     style: AppTypography.headlineSmall.copyWith(
                       color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -996,7 +996,6 @@ class _ProductCard extends StatelessWidget {
     final isInStock = product.isInStock;
 
     return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 200),
       tween: Tween<double>(begin: 0.0, end: isInStock ? 1.0 : 0.0),
       builder: (context, value, child) {
         return Transform.scale(
@@ -1083,7 +1082,7 @@ class _ProductCard extends StatelessWidget {
                                 isInStock ? '✓' : '✗',
                                 style: AppTypography.labelSmall.copyWith(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -1123,7 +1122,7 @@ class _ProductCard extends StatelessWidget {
                                   '₹${product.price.toStringAsFixed(2)}',
                                   style: AppTypography.priceMedium.copyWith(
                                     color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 Container(
@@ -1213,7 +1212,7 @@ class _BillRow extends StatelessWidget {
           value,
           style: AppTypography.titleMedium.copyWith(
             color: AppColors.textPrimary,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

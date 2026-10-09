@@ -140,7 +140,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 AppConstants.appName.toUpperCase(),
                 style: AppTypography.headlineMedium.copyWith(
                   color: AppColors.primary,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: 4.0,
                 ),
               ),

@@ -64,11 +64,11 @@ class _CategoryProductsScreenState
     if (role != 'admin' && role != 'super_admin' && role != 'inventory_manager') {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text('Only admin can add products.'),
-          backgroundColor: AppColors.warning,
+          backgroundColor: AppColors.secondary,
         ),
       );
       return;
@@ -81,7 +81,7 @@ class _CategoryProductsScreenState
       ref.invalidate(categoryProductsProvider(widget.category.name));
       if (result != null) {
         _showLocalSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Row(
@@ -91,7 +91,7 @@ class _CategoryProductsScreenState
                 Text('Product saved successfully!', style: TextStyle(color: Colors.white)),
               ],
             ),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -103,11 +103,11 @@ class _CategoryProductsScreenState
     if (role == 'seo_manager') {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text('SEO Manager cannot delete products.'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
         ),
       );
       return;
@@ -119,11 +119,11 @@ class _CategoryProductsScreenState
         ref.invalidate(productsProvider);
         invalidateAllDashboardProviders(ref);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text('${product.name} removed'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -135,11 +135,11 @@ class _CategoryProductsScreenState
                 : e.message)
             : e.toString();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text(msg),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -173,7 +173,7 @@ class _CategoryProductsScreenState
                 Text(
                   'Update Product',
                   style: AppTypography.headlineMedium.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
@@ -352,7 +352,7 @@ class _CategoryProductsScreenState
       ref.invalidate(categoryProductsProvider(widget.category.name));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text('Product updated'),
@@ -362,11 +362,11 @@ class _CategoryProductsScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text('Update failed: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -389,24 +389,24 @@ class _CategoryProductsScreenState
         ref.invalidate(categoryProductsProvider(widget.category.name));
         ref.invalidate(productsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text(newStatus
                 ? '${product.name} activated'
                 : '${product.name} deactivated'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Text('Failed to update status: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -755,7 +755,7 @@ class _CategoryProductsScreenState
                           showMenu: canManageProduct,
                           onTap: () => ScaffoldMessenger.of(context)
                               .showSnackBar(
-                            SnackBar(
+                            SnackBar(duration: const Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
                               margin: const EdgeInsets.only(
                                   bottom: 120, left: 16, right: 16),
@@ -888,7 +888,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             value,
             style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontSize: 18,
             ),
@@ -1014,7 +1014,7 @@ class _ProductCard extends StatelessWidget {
                           Text(
                             '₹${product.price.toStringAsFixed(2)}',
                             style: AppTypography.titleSmall.copyWith(
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.primary,
                             ),
                           ),
@@ -1178,7 +1178,7 @@ class _ProductGridCard extends StatelessWidget {
                           '₹${product.price.toStringAsFixed(0)}',
                           style: const TextStyle(
                             color: AppColors.primary,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             fontSize: 11,
                           ),
                         ),

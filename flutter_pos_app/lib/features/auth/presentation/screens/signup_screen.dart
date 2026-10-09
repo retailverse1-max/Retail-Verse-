@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import '../widgets/privacy_policy_disclaimer.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -34,12 +35,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLocalLoading = false;
+  bool _agreedToTerms = false;
   String _selectedCountryCode = '+91';
 
   Future<void> _handleSignup() async {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToTerms) {
+      _showErrorSnackBar('Please agree to the Terms of Service and Privacy Policy');
+      return;
+    }
     if (_isLocalLoading) return;
 
     if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
@@ -66,7 +72,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         authNotifier.logout();
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: const Text('Account created successfully. Please sign in.'),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
@@ -89,11 +95,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(duration: const Duration(seconds: 2),content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   Future<void> _handleGoogleSignup() async {
+    if (!_agreedToTerms) {
+      _showErrorSnackBar('Please agree to the Terms of Service and Privacy Policy');
+      return;
+    }
     try {
       final googleSignIn = GoogleSignIn();
       await googleSignIn.signOut();
@@ -123,7 +133,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   void _showSuccessAndNavigate(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(msg), backgroundColor: Colors.green));
     context.push('/dashboard');
   }
 
@@ -191,7 +201,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       'Join Retail Verse',
                       style: AppTypography.displaySmall.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: -1,
                       ),
                     ),
@@ -233,7 +243,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         children: [
                           Text(
                             'Create Account',
-                            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900),
+                            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 32),
@@ -300,7 +310,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 32),
+                          PrivacyPolicyDisclaimer(
+                            value: _agreedToTerms,
+                            onChanged: (val) {
+                              if (val != null) setState(() => _agreedToTerms = val);
+                            },
+                          ),
+                          const SizedBox(height: 16),
                           SizedBox(
                             height: 58,
                             child: FilledButton(
@@ -325,7 +341,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
               // ── FOOTER ──────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                padding: EdgeInsets.fromLTRB(24, 0, 24, 40 + MediaQuery.paddingOf(context).bottom),
                 child: Column(
                   children: [
                     Row(
@@ -352,11 +368,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         Text("Already have an account? ", style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                         GestureDetector(
                           onTap: () => context.push('/login'),
-                          child: Text('Sign In', style: AppTypography.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900)),
+                          child: Text('Sign In', style: AppTypography.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
-                  ],
+                    ],
                 ),
               ),
             ],

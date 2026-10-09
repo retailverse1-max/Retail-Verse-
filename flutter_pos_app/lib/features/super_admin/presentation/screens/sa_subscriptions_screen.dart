@@ -98,7 +98,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Subscriptions', style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                          Text('Client Plans', style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
                           Text('Manage revenue and client access', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
                         ],
                       ),
@@ -107,7 +107,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                 ),
               ),
               IconButton(
-                onPressed: () {}, // Future: Open detailed analytics
+                onPressed: () => context.push('/super-admin/analytics'),
                 icon: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
@@ -174,7 +174,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
         ),
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
         unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
         tabs: const [
           Tab(text: 'CLIENTS'),
@@ -228,7 +228,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('CLIENT ECOSYSTEM', style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                  Text('CLIENT ECOSYSTEM', style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
                   Text('${items.length} TOTAL', style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
                 ],
               ),
@@ -276,7 +276,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                   child: Icon(icon, color: color, size: 16),
                 ),
                 const SizedBox(height: 12),
-                Text(value, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, fontSize: 18), overflow: TextOverflow.ellipsis),
+                Text(value, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, fontSize: 18), overflow: TextOverflow.ellipsis),
                 Text(label, style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
               ],
             ),
@@ -326,7 +326,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900)),
+                        Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
                         _buildPlanBadge(plan),
                       ],
@@ -346,7 +346,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                       const SizedBox(height: 2),
                       Text(
                         expiryDate != null ? DateFormat('MMM dd, yyyy').format(expiryDate) : 'Not Set',
-                        style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                        style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                       ),
                     ],
                   ),
@@ -356,7 +356,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text('DETAILS', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w900)),
+                    child: const Text('DETAILS', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -371,7 +371,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-      child: Text(plan.toUpperCase(), style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 9)),
+      child: Text(plan.toUpperCase(), style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 9)),
     );
   }
 
@@ -384,7 +384,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
         color: color.withOpacity(0.1), 
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900)),
+      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
     );
   }
 
@@ -442,8 +442,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
       'Priority Support Access'
     ];
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+    return AnimatedContainer( duration: const Duration(milliseconds: 300), 
       curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
@@ -480,8 +479,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                 children: [
                   Row(
                     children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
+                      AnimatedContainer( duration: const Duration(milliseconds: 300), 
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.grey.withOpacity(0.05), 
@@ -490,26 +488,18 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                         child: Icon(isPremium ? Icons.auto_awesome_rounded : Icons.star_outline_rounded, color: isSelected ? AppColors.primary : Colors.grey, size: 24),
                       ),
                       const SizedBox(width: 16),
-                      Text(code.toUpperCase(), style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary, fontSize: 16)),
+                      Text(code.toUpperCase(), style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 32),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text('₹$price', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-                      const SizedBox(width: 6),
-                      Text('/ $period', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+                  // Price display removed to avoid storefront appearance
+                  const SizedBox(height: 12),
                   const SizedBox(height: 32),
                   const Divider(height: 1),
                   const SizedBox(height: 24),
                   ...features.map((f) => _buildFeatureRow(f)),
                   const SizedBox(height: 32),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                  AnimatedContainer( duration: const Duration(milliseconds: 300), 
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: isSelected ? AppColors.primary : const Color(0xFFF1F5F9),
@@ -521,7 +511,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                         borderRadius: BorderRadius.circular(20),
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            SnackBar(duration: const Duration(seconds: 2),
                               content: Row(
                                 children: [
                                   const Icon(Icons.check_circle_rounded, color: Colors.white),
@@ -534,7 +524,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                                   ),
                                 ],
                               ),
-                              backgroundColor: AppColors.success,
+                              backgroundColor: AppColors.secondary,
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -542,10 +532,9 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           child: Center(
-                            child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
+                            child: AnimatedDefaultTextStyle( duration: const Duration(milliseconds: 300), 
                               style: TextStyle(
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 13,
                                 fontFamily: AppTypography.titleMedium.fontFamily,
                                 color: isSelected ? Colors.white : AppColors.primary,

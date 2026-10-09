@@ -8,7 +8,6 @@ import '../../data/repositories/subscription_repository.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/data/remote/payment_service.dart';
 // Using native dialogs instead of Razorpay for compliance
-import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionPlansScreen extends ConsumerStatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -38,44 +37,11 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppColors.error,
+        backgroundColor: AppColors.secondary,
         behavior: SnackBarBehavior.floating,
-        duration: duration ?? const Duration(seconds: 4),
+        duration: const Duration(seconds: 2),
       ),
     );
-  }
-
-  void _showUpgradeDialog(SubscriptionPlan plan) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Upgrade Your Plan'),
-        content: Text('To upgrade to the ${plan.name} plan, please visit our website at retailverse.com from your computer, or contact our support team.'),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _launchUpgradeUrl() async {
-    final auth = ref.read(authProvider);
-    final user = auth.user ?? {};
-    final email = user['email'] ?? '';
-    
-    final urlString = email.isNotEmpty 
-        ? 'https://www.retailverse.in/dashboard/subscription?email=$email'
-        : 'https://www.retailverse.in/dashboard/subscription';
-        
-    final url = Uri.parse(urlString);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      _showError('Could not open the website.');
-    }
   }
 
   @override
@@ -114,7 +80,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                     const SizedBox(height: 24),
                     Text(
                       'Upgrade Your RetailVerse',
-                      style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.w900),
+                      style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -175,8 +141,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
 
     return GestureDetector(
       onTap: () => setState(() => _selectedPlan = plan),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: AnimatedContainer( duration: const Duration(milliseconds: 300), 
         width: 320,
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
@@ -211,7 +176,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                 ),
                 child: const Text(
                   'MOST POPULAR',
-                  style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
+                  style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1),
                 ),
               ),
             ),
@@ -225,20 +190,8 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  '₹${plan.price.toInt()}',
-                  style: AppTypography.displayMedium.copyWith(fontWeight: FontWeight.w900, fontSize: 36),
-                ),
-                Text(
-                  ' / mo',
-                  style: AppTypography.titleMedium.copyWith(color: AppColors.textTertiary),
-                ),
-              ],
-            ),
+            const SizedBox(height: 12),
+            // Prices removed to comply with Google Play Payments policy (B2B exemption safe-guard)
             const SizedBox(height: 32),
             ...plan.features.map((feature) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -266,17 +219,22 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
               child: FilledButton(
                 onPressed: () {
                   setState(() => _selectedPlan = plan);
-                  // Disabled web link for Play Store compliance
-                  // _launchUpgradeUrl();
                   showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('Coming Soon'),
-                      content: const Text('this feature come in next version'),
+                      title: const Text('Enterprise Upgrade'),
+                      content: const Text('To upgrade or modify your subscription plan, please contact your account manager or our enterprise support team.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('OK'),
+                          child: const Text('Understood'),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            context.push('/support');
+                          },
+                          child: const Text('Contact Support'),
                         ),
                       ],
                     ),

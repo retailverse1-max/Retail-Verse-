@@ -111,9 +111,9 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
           ),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-            decoration: BoxDecoration(
-              color: AppColors.accent, // Dark Navy
-              borderRadius: const BorderRadius.only(
+            decoration: const BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(32),
                 bottomRight: Radius.circular(32),
               ),
@@ -145,7 +145,7 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
                                   Text(widget.userName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                      style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                                 ],
                               ),
                             ),
@@ -258,7 +258,7 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
           const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(value, style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+            child: Text(value, style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -280,7 +280,7 @@ class _PremiumHeroHeaderState extends State<PremiumHeroHeader> {
             children: [
               Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
               const SizedBox(width: 6),
-              Text('LIVE', style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+              Text('LIVE', style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
             ],
           ),
         ],
@@ -308,9 +308,9 @@ class PremiumSearchHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 5, 20, 24),
-      decoration: BoxDecoration(
-        color: AppColors.accent, // Dark Navy
-        borderRadius: const BorderRadius.only(
+      decoration: const BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
@@ -328,7 +328,7 @@ class PremiumSearchHeader extends StatelessWidget {
                   children: [
                     const ResponsiveMenuButton(color: Colors.white),
                     const SizedBox(width: 16),
-                    Text(title, style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                    Text(title, style: AppTypography.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                   ],
                 ),
                 if (actions != null) Row(children: actions!),
@@ -408,8 +408,8 @@ class SaaSKPICard extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           child: Text(
                             value,
-                            style: AppTypography.headlineSmall.copyWith(
-                              fontWeight: FontWeight.w900,
+                            style: AppTypography.titleLarge.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -422,14 +422,14 @@ class SaaSKPICard extends StatelessWidget {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        if (subtitle != null && cardHeight > 95) ...[
+                        if (subtitle != null && cardHeight > 70) ...[
                           const SizedBox(height: 2),
                           Text(
                             subtitle!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.success,
+                              color: accentColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -474,7 +474,7 @@ class SaaSKPICard extends StatelessWidget {
                   children: [
                     FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(value, style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w900)),
+                      child: Text(value, style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w700)),
                     ),
                     const SizedBox(height: 4),
                     Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
@@ -505,7 +505,7 @@ class PremiumSectionCard extends StatelessWidget {
         if (title != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(title!, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+            child: Text(title!, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 16),
         ],
@@ -574,7 +574,7 @@ class PremiumFloatingNavBar extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 'More Operations',
-                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
@@ -633,7 +633,7 @@ class PremiumFloatingNavBar extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: AppTypography.labelSmall.copyWith(
                               color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                             ),
                           ),
                         ],
@@ -680,7 +680,7 @@ class PremiumFloatingNavBar extends StatelessWidget {
                 ),
                 child: Text(
                   role!.toUpperCase(),
-                  style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                  style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                 ),
               ),
             ),
@@ -716,7 +716,7 @@ class PremiumFloatingNavBar extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: AppTypography.labelSmall.copyWith(
                               color: isSelected ? AppColors.primary : Colors.white70,
-                              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -749,7 +749,7 @@ class PremiumFloatingNavBar extends StatelessWidget {
                             'More',
                             style: AppTypography.labelSmall.copyWith(
                               color: isMoreSelected ? AppColors.primary : Colors.white70,
-                              fontWeight: isMoreSelected ? FontWeight.w900 : FontWeight.w500,
+                              fontWeight: isMoreSelected ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -792,7 +792,7 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+          Text(title, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
           if (onActionTap != null)
             TextButton(
               onPressed: onActionTap,
@@ -886,15 +886,15 @@ class _ModernLineChartState extends State<ModernLineChart> with SingleTickerProv
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: _isLive 
-              ? [const Color(0xFF4F46E5), const Color(0xFF312E81)] 
-              : [const Color(0xFF3730A3), const Color(0xFF312E81)],
+              ? [AppColors.primary, AppColors.secondary] 
+              : [AppColors.secondary, AppColors.primary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4F46E5).withOpacity(_isLive ? 0.6 : 0.4), 
+              color: AppColors.primary.withOpacity(_isLive ? 0.6 : 0.4), 
               blurRadius: _isLive ? 40 : 25, 
               spreadRadius: _isLive ? 5 : 0,
               offset: const Offset(0, 10)
@@ -921,7 +921,7 @@ class _ModernLineChartState extends State<ModernLineChart> with SingleTickerProv
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(widget.value, style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                    Text(widget.value, style: AppTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                   ],
                 ),
                 Container(
@@ -1119,7 +1119,7 @@ class PremiumAdminSidebar extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    gradient: AppColors.accentGradient,
+                    color: AppColors.secondary,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
@@ -1129,9 +1129,9 @@ class PremiumAdminSidebar extends ConsumerWidget {
                   child: Text(
                     'Retail Verse',
                     style: AppTypography.titleLarge.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -1,
-                      color: AppColors.accent,
+                      color: AppColors.secondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1201,7 +1201,7 @@ class PremiumAdminSidebar extends ConsumerWidget {
                               userName!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w900),
+                              style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
                             ),
                             Text(
                               userEmail ?? 'Admin',
@@ -1259,7 +1259,7 @@ class PremiumAdminSidebar extends ConsumerWidget {
                     SizedBox(width: 12),
                     Text(
                       'Logout',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 14),
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 14),
                     ),
                   ],
                 ),
@@ -1309,7 +1309,7 @@ class _SidebarItem extends StatelessWidget {
               item.label,
               style: AppTypography.bodyMedium.copyWith(
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
               ),
             ),
             if (isSelected) ...[

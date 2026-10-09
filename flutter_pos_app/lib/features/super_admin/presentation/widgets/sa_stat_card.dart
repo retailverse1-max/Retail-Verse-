@@ -77,7 +77,7 @@ class SaStatCard extends StatelessWidget {
                   child: Text(
                     value,
                     style: AppTypography.headlineMedium.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),

@@ -154,10 +154,7 @@ final GoRouter appRouter = GoRouter(
           path: '/super-admin/settings',
           builder: (context, state) => const SaSettingsScreen(),
         ),
-        GoRoute(
-          path: '/super-admin/system-preferences',
-          builder: (context, state) => const SettingsScreen(),
-        ),
+
         GoRoute(
           path: '/super-admin/custom-domains',
           builder: (context, state) => const SaCustomDomainsScreen(isSuperAdminRoute: true),
@@ -251,6 +248,17 @@ final GoRouter appRouter = GoRouter(
         );
       },
       routes: [
+        GoRoute(
+          path: '/account',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            child: const AccountScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+          ),
+        ),
         GoRoute(
           path: '/dashboard',
           pageBuilder: (context, state) => CustomTransitionPage(
@@ -518,17 +526,7 @@ final GoRouter appRouter = GoRouter(
                 },
           ),
         ),
-        GoRoute(
-          path: '/account',
-          pageBuilder: (context, state) => CustomTransitionPage(
-            key: state.pageKey,
-            child: const AccountScreen(),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-          ),
-        ),
+
         GoRoute(
           path: '/order-detail/:id',
           pageBuilder: (context, state) {
@@ -683,7 +681,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             const SizedBox(height: 16),
             const Text(
               'Exit App?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -715,7 +713,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   onPressed: () => Navigator.of(dialogCtx).pop(true),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: AppColors.error,
+                    backgroundColor: AppColors.secondary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Exit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -891,7 +889,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                           child: const Icon(Icons.lock_clock_rounded, color: AppColors.error, size: 48),
                         ),
                         const SizedBox(height: 24),
-                        Text('Trial Expired', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                        Text('Trial Expired', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                         const SizedBox(height: 12),
                         Text(
                           'Your 14-day free trial has expired. To continue using Retail Verse, please upgrade your subscription.',
@@ -996,7 +994,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   ),
                   child: Text(
                     role.toUpperCase(),
-                    style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.w900),
+                    style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

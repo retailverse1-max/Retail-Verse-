@@ -63,7 +63,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         else
                           const ResponsiveMenuButton(),
                         const SizedBox(width: 12),
-                        Text('Settings', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                        Text('Settings', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       ],
                     ),
                     Container(
@@ -182,7 +182,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                Text(name, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5)),
                 const SizedBox(height: 4),
                 Text(email, style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
               ],
@@ -199,7 +199,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(
                 color: role == 'super_admin' ? AppColors.primary : AppColors.success,
                 fontSize: 10,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 letterSpacing: 0.5
               )
             ),
@@ -224,7 +224,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             const Icon(Icons.logout_rounded, color: AppColors.error, size: 22),
             const SizedBox(width: 12),
-            const Text('Sign Out From Device', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            const Text('Sign Out From Device', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
           ],
         ),
       ),

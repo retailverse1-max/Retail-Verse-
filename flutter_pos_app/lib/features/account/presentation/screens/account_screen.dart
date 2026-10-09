@@ -21,8 +21,9 @@ class AccountScreen extends ConsumerWidget {
     final email = user['email']?.toString() ?? 'No email available';
     final phone = user['phone']?.toString();
     final role = effectiveUserRole(user);
-    final canOpenInventory = isRouteAllowedForShell('/inventory', role);
-    final canOpenOrders = isRouteAllowedForShell('/orders', role);
+    final canOpenInventory = isRouteAllowedForShell('/inventory', role) && role != 'super_admin';
+    final canOpenOrders = isRouteAllowedForShell('/orders', role) && role != 'super_admin';
+    final canOpenSettings = role == 'admin';
     final storeId = user['storeId']?.toString() ?? 'main-store';
     final initials = name.trim().isEmpty
         ? 'U'
@@ -76,7 +77,7 @@ class AccountScreen extends ConsumerWidget {
                     initials,
                     style: AppTypography.headlineLarge.copyWith(
                       color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -85,7 +86,7 @@ class AccountScreen extends ConsumerWidget {
                   name,
                   textAlign: TextAlign.center,
                   style: AppTypography.headlineMedium.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -125,12 +126,6 @@ class AccountScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 18),
-          _ActionTile(
-            icon: Icons.settings_outlined,
-            title: 'Settings',
-            subtitle: 'Manage store preferences and app configuration',
-            onTap: () => context.push('/settings'),
-          ),
           if (canOpenInventory) ...[
             const SizedBox(height: 12),
             _ActionTile(
@@ -149,6 +144,15 @@ class AccountScreen extends ConsumerWidget {
               onTap: () => context.push('/orders'),
             ),
           ],
+          if (canOpenSettings) ...[
+            const SizedBox(height: 12),
+            _ActionTile(
+              icon: Icons.settings_outlined,
+              title: 'Settings',
+              subtitle: 'App preferences and store configuration',
+              onTap: () => context.push('/settings'),
+            ),
+          ],
           const SizedBox(height: 18),
           _ActionTile(
             icon: Icons.edit_outlined,
@@ -160,41 +164,45 @@ class AccountScreen extends ConsumerWidget {
               final formKey = GlobalKey<FormState>();
               final ok = await showDialog<bool>(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Edit account'),
-                  content: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextFormField(
-                          controller: nameC,
-                          decoration: const InputDecoration(labelText: 'Name'),
-                          validator: (v) => AppValidators.validateRequired(v, 'Name'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: phoneC,
-                          decoration: const InputDecoration(labelText: 'Phone'),
-                          keyboardType: TextInputType.phone,
-                          validator: AppValidators.validatePhone,
-                        ),
-                      ],
+                barrierDismissible: false,
+                builder: (ctx) => PopScope(
+                  canPop: false,
+                  child: AlertDialog(
+                    title: const Text('Edit account'),
+                    content: Form(
+                      key: formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextFormField(
+                            controller: nameC,
+                            decoration: const InputDecoration(labelText: 'Name'),
+                            validator: (v) => AppValidators.validateRequired(v, 'Name'),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: phoneC,
+                            decoration: const InputDecoration(labelText: 'Phone'),
+                            keyboardType: TextInputType.phone,
+                            validator: AppValidators.validatePhone,
+                          ),
+                        ],
+                      ),
                     ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          if (formKey.currentState?.validate() != true) return;
+                          Navigator.pop(ctx, true);
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ],
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        if (formKey.currentState?.validate() != true) return;
-                        Navigator.pop(ctx, true);
-                      },
-                      child: const Text('Save'),
-                    ),
-                  ],
                 ),
               );
               if (ok != true || !context.mounted) return;
@@ -207,7 +215,7 @@ class AccountScreen extends ConsumerWidget {
                 await ref.read(authProvider.notifier).updateLocalUser(updated);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    const SnackBar(duration: const Duration(seconds: 2),
                       content: Text('Account updated'),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -216,7 +224,7 @@ class AccountScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    SnackBar(duration: const Duration(seconds: 2),
                       content: Text('Update failed: $e'),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -258,7 +266,7 @@ class AccountScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    SnackBar(duration: const Duration(seconds: 2),
                       content: Text('Delete failed: $e'),
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -284,7 +292,7 @@ class AccountScreen extends ConsumerWidget {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
+                backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

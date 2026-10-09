@@ -66,7 +66,7 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
         title: Text(
           'Audit Logs',
           style: AppTypography.headlineSmall.copyWith(
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
@@ -279,7 +279,7 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(color: typeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                            child: Text(action, style: AppTypography.labelSmall.copyWith(color: typeColor, fontWeight: FontWeight.w900, fontSize: 10)),
+                            child: Text(action, style: AppTypography.labelSmall.copyWith(color: typeColor, fontWeight: FontWeight.w700, fontSize: 10)),
                           ),
                           Text(timeStr, style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
                         ],

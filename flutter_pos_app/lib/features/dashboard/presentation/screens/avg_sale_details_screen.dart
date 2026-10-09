@@ -30,7 +30,7 @@ class AvgSaleDetailsScreen extends ConsumerWidget {
         title: Text(
           'Average Sale Analysis',
           style: AppTypography.titleLarge.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
         ),
@@ -71,7 +71,7 @@ class AvgSaleDetailsScreen extends ConsumerWidget {
                     AppFormatters.formatCurrency(avgSale),
                     style: AppTypography.displaySmall.copyWith(
                       color: AppColors.primaryLight,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -170,7 +170,7 @@ class AvgSaleDetailsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
-                Text(value, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                Text(value, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600)),
               ],
             ),
           ),

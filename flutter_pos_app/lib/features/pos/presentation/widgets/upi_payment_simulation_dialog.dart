@@ -46,7 +46,7 @@ class _UpiPaymentSimulationDialogState extends State<UpiPaymentSimulationDialog>
         if (mounted) {
           Navigator.pop(context, false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('UPI Payment QR Code Expired (2 mins).')),
+            const SnackBar(duration: const Duration(seconds: 2),content: Text('UPI Payment QR Code Expired (2 mins).')),
           );
         }
       }
@@ -77,7 +77,7 @@ class _UpiPaymentSimulationDialogState extends State<UpiPaymentSimulationDialog>
               children: [
                 Text(
                   'UPI (Paytm Terminal)',
-                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w800),
+                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w600),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
@@ -88,7 +88,7 @@ class _UpiPaymentSimulationDialogState extends State<UpiPaymentSimulationDialog>
             const SizedBox(height: 8),
             Text(
               AppFormatters.formatCurrency(widget.amount),
-              style: AppTypography.headlineMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900),
+              style: AppTypography.headlineMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 32),
             _buildContent(),
@@ -133,7 +133,7 @@ class _UpiPaymentSimulationDialogState extends State<UpiPaymentSimulationDialog>
                 onPressed: _simulateCustomerPaid,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: AppColors.success,
+                  backgroundColor: AppColors.secondary,
                 ),
                 child: const Text('Simulate Payment Received'),
               ),

@@ -86,7 +86,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                           Text(
                             'Customers',
                             style: AppTypography.headlineSmall.copyWith(
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
@@ -220,7 +220,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                               Text(
                                 'Customer Directory',
                                 style: AppTypography.headlineSmall.copyWith(
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
@@ -384,7 +384,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                             title,
                             style: AppTypography.labelSmall.copyWith(
                               color: AppColors.textTertiary,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -392,7 +392,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                           Text(
                             value,
                             style: AppTypography.displaySmall.copyWith(
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
@@ -450,7 +450,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       'CUSTOMER',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -465,7 +465,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       'TOTAL SPENT',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -480,7 +480,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       'ORDERS',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -495,7 +495,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       'STATUS',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -510,7 +510,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       'ACTIONS',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -595,7 +595,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                               customer.name,
                               style: AppTypography.titleSmall.copyWith(
                                 color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -625,7 +625,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                       AppFormatters.formatCurrency(customer.totalSpent),
                       style: AppTypography.titleSmall.copyWith(
                         color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -661,7 +661,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                            isActive ? 'ACTIVE' : 'INACTIVE',
                            style: AppTypography.caption.copyWith(
                              color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
-                             fontWeight: FontWeight.w900,
+                             fontWeight: FontWeight.w700,
                              letterSpacing: 0.5,
                            ),
                          ),
@@ -681,7 +681,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                         GestureDetector(
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
+                              SnackBar(duration: const Duration(seconds: 2),
                                 content: Text('Compose email to $email'),
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -752,7 +752,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Sending email to $email...')),
+                    SnackBar(duration: const Duration(seconds: 2),content: Text('Sending email to $email...')),
                   );
                 },
               ),
@@ -763,7 +763,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Calling ${customer.phone}...')),
+                    SnackBar(duration: const Duration(seconds: 2),content: Text('Calling ${customer.phone}...')),
                   );
                 },
               ),

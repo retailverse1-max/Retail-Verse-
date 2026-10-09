@@ -72,7 +72,7 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
         ref.invalidate(dashboardStatsProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Text(
                 'Customer added successfully!',
                 style: AppTypography.bodyMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
@@ -87,9 +87,9 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: const Text('Failed to add customer. Please verify details.'),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -101,9 +101,9 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
       final errorMsg = e.toString().replaceAll('Exception:', '').trim();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(errorMsg),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -125,7 +125,7 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
         ),
         title: Text(
           'Add New Customer',
-          style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w800),
+          style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),

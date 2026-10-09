@@ -54,7 +54,7 @@ class TicketDetailScreen extends ConsumerWidget {
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -205,7 +205,7 @@ class TicketDetailScreen extends ConsumerWidget {
               Text(
                 title,
                 style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),

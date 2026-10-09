@@ -81,9 +81,9 @@ class SupportScreen extends ConsumerWidget {
                         
                         if (subject.isEmpty || message.isEmpty) {
                           messenger.showSnackBar(
-                            const SnackBar(
+                            const SnackBar(duration: const Duration(seconds: 2),
                               content: Text('Subject and message are required'),
-                              backgroundColor: AppColors.error,
+                              backgroundColor: AppColors.secondary,
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -92,9 +92,9 @@ class SupportScreen extends ConsumerWidget {
                         final token = ref.read(authProvider).token;
                         if (token == null) {
                           messenger.showSnackBar(
-                            const SnackBar(
+                            const SnackBar(duration: const Duration(seconds: 2),
                               content: Text('User not authenticated'),
-                              backgroundColor: AppColors.error,
+                              backgroundColor: AppColors.secondary,
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -116,7 +116,7 @@ class SupportScreen extends ConsumerWidget {
                         }
                         
                         messenger.showSnackBar(
-                          SnackBar(
+                          SnackBar(duration: const Duration(seconds: 2),
                             content: Text(success ? 'Support ticket raised successfully!' : 'Failed to create support ticket.'),
                             backgroundColor: success ? AppColors.success : AppColors.error,
                             behavior: SnackBarBehavior.floating,
@@ -246,7 +246,7 @@ class SupportScreen extends ConsumerWidget {
                     Text(
                       'Support',
                       style: AppTypography.headlineMedium.copyWith(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -329,7 +329,7 @@ class SupportScreen extends ConsumerWidget {
               child: const Icon(Icons.support_agent, color: AppColors.primary, size: 24),
             ),
             const SizedBox(width: 16),
-            Text('Support Center', style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+            Text('Support Center', style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           ],
         ),
         const SizedBox(height: 12),
@@ -417,7 +417,7 @@ class SupportScreen extends ConsumerWidget {
             children: [
               Text(title, style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
               const SizedBox(height: 4),
-              Text(value, style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+              Text(value, style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             ],
           ),
           Container(
@@ -437,7 +437,7 @@ class SupportScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Support Categories', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+            Text('Support Categories', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 20),
             _buildCustomerQueriesCard(),
             const SizedBox(height: 16),
@@ -515,7 +515,7 @@ class SupportScreen extends ConsumerWidget {
               ),
               const SizedBox(width: 20),
               Expanded(
-                child: Text(title, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                child: Text(title, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -533,7 +533,7 @@ class SupportScreen extends ConsumerWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Recent System Tickets', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+            Text('Recent System Tickets', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
             TextButton.icon(
               onPressed: () => ref.invalidate(recentTicketsProvider),
               icon: const Icon(Icons.refresh, size: 16, color: Colors.orange),
@@ -616,7 +616,7 @@ class SupportScreen extends ConsumerWidget {
               Text(
                 ticket.subject,
                 style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
                 maxLines: 2,

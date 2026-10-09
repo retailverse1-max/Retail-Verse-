@@ -38,7 +38,6 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _rotationController = AnimationController(
-      duration: const Duration(seconds: 1),
       vsync: this,
     );
   }
@@ -65,9 +64,8 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
       ]);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Inventory refreshed successfully'),
-            duration: Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppColors.primary,
           ),
@@ -76,10 +74,10 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text('Failed to refresh: $e'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
           ),
         );
       }
@@ -106,7 +104,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.secondary),
               child: const Text('Replace Cart'),
             ),
           ],
@@ -120,7 +118,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           content: Text('Held sale recalled successfully.'),
           behavior: SnackBarBehavior.floating,
         ),
@@ -183,7 +181,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                               const SizedBox(width: 16),
                               Text(
                                 'POS',
-                                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900),
+                                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
                               ),
                             ],
                             const SizedBox(width: 8),
@@ -224,8 +222,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                   _handleRefresh();
                                 }
                               },
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 200),
+                              child: AnimatedOpacity( duration: const Duration(milliseconds: 300), 
                                 opacity: isRefreshing ? 0.6 : 1.0,
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
@@ -461,8 +458,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
               // ── FIXED "ALL" BUTTON ──
               Bounceable(
                 onTap: () => setState(() => selectedCategory = 'All'),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                child: AnimatedContainer( duration: const Duration(milliseconds: 300), 
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: isAllSelected ? AppColors.primary : Colors.white,
@@ -514,8 +510,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                         padding: const EdgeInsets.only(right: 12),
                         child: Bounceable(
                           onTap: () => setState(() => selectedCategory = cat['name'] as String),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
+                          child: AnimatedContainer( duration: const Duration(milliseconds: 300), 
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: isSelected ? AppColors.primary : Colors.white,
@@ -695,7 +690,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                         'OUT OF STOCK',
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontWeight: FontWeight.w900,
+                                          fontWeight: FontWeight.w700,
                                           fontSize: isNarrow ? 8.0 : 10.0,
                                           letterSpacing: 0.8,
                                         ),
@@ -719,7 +714,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                   AppFormatters.formatCurrency(product.price),
                                   style: TextStyle(
                                     color: const Color(0xFF1E293B),
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: priceSize,
                                   ),
                                 ),
@@ -748,7 +743,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                   style: TextStyle(
                                     color: isOutOfStock ? Colors.grey : AppColors.primary.withOpacity(0.8),
                                     fontSize: catSize,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                     letterSpacing: 0.8,
                                   ),
                                   maxLines: 1,
@@ -758,7 +753,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                 Text(
                                   product.name,
                                   style: TextStyle(
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                     color: const Color(0xFF0F172A),
                                     fontSize: nameSize,
                                     height: 1.2,
@@ -858,7 +853,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Current Order', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, fontSize: 18)),
+              Text('Current Order', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, fontSize: 18)),
               IconButton(
                 onPressed: () => ref.read(cartProvider.notifier).clearCart(),
                 icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
@@ -917,10 +912,10 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                     context.push('/pos/cart');
                   },
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C3AED), // Rich premium purple
+                    backgroundColor: AppColors.accent, // Orange CTA
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.white)),
+                  child: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
                 ),
               ),
             ],
@@ -966,7 +961,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.product.name, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w900)),
+              Text(item.product.name, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w700)),
               Text(AppFormatters.formatCurrency(item.product.price), style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary)),
             ],
           ),
@@ -976,7 +971,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
             _buildQtyBtn(Icons.remove, () => ref.read(cartProvider.notifier).updateQuantity(item.product.id, item.quantity - 1)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text('${item.quantity}', style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w900)),
+              child: Text('${item.quantity}', style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w700)),
             ),
             _buildQtyBtn(Icons.add, () => ref.read(cartProvider.notifier).updateQuantity(item.product.id, item.quantity + 1)),
           ],
@@ -1003,8 +998,8 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: isTotal ? AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900) : AppTypography.bodySmall.copyWith(color: AppColors.textTertiary)),
-        Text(value, style: isTotal ? AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900) : AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w900)),
+        Text(label, style: isTotal ? AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700) : AppTypography.bodySmall.copyWith(color: AppColors.textTertiary)),
+        Text(value, style: isTotal ? AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700) : AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w700)),
       ],
     );
   }

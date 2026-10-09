@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Core Brand Colors - Premium Sapphire & Indigo
-  static const Color primary = Color(0xFF6366F1);    // Indigo 500
-  static const Color accent = Color(0xFF1E1B4B);     // Deep Indigo 950
-  static const Color secondary = Color(0xFF4F46E5);  // Indigo 600
+  // Core Brand Colors
+  static const Color primary = Color(0xFF2563EB);    // Blue
+  static const Color accent = Color(0xFFFF6B00);     // Orange
+  static const Color secondary = Color(0xFF0B1F3A);  // Navy
   
   // Neutral Palette
-  static const Color background = Color(0xFFF8FAFC); // Slate 50
-  static const Color backgroundSecondary = Color(0xFFF1F5F9); // Slate 100
-  static const Color backgroundTertiary = Color(0xFFE2E8F0); // Slate 200
+  static const Color background = Color(0xFFF8FAFC); // Soft White
+  static const Color backgroundSecondary = Color(0xFFFFFFFF); 
+  static const Color backgroundTertiary = Color(0xFFF1F5F9);
   static const Color border = Color(0xFFE2E8F0);
   
   // Semantic Colors - Modern & Balanced
@@ -45,13 +45,13 @@ class AppColors {
 
   // Gradients for Premium Look
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+    colors: [Color(0xFF2563EB), Color(0xFF0B1F3A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
+    colors: [Color(0xFFFF6B00), Color(0xFFFF8933)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

@@ -46,7 +46,7 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
     if (saved == true) {
       setState(() { _f = _loadData(); });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Row(
             children: [
               const Icon(Icons.check_circle_rounded, color: Colors.white, size: 24),
@@ -63,12 +63,11 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
               ),
             ],
           ),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          duration: const Duration(seconds: 3),
-        ),
+          ),
       );
     }
   }
@@ -111,7 +110,7 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
                               ),
                             ),
                           ),
-                        Text('Clients', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                        Text('Clients', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       ],
                     ),
                     ElevatedButton.icon(
@@ -202,7 +201,7 @@ class _SaBusinessesScreenState extends State<SaBusinessesScreen> {
                           child: Icon(Icons.business_rounded, size: 64, color: AppColors.primary.withOpacity(0.2)),
                         ),
                         const SizedBox(height: 24),
-                        Text('No businesses found', style: AppTypography.titleLarge.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w900)),
+                        Text('No businesses found', style: AppTypography.titleLarge.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   );
@@ -305,7 +304,7 @@ class _BusinessModernCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        Text(name, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -399,7 +398,7 @@ class _BusinessModernCard extends StatelessWidget {
         await SuperAdminService().deleteBusiness(id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Row(
                 children: [
                   const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 24),
@@ -416,7 +415,7 @@ class _BusinessModernCard extends StatelessWidget {
                   ),
                 ],
               ),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.all(24),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -426,7 +425,7 @@ class _BusinessModernCard extends StatelessWidget {
           onRefresh();
         }
       } catch (e) {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
       }
     }
   }
@@ -444,7 +443,7 @@ class _BusinessModernCard extends StatelessWidget {
     if (updated == true) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Row(
               children: [
                 const Icon(Icons.edit_note_rounded, color: Colors.white, size: 24),
@@ -485,7 +484,7 @@ class _BusinessModernCard extends StatelessWidget {
         style: TextStyle(
           color: active ? AppColors.success : AppColors.error,
           fontSize: 10,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
         ),
       ),
@@ -515,7 +514,7 @@ class _BusinessModernCard extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 8),
-          Text(text, style: AppTypography.labelSmall.copyWith(color: color, fontWeight: FontWeight.w900)),
+          Text(text, style: AppTypography.labelSmall.copyWith(color: color, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -560,7 +559,7 @@ class _AddBusinessSheetState extends State<_AddBusinessSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
         setState(() => _saving = false);
       }
     }
@@ -576,7 +575,7 @@ class _AddBusinessSheetState extends State<_AddBusinessSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Register New Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+              Text('Register New Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 24),
               _buildField(_name, 'Business Name', Icons.business_rounded, required: true),
               const SizedBox(height: 16),
@@ -663,7 +662,7 @@ class _EditBusinessSheetState extends State<_EditBusinessSheet> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')));
         setState(() => _saving = false);
       }
     }
@@ -679,7 +678,7 @@ class _EditBusinessSheetState extends State<_EditBusinessSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Edit Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+              Text('Edit Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 24),
               _buildField(_name, 'Business Name', Icons.business_rounded, required: true),
               const SizedBox(height: 16),

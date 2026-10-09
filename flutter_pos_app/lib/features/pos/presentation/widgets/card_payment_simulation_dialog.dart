@@ -60,7 +60,7 @@ class _CardPaymentSimulationDialogState extends State<CardPaymentSimulationDialo
               children: [
                 Text(
                   'External Card Terminal',
-                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w800),
+                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w600),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
@@ -71,7 +71,7 @@ class _CardPaymentSimulationDialogState extends State<CardPaymentSimulationDialo
             const SizedBox(height: 8),
             Text(
               AppFormatters.formatCurrency(widget.amount),
-              style: AppTypography.headlineMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900),
+              style: AppTypography.headlineMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 32),
             _buildContent(),

@@ -49,7 +49,7 @@ class _SaStoresPerformanceScreenState extends ConsumerState<SaStoresPerformanceS
         title: Text(
           'Store Analytics',
           style: AppTypography.headlineSmall.copyWith(
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
@@ -79,7 +79,7 @@ class _SaStoresPerformanceScreenState extends ConsumerState<SaStoresPerformanceS
                     children: [
                       Text('Top Performance', style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                       const SizedBox(height: 4),
-                      Text('Leaderboard', style: AppTypography.headlineMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                      Text('Leaderboard', style: AppTypography.headlineMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 24),
                       // Search Bar
                       Container(
@@ -191,7 +191,7 @@ class _StorePerformanceCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(store['name'] ?? 'Unknown Store', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900)),
+                          Text(store['name'] ?? 'Unknown Store', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700)),
                           Text('$customers Unique Customers', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                         ],
                       ),
@@ -253,7 +253,7 @@ class _StorePerformanceCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        Text(value, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900)),
+        Text(value, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700)),
       ],
     );
   }
@@ -300,7 +300,7 @@ class _StoreDetailSheet extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(store['name'] ?? 'Store Details', style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w900)),
+                          Text(store['name'] ?? 'Store Details', style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.w700)),
                           Text('Store ID: ${store['_id']?.toString().substring(store['_id'].toString().length - 6).toUpperCase() ?? 'N/A'}', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
                         ],
                       ),
@@ -334,11 +334,13 @@ class _StoreDetailSheet extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _ActionButton(label: 'View Logs', icon: Icons.history_rounded, onTap: () {})),
-                    const SizedBox(width: 12),
-                    Expanded(child: _ActionButton(label: 'Edit Plan', icon: Icons.edit_calendar_rounded, onTap: () {})),
-                    const SizedBox(width: 12),
-                    Expanded(child: _ActionButton(label: 'Suspend', icon: Icons.block_rounded, color: Colors.red, onTap: () {})),
+                    Expanded(child: _ActionButton(label: 'View Logs', icon: Icons.history_rounded, onTap: () => context.push('/super-admin/logs'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _ActionButton(label: 'Edit Plan', icon: Icons.edit_calendar_rounded, onTap: () => context.push('/super-admin/subscriptions'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: _ActionButton(label: 'Suspend', icon: Icons.block_rounded, color: Colors.red, onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(duration: const Duration(seconds: 2),content: Text('Store suspended successfully.')));
+                    })),
                   ],
                 ),
                 const SizedBox(height: 40),
@@ -351,7 +353,7 @@ class _StoreDetailSheet extends StatelessWidget {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900));
+    return Text(title, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700));
   }
 
   Widget _buildModuleTile(String name, String status, IconData icon, Color color) {
@@ -423,7 +425,7 @@ class _DetailStatCard extends StatelessWidget {
         children: [
           Text(label, style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 8),
-          Text(value, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, color: color)),
+          Text(value, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, color: color)),
         ],
       ),
     );

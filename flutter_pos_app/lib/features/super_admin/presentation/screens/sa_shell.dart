@@ -20,7 +20,7 @@ const _kPrimaryShellRoutes = <_SaRoute>[
 ];
 
 const _kSecondaryShellRoutes = <_SaRoute>[
-  _SaRoute(label: 'Subscriptions', path: '/super-admin/subscriptions', icon: Icons.workspace_premium_outlined, selectedIcon: Icons.workspace_premium_rounded),
+  _SaRoute(label: 'Client Plans', path: '/super-admin/subscriptions', icon: Icons.workspace_premium_outlined, selectedIcon: Icons.workspace_premium_rounded),
   _SaRoute(label: 'Analytics', path: '/super-admin/analytics', icon: Icons.insights_outlined, selectedIcon: Icons.insights_rounded),
   _SaRoute(label: 'Settings', path: '/super-admin/settings', icon: Icons.tune_outlined, selectedIcon: Icons.tune_rounded),
   _SaRoute(label: 'Custom Domain', path: '/super-admin/custom-domains', icon: Icons.language_outlined, selectedIcon: Icons.language_rounded),
@@ -58,7 +58,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Client Store Control', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+            Text('Client Store Control', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text('Switch control to a specific client store', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 20),
@@ -84,7 +84,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
                         decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), shape: BoxShape.circle),
                         child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 20),
                       ),
-                      title: Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900)),
+                      title: Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                       subtitle: const Text('Tap to switch context', style: TextStyle(fontSize: 11)),
                       trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
                       onTap: () async {
@@ -206,7 +206,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
           }
         }
       ),
-      title: Text('Retail Verse', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+      title: Text('Retail Verse', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5)),
       actions: [
         IconButton(
           onPressed: () => _openClientStorePicker(context), 
@@ -270,7 +270,7 @@ class _MoreToolIcon extends StatelessWidget {
           Text(
             route.label, 
             textAlign: TextAlign.center, 
-            style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimary)
+            style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary)
           ),
         ],
       ),
@@ -379,7 +379,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
           padding: const EdgeInsets.only(left: 12, bottom: 16), 
           child: Text(
             title, 
-            style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w900, letterSpacing: 1.5)
+            style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700, letterSpacing: 1.5)
           )
         ),
         ...routes.map((r) => Container(

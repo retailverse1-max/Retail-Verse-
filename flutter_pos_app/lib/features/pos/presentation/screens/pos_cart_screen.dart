@@ -108,9 +108,9 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      SnackBar(duration: const Duration(seconds: 2),
         content: Text(message),
-        backgroundColor: AppColors.error,
+        backgroundColor: AppColors.secondary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -155,7 +155,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
       v = cart.subtotal;
       _discountCtrl.text = v.toStringAsFixed(2);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Discount cannot exceed subtotal.')),
+        const SnackBar(duration: const Duration(seconds: 2),content: Text('Discount cannot exceed subtotal.')),
       );
     }
     
@@ -410,7 +410,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
         // No full order object — show quick success and go to POS
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Row(
                 children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.white),
@@ -418,10 +418,9 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                   const Text('Order placed successfully!'),
                 ],
               ),
-              backgroundColor: AppColors.success,
+              backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
+              ),
           );
           context.go('/pos');
         }
@@ -647,7 +646,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                                             'Delivery address',
                                             style: AppTypography.titleSmall
                                                 .copyWith(
-                                              fontWeight: FontWeight.w800,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                           Text(
@@ -808,7 +807,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                                           ? AppFormatters.formatCurrency(change)
                                           : 'Short by ${AppFormatters.formatCurrency(-change)}',
                                       style: AppTypography.titleSmall.copyWith(
-                                        fontWeight: FontWeight.w800,
+                                        fontWeight: FontWeight.w600,
                                         color: change >= 0
                                             ? AppColors.success
                                             : AppColors.error,
@@ -870,13 +869,13 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                             ? null
                             : _placeOrder,
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.amazonYellow,
-                          foregroundColor: Colors.black87,
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
                           elevation: 1,
                           shadowColor: Colors.black26,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
-                            side: const BorderSide(color: AppColors.amazonOrange, width: 1),
+                            side: const BorderSide(color: AppColors.accent, width: 1),
                           ),
                         ),
                         child: ref.watch(orderCreationProvider).isLoading || _isProcessingRazorpay
@@ -885,14 +884,14 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.black87,
+                                  color: Colors.white,
                                 ),
                               )
                             : Text(
                                 'Place Your Order · ${AppFormatters.formatCurrency(cart.total)}',
                                 style: AppTypography.titleMedium.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: Colors.white,
                                 ),
                               ),
                       ),
@@ -954,7 +953,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
             children: [
               Text(
                 'Customer Info',
-                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900),
+                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
               ),
               TextButton.icon(
                 onPressed: () async {
@@ -1091,7 +1090,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
               ),
               Text(
                 'Customer Details',
-                style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900),
+                style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
@@ -1150,7 +1149,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
 
                     if (name.isEmpty || phone.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Name and Phone are required'), backgroundColor: AppColors.error),
+                        const SnackBar(duration: const Duration(seconds: 2),content: Text('Name and Phone are required'), backgroundColor: AppColors.secondary),
                       );
                       return;
                     }
@@ -1200,7 +1199,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                         Navigator.pop(context); // Close bottom sheet
                         
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
+                          SnackBar(duration: const Duration(seconds: 2),
                             content: Text(
                               'Customer details saved successfully!',
                               style: AppTypography.bodyMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
@@ -1217,9 +1216,9 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                           Navigator.pop(context); // Close loading dialog
                         }
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
+                          SnackBar(duration: const Duration(seconds: 2),
                             content: Text('Error saving details: $e'),
-                            backgroundColor: AppColors.error,
+                            backgroundColor: AppColors.secondary,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -1338,7 +1337,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
             label,
             style: emphasize
                 ? AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   )
                 : AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,
@@ -1348,7 +1347,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
             value,
             style: emphasize
                 ? AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   )
                 : AppTypography.bodySmall.copyWith(
@@ -1397,7 +1396,7 @@ class _CheckoutHero extends StatelessWidget {
           Text(
             totalLabel,
             style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.error,
               fontSize: 18,
             ),
@@ -1469,7 +1468,7 @@ class _SectionTitle extends StatelessWidget {
         Text(
           title,
           style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

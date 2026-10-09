@@ -92,7 +92,7 @@ class _SettingsApiNetworkSectionState
     invalidateAllDashboardProviders(ref);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      SnackBar(duration: const Duration(seconds: 2),
         content: Text('API: ${ApiEndpoints.baseUrl}'),
         behavior: SnackBarBehavior.floating,
       ),
@@ -156,7 +156,7 @@ class _SettingsApiNetworkSectionState
                 if (mounted) {
                   _urlController.text = ApiEndpoints.baseUrl;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    const SnackBar(duration: const Duration(seconds: 2),
                       content: Text('Reset to automatic URL'),
                       behavior: SnackBarBehavior.floating,
                     ),

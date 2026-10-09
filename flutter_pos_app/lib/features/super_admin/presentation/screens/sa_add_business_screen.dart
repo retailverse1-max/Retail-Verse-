@@ -59,9 +59,9 @@ class _SaAddBusinessScreenState extends State<SaAddBusinessScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -77,7 +77,7 @@ class _SaAddBusinessScreenState extends State<SaAddBusinessScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('Register New Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+        title: Text('Register New Client', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () {
@@ -141,7 +141,7 @@ class _SaAddBusinessScreenState extends State<SaAddBusinessScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title.toUpperCase(),
-      style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+      style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.w700, letterSpacing: 1.5),
     );
   }
 

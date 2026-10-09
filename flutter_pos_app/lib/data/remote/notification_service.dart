@@ -7,12 +7,24 @@ import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/core/constants/api_endpoints.dart';
 import 'package:intl/intl.dart';
 
+import 'package:retail_verse_pos/features/settings/domain/models/pos_settings.dart';
+
 class NotificationService {
   Future<void> sendEmailInvoice({
     required String email,
     required Order order,
+    PosSettings? settings,
   }) async {
     try {
+      final storeTitle = (settings?.storeName.isNotEmpty ?? false)
+          ? settings!.storeName
+          : 'Retail Verse';
+      final storeAddress = settings?.storeAddress ?? '';
+      final gstTaxId = settings?.gstTaxId ?? '';
+      final footerNote = (settings?.invoiceFooterNote.isNotEmpty ?? false)
+          ? settings!.invoiceFooterNote
+          : 'Thank you for your business!';
+
       final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(order.dateTime);
       
       String itemsHtml = '';
@@ -28,8 +40,10 @@ class NotificationService {
 
       final htmlContent = '''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-          <h2 style="text-align: center; color: #163F6B;">RETAIL VERSE STORE</h2>
-          <p style="text-align: center; color: #666;">Receipt / Tax Invoice</p>
+          <h2 style="text-align: center; color: #163F6B; margin-bottom: 4px;">$storeTitle</h2>
+          ${storeAddress.isNotEmpty ? '<p style="text-align: center; color: #666; margin: 2px 0;">$storeAddress</p>' : ''}
+          ${gstTaxId.isNotEmpty ? '<p style="text-align: center; color: #666; margin: 2px 0; font-size: 12px;"><strong>GSTIN:</strong> $gstTaxId</p>' : ''}
+          <p style="text-align: center; color: #666; font-weight: bold; margin-top: 6px;">Tax Invoice</p>
           <hr style="border: 1px solid #eee;" />
           <p><strong>Order ID:</strong> ${order.orderId}</p>
           <p><strong>Date:</strong> $formattedDate</p>
@@ -52,7 +66,7 @@ class NotificationService {
           ${order.discount > 0 ? '<p style="text-align: right; color: green;"><strong>Discount:</strong> -₹${order.discount.toStringAsFixed(2)}</p>' : ''}
           ${order.tax > 0 ? '<p style="text-align: right;"><strong>Tax:</strong> ₹${order.tax.toStringAsFixed(2)}</p>' : ''}
           <h3 style="text-align: right; color: #163F6B;">GRAND TOTAL: ₹${order.total.toStringAsFixed(2)}</h3>
-          <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #999;">Thank you for shopping with Retail Verse!</p>
+          <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #777;">$footerNote</p>
         </div>
       ''';
 
@@ -68,7 +82,7 @@ class NotificationService {
         },
         body: json.encode({
           'to': email,
-          'subject': 'Your Receipt from Retail Verse (Order: ${order.orderId})',
+          'subject': 'Your Receipt from $storeTitle (Order #${order.orderId})',
           'htmlContent': htmlContent,
         }),
       );

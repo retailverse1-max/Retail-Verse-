@@ -95,7 +95,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                 child: Text(
                   widget.isSelectionMode ? 'Select Customer' : 'Customers',
                   style: AppTypography.headlineMedium.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontSize: isPhone ? 20 : 24,
                   ),
@@ -385,7 +385,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       'CUSTOMER',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -400,7 +400,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       'TOTAL SPENT',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -415,7 +415,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       'ORDERS',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -430,7 +430,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       'STATUS',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -445,7 +445,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       'ACTIONS',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -518,7 +518,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     customer.name,
                     style: AppTypography.titleSmall.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -539,7 +539,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                         AppFormatters.formatCurrency(customer.totalSpent),
                         style: AppTypography.labelMedium.copyWith(
                           color: AppColors.primary,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -567,7 +567,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     isActive ? 'ACTIVE' : 'INACTIVE',
                     style: AppTypography.caption.copyWith(
                       color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       fontSize: 10,
                     ),
                   ),
@@ -579,7 +579,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     GestureDetector(
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
+                          SnackBar(duration: const Duration(seconds: 2),
                             content: Text('Compose email to $email'),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -665,7 +665,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                               customer.name,
                               style: AppTypography.titleSmall.copyWith(
                                 color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -695,7 +695,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       AppFormatters.formatCurrency(customer.totalSpent),
                       style: AppTypography.titleSmall.copyWith(
                         color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -731,7 +731,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                            isActive ? 'ACTIVE' : 'INACTIVE',
                            style: AppTypography.caption.copyWith(
                              color: isActive ? const Color(0xFF2E7D32) : const Color(0xFF757575),
-                             fontWeight: FontWeight.w900,
+                             fontWeight: FontWeight.w700,
                              letterSpacing: 0.5,
                            ),
                          ),
@@ -748,7 +748,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       GestureDetector(
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            SnackBar(duration: const Duration(seconds: 2),
                               content: Text('Compose email to $email'),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

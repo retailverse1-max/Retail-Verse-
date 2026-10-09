@@ -8,7 +8,7 @@ const marketplaceConnectionSchema = new mongoose.Schema({
   },
   platform: {
     type: String,
-    enum: ["flipkart", "amazon", "blinkit", "zepto", "shopify"],
+    enum: ["flipkart", "amazon", "blinkit", "zepto", "shopify", "meesho", "zomato", "swiggy", "eatclub", "woocommerce"],
     required: true,
   },
   status: {

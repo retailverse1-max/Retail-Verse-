@@ -266,7 +266,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                             child: Text(
                               'Upgrade Now',
                               style: TextStyle(
-                                fontWeight: FontWeight.w900, 
+                                fontWeight: FontWeight.w700, 
                                 fontSize: 18,
                                 color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFF059669),
                               ),
@@ -297,7 +297,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                     children: [
                       Text(
                         isUrgent ? 'Trial Expiring Soon!' : 'Free Trial Active',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -327,7 +327,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                       child: Text(
                         'Upgrade Now',
                         style: TextStyle(
-                          fontWeight: FontWeight.w900, 
+                          fontWeight: FontWeight.w700, 
                           fontSize: 18,
                           color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFF059669),
                         ),
@@ -384,7 +384,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                     const SizedBox(width: 8),
                     Text(
                       '$price/mo',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
                     ),
                   ],
                 ),
@@ -417,7 +417,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                             fit: BoxFit.scaleDown,
                             child: const Text(
                               'View Plan',
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.white),
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white),
                             ),
                           ),
                         ),
@@ -448,7 +448,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                           Flexible(
                             child: Text(
                               title,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -493,7 +493,7 @@ class _TrialBannerState extends ConsumerState<TrialBanner> {
                       fit: BoxFit.scaleDown,
                       child: const Text(
                         'View Plan',
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.white),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white),
                       ),
                     ),
                   ),

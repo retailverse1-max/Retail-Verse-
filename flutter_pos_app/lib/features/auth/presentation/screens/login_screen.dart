@@ -17,6 +17,7 @@ import '../../../../data/remote/auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import '../widgets/privacy_policy_disclaimer.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final String? initialMode;
@@ -41,6 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLocalLoading = false;
   bool _useOtp = false;
   bool _otpSent = false;
+  bool _agreedToTerms = false;
   String _selectedCountryCode = '+91';
   
   Timer? _otpTimer;
@@ -91,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: 16),
             const Text(
               'Exit App?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -123,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => Navigator.of(dialogCtx).pop(true),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: AppColors.error,
+                    backgroundColor: AppColors.secondary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Exit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -161,6 +163,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToTerms) {
+      _showErrorSnackBar('Please agree to the Terms of Service and Privacy Policy');
+      return;
+    }
     if (_useOtp && _otpController.text.length < 6) {
       _showErrorSnackBar('Please enter valid 6-digit OTP');
       return;
@@ -213,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(duration: const Duration(seconds: 2),content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -230,7 +236,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP sent to your email. Please check your inbox.'), backgroundColor: Colors.green),
+        const SnackBar(duration: const Duration(seconds: 2),content: Text('OTP sent to your email. Please check your inbox.'), backgroundColor: Colors.green),
       );
       
       _showResetPasswordDialog(email);
@@ -256,7 +262,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             return AlertDialog(
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: Text('Reset Password', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+              title: Text('Reset Password', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
               content: Form(
                 key: formKey,
                 child: Column(
@@ -314,11 +320,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       if (!mounted) return;
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password reset successfully! Please log in.'), backgroundColor: Colors.green),
+                        const SnackBar(duration: const Duration(seconds: 2),content: Text('Password reset successfully! Please log in.'), backgroundColor: Colors.green),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                        SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
                       );
                     } finally {
                       if (mounted) setDialogState(() => isResetting = false);
@@ -337,6 +343,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (!_agreedToTerms) {
+      _showErrorSnackBar('Please agree to the Terms of Service and Privacy Policy');
+      return;
+    }
     try {
       final googleSignIn = GoogleSignIn(
         serverClientId: '127152555107-mo61lp114l0e25128696iud0e0ul2q65.apps.googleusercontent.com',
@@ -370,7 +380,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _showSuccessAndNavigate(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(msg), backgroundColor: Colors.green));
     context.go('/dashboard');
   }
 
@@ -397,10 +407,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _startOtpTimer();
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: const Text('OTP sent'),
             backgroundColor: const Color(0xFF163F6B),
-            duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
             shape: RoundedRectangleBorder(
@@ -473,7 +482,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       'Retail Verse',
                       style: AppTypography.displaySmall.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: -1,
                       ),
                     ),
@@ -515,7 +524,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           Text(
                             'Welcome Back',
-                            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900),
+                            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 8),
@@ -541,7 +550,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   isActive: _useOtp, 
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      const SnackBar(duration: const Duration(seconds: 2),
                                         content: Text('Phone OTP login is coming soon!'),
                                         behavior: SnackBarBehavior.floating,
                                       ),
@@ -637,7 +646,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ],
                           ],
 
-                          const SizedBox(height: 32),
+                          PrivacyPolicyDisclaimer(
+                            value: _agreedToTerms,
+                            onChanged: (val) {
+                              if (val != null) setState(() => _agreedToTerms = val);
+                            },
+                          ),
+                          const SizedBox(height: 16),
                           SizedBox(
                             height: 58,
                             child: FilledButton(
@@ -662,7 +677,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               // ── SOCIAL LOGIN & FOOTER ───────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                padding: EdgeInsets.fromLTRB(24, 0, 24, 40 + MediaQuery.paddingOf(context).bottom),
                 child: Column(
                   children: [
                     Row(
@@ -689,15 +704,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Text("New to Retail Verse? ", style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                         GestureDetector(
                           onTap: () => context.push('/signup'),
-                          child: Text('Create Account', style: AppTypography.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900)),
+                          child: Text('Create Account', style: AppTypography.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 32),
-                    Text(
-                      'Server: ${ApiEndpoints.baseUrl}',
-                      style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary.withOpacity(0.5), fontSize: 10),
-                    ),
                   ],
                 ),
               ),
@@ -725,7 +736,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             textAlign: TextAlign.center,
             style: AppTypography.labelLarge.copyWith(
               color: isActive ? AppColors.primary : AppColors.textTertiary,
-              fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
             ),
           ),
         ),

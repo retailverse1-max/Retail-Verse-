@@ -137,9 +137,9 @@ class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> with SingleTicker
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('PLATFORM INSIGHTS', style: AppTypography.labelSmall.copyWith(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 1.5)),
+                  Text('PLATFORM INSIGHTS', style: AppTypography.labelSmall.copyWith(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 9, letterSpacing: 1.5)),
                   const SizedBox(height: 4),
-                  Text('Analytics', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
+                  Text('Analytics', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: Colors.white)),
                 ],
               ),
             ),
@@ -150,7 +150,7 @@ class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> with SingleTicker
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title.toUpperCase(), style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 0.5));
+    return Text(title.toUpperCase(), style: AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5));
   }
 
   Widget _buildMetricsGrid(Map cards) {
@@ -198,7 +198,7 @@ class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> with SingleTicker
               ],
             ),
             const Spacer(),
-            Text(value, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textPrimary)),
+            Text(value, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.textPrimary)),
             Text(label, style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold, fontSize: 10)),
           ],
         ),
@@ -218,7 +218,7 @@ class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> with SingleTicker
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
-          Text('LIVE', style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w900)),
+          Text('LIVE', style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -377,12 +377,12 @@ class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> with SingleTicker
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900)),
+                    Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                     Text('$orders Orders', style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary)),
                   ],
                 ),
               ),
-              Text('₹${NumberFormat.compact().format(rev)}', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.success)),
+              Text('₹${NumberFormat.compact().format(rev)}', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.success)),
             ],
           ),
         ),

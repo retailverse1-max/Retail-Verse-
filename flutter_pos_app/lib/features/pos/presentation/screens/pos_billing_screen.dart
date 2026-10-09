@@ -110,7 +110,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Row(
               children: [
                 const Icon(Icons.error_outline_rounded, color: Colors.white),
@@ -122,7 +122,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                 ),
               ],
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -160,11 +160,11 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Text(
                 'Cannot add more than available stock (${product.stock})',
               ),
-              backgroundColor: AppColors.error,
+              backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -200,11 +200,11 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         item.quantity++;
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(
               'Cannot exceed available stock (${item.product.stock})',
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -364,7 +364,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Row(
             children: [
               const Icon(Icons.error_outline_rounded, color: Colors.white),
@@ -372,10 +372,9 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
               Expanded(child: Text(message)),
             ],
           ),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
+          ),
       );
     }
   }
@@ -416,7 +415,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         if (mounted) {
           setState(() => _isProcessingOrder = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            SnackBar(duration: const Duration(seconds: 2),
               content: Row(
                 children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.white),
@@ -424,10 +423,9 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                   const Text('Order placed successfully!'),
                 ],
               ),
-              backgroundColor: AppColors.success,
+              backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
+              ),
           );
           context.go('/pos');
         }
@@ -470,7 +468,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
             Text(
               'Place Order',
               style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -529,14 +527,14 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         Text(
           label,
           style: isTotal
-              ? AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800)
+              ? AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600)
               : AppTypography.bodyMedium,
         ),
         Text(
           value,
           style: isTotal
               ? AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 )
               : AppTypography.bodyMedium,
@@ -621,7 +619,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
               Text(
                 'Register',
                 style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                   height: 1.1,
                 ),
@@ -789,8 +787,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
             child: InkWell(
               onTap: () => setState(() => _selectedCategory = category),
               borderRadius: BorderRadius.circular(10),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+              child: AnimatedContainer( duration: const Duration(milliseconds: 300), 
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 8,
@@ -853,8 +850,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                     child: InkWell(
                       onTap: () => setState(() => _selectedCategory = category),
                       borderRadius: BorderRadius.circular(12),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
+                      child: AnimatedContainer( duration: const Duration(milliseconds: 300), 
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 12,
@@ -1210,7 +1206,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                                 'OUT OF STOCK',
                                 style: AppTypography.labelSmall.copyWith(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w600,
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -1278,7 +1274,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                           child: Text(
                             '₹${product.price.toStringAsFixed(2)}',
                             style: AppTypography.titleMedium.copyWith(
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                               color: isOutOfStock
                                   ? AppColors.textTertiary
                                   : AppColors.primaryDark,
@@ -1417,7 +1413,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                 Text(
                   'Current sale',
                   style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
@@ -1549,7 +1545,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
               Text(
                 'Customer Details',
                 style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   fontSize: 16,
                 ),
               ),
@@ -1654,7 +1650,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                       Text(
                         '₹${item.total.toStringAsFixed(2)}',
                         style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.primaryDark,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
@@ -1697,7 +1693,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
               '${item.quantity}',
               textAlign: TextAlign.center,
               style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),
             ),
@@ -1772,7 +1768,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                   Text(
                     '₹${_total.toStringAsFixed(2)}',
                     style: AppTypography.titleLarge.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.error, // Amazon uses red for total sometimes, or dark
                     ),
                   ),
@@ -1787,15 +1783,15 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                   ? null
                   : _placeOrder,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.amazonYellow,
-                foregroundColor: Colors.black87,
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.backgroundTertiary,
                 disabledForegroundColor: AppColors.textTertiary,
                 elevation: 1,
                 shadowColor: Colors.black26,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: AppColors.amazonOrange, width: 1),
+                  side: const BorderSide(color: AppColors.accent, width: 1),
                 ),
               ),
               child: _isProcessingOrder
@@ -1804,14 +1800,14 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     )
                   : Text(
                       isRazorpay ? 'Pay & Place Your Order' : 'Place Your Order',
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
             ),
@@ -1867,7 +1863,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
           Text(
             'Payment Method',
             style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               fontSize: 16,
             ),
           ),
@@ -1955,7 +1951,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
           Text(
             'Order Summary',
             style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               fontSize: 16,
             ),
           ),
@@ -1997,7 +1993,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
           style:
               (isTotal ? AppTypography.titleMedium : AppTypography.bodyMedium)
                   .copyWith(
-                    fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
+                    fontWeight: isTotal ? FontWeight.w600 : FontWeight.w500,
                     color: isTotal
                         ? AppColors.textPrimary
                         : AppColors.textSecondary,
@@ -2009,7 +2005,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
               .copyWith(
                 fontWeight: isDiscount
                     ? FontWeight.w700
-                    : (isTotal ? FontWeight.w800 : FontWeight.w600),
+                    : (isTotal ? FontWeight.w600 : FontWeight.w600),
                 color: isDiscount
                     ? AppColors.success
                     : (isTotal ? AppColors.primaryDark : AppColors.textPrimary),

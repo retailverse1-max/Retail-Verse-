@@ -37,21 +37,21 @@ class AppTypography {
   // --- ELITE DISPLAY (Large Numbers/Brand) ---
   static TextStyle get displayLarge => _style(
         fontSize: fontSize5XL,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
         letterSpacing: -1.5,
       );
 
   static TextStyle get displayMedium => _style(
         fontSize: fontSize4XL,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
         letterSpacing: -1.0,
       );
 
   static TextStyle get displaySmall => _style(
         fontSize: fontSize3XL,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
         letterSpacing: -0.5,
       );
@@ -59,38 +59,38 @@ class AppTypography {
   // --- BOLD HEADLINES (Section Headers) ---
   static TextStyle get headlineLarge => _style(
         fontSize: fontSize2XL,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get headlineMedium => _style(
         fontSize: fontSizeXL,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get headlineSmall => _style(
         fontSize: fontSizeLG,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
   // --- PREMIUM TITLES (Cards, Buttons) ---
   static TextStyle get titleLarge => _style(
         fontSize: fontSizeLG,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get titleMedium => _style(
         fontSize: fontSizeMD,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get titleSmall => _style(
         fontSize: fontSizeSM,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
@@ -119,19 +119,19 @@ class AppTypography {
   // --- COMPACT LABELS (Captions, Details) ---
   static TextStyle get labelLarge => _style(
         fontSize: fontSizeMD,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       );
 
   static TextStyle get labelMedium => _style(
         fontSize: fontSizeSM,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: AppColors.textSecondary,
       );
 
   static TextStyle get labelSmall => _style(
         fontSize: fontSizeXS,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: AppColors.textTertiary,
       );
 
@@ -143,7 +143,7 @@ class AppTypography {
 
   static TextStyle get priceMedium => _style(
         fontSize: fontSizeXL,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w500,
         color: AppColors.primary,
       );
 }

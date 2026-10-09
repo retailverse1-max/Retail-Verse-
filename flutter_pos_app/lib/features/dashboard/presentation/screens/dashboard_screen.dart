@@ -51,7 +51,7 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 32),
               Text(
                 'Setting up your dashboard...',
-                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900),
+                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
@@ -193,7 +193,7 @@ class DashboardScreen extends ConsumerWidget {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('Featured Products', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                                      Text('Featured Products', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
                                       TextButton(
                                         onPressed: () => context.push('/pos'),
                                         child: Text('See All', style: AppTypography.labelLarge.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
@@ -230,7 +230,7 @@ class DashboardScreen extends ConsumerWidget {
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Featured Products', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                                  Text('Featured Products', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
                                   const Spacer(),
                                   TextButton.icon(
                                     onPressed: () => context.push('/pos?filter=low_stock'),
@@ -299,12 +299,12 @@ class DashboardScreen extends ConsumerWidget {
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w900)),
+                                            Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700)),
                                             const SizedBox(height: 4),
                                             Row(
                                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                               children: [
-                                                Text('₹${p.price}', style: AppTypography.labelMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900)),
+                                                Text('₹${p.price}', style: AppTypography.labelMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
                                                 Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                   decoration: BoxDecoration(
@@ -386,7 +386,7 @@ class DashboardScreen extends ConsumerWidget {
                                 child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 20),
                               ),
                               const SizedBox(width: 12),
-                              Text('Low Stock Alerts', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                              Text('Low Stock Alerts', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
                               const Spacer(),
                               Text('${lowStock.length} items', style: AppTypography.labelLarge.copyWith(color: AppColors.error, fontWeight: FontWeight.bold)),
                             ],
@@ -449,7 +449,7 @@ class DashboardScreen extends ConsumerWidget {
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w900)),
+                                              Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700)),
                                               Text('Only ${p.stock} remaining', style: TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold)),
                                               const SizedBox(height: 8),
                                               GestureDetector(
@@ -534,7 +534,7 @@ class DashboardScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Text("Today's Overview", style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                  child: Text("Today's Overview", style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700)),
                 ),
               ),
 
@@ -682,7 +682,7 @@ class _BlinkingSupportFABState extends State<_BlinkingSupportFAB> with SingleTic
               builder: (context) => const SupportDialog(),
             );
           },
-          backgroundColor: AppColors.warning,
+          backgroundColor: AppColors.accent,
           shape: const CircleBorder(),
           child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 28),
         ),

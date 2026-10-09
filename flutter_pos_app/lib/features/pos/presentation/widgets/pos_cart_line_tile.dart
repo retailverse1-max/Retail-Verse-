@@ -76,7 +76,7 @@ class PosCartLineTile extends StatelessWidget {
                   child: Text(
                     '${item.quantity}',
                     style: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -101,7 +101,7 @@ class PosCartLineTile extends StatelessWidget {
             final subtotal = Text(
               AppFormatters.formatCurrency(item.total),
               style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 color: AppColors.primary,
               ),
             );

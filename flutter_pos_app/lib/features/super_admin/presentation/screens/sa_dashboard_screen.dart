@@ -34,20 +34,20 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
   final List<Map<String, dynamic>> _searchItems = [
     {'name': 'Quick Access', 'route': '/super-admin', 'icon': Icons.flash_on_rounded},
     {'name': 'Add Store', 'route': '/super-admin/businesses', 'icon': Icons.add_business_rounded},
-    {'name': 'Audit Log', 'route': '/super-admin/audit-logs', 'icon': Icons.history_rounded},
+    {'name': 'Audit Log', 'route': '/super-admin/logs', 'icon': Icons.history_rounded},
     {'name': 'Settings', 'route': '/super-admin/settings', 'icon': Icons.settings_rounded},
-    {'name': 'Subscription Plan', 'route': '/super-admin/subscriptions', 'icon': Icons.card_membership_rounded},
-    {'name': 'Domain', 'route': '/super-admin/domain', 'icon': Icons.language_rounded},
+    {'name': 'Client Plans', 'route': '/super-admin/subscriptions', 'icon': Icons.card_membership_rounded},
+    {'name': 'Domain', 'route': '/super-admin/custom-domains', 'icon': Icons.language_rounded},
     {'name': 'Logs', 'route': '/super-admin/logs', 'icon': Icons.receipt_long_rounded},
     {'name': 'Support', 'route': '/super-admin/support', 'icon': Icons.support_agent_rounded},
-    {'name': 'Analytics', 'route': '/super-admin', 'icon': Icons.analytics_rounded},
-    {'name': 'Revenue Growth', 'route': '/super-admin', 'icon': Icons.trending_up_rounded},
-    {'name': 'Top Performing Store', 'route': '/super-admin', 'icon': Icons.star_rounded},
-    {'name': 'System Health', 'route': '/super-admin', 'icon': Icons.monitor_heart_rounded},
+    {'name': 'Analytics', 'route': '/super-admin/analytics', 'icon': Icons.analytics_rounded},
+    {'name': 'Revenue Growth', 'route': '/super-admin/analytics', 'icon': Icons.trending_up_rounded},
+    {'name': 'Top Performing Store', 'route': '/super-admin/stores-performance', 'icon': Icons.star_rounded},
+    {'name': 'System Health', 'route': '/super-admin/logs', 'icon': Icons.monitor_heart_rounded},
     {'name': 'User & Client', 'route': '/super-admin/users', 'icon': Icons.people_rounded},
     {'name': 'Customers', 'route': '/super-admin/customers', 'icon': Icons.groups_rounded},
-    {'name': 'Contact Form', 'route': '/super-admin/contact', 'icon': Icons.contact_page_rounded},
-    {'name': 'Invoice & Quote', 'route': '/super-admin/invoices', 'icon': Icons.request_quote_rounded},
+    {'name': 'Contact Form', 'route': '/super-admin/contacts', 'icon': Icons.contact_page_rounded},
+    {'name': 'Invoice & Quote', 'route': '/super-admin/orders', 'icon': Icons.request_quote_rounded},
   ];
 
   @override
@@ -255,8 +255,8 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, fontWeight: FontWeight.w900)),
-                                          Text('Super Admin', style: AppTypography.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                                          Text('Retail Verse', style: AppTypography.labelLarge.copyWith(color: Colors.amberAccent, fontWeight: FontWeight.w700)),
+                                          Text('Super Admin', style: AppTypography.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                                         ],
                                       ),
                                     ),
@@ -389,7 +389,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Quick Access', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900)),
+                          Text('Quick Access', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700)),
                           const SizedBox(height: 16),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
@@ -397,7 +397,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                             child: Row(
                               children: [
                                 _QuickActionButton(icon: Icons.add_business_rounded, label: 'Add Store', color: AppColors.primary, onTap: () => context.push('/super-admin/businesses/add')),
-                                _QuickActionButton(icon: Icons.subscript_rounded, label: 'Subscription Plan', color: AppColors.info, onTap: () => context.push('/super-admin/subscriptions')),
+                                _QuickActionButton(icon: Icons.subscript_rounded, label: 'Client Plans', color: AppColors.info, onTap: () => context.push('/super-admin/subscriptions')),
                                 _QuickActionButton(icon: Icons.domain_rounded, label: 'Domain', color: const Color(0xFF8B5CF6), onTap: () => context.push('/super-admin/custom-domains')),
                                 _QuickActionButton(icon: Icons.security_rounded, label: 'Logs', color: AppColors.warning, onTap: () => context.push('/super-admin/logs')),
                                 _QuickActionButton(icon: Icons.support_agent_rounded, label: 'Support', color: AppColors.success, onTap: () => context.push('/super-admin/support-chat')),
@@ -477,7 +477,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                             subtitle: 'Across all stores', 
                             icon: Icons.groups_rounded, 
                             color: AppColors.info,
-                            onTap: () => context.push('/super-admin/users'),
+                            onTap: () => context.push('/super-admin/customers'),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -515,7 +515,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Analytics', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: Colors.amber[700])),
+                            Text('Analytics', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, color: Colors.amber[700])),
                             const SizedBox(height: 16),
                             isPhone
                               ? Column(
@@ -700,7 +700,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
           children: [
             const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
             const SizedBox(width: 6),
-            Flexible(child: Text('Client Store', style: AppTypography.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis)),
+            Flexible(child: Text('Client Store', style: AppTypography.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),
@@ -744,7 +744,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      Text(title, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       const SizedBox(height: 4),
                       Text(subtitle, style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
                     ],
@@ -763,7 +763,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900)),
+        Text(title, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700)),
         TextButton(onPressed: onTap, child: const Text('View All')),
       ],
     );
@@ -796,7 +796,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+                      Text(name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600)),
                       Text('Active Sub', style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary)),
                     ],
                   ),
@@ -804,7 +804,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(rev, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900)),
+                    Text(rev, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                     Text(growth, style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 10)),
                   ],
                 ),
@@ -844,7 +844,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                   children: [
                     const _PulsingStatusDot(),
                     const SizedBox(width: 12),
-                    Text('Global Systems', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900)),
+                    Text('Global Systems', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700)),
                   ],
                 ),
                 Container(
@@ -955,7 +955,7 @@ class _SystemHealthDetailSheet extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: [
-                Text('Platform Infrastructure', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+                Text('Platform Infrastructure', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Text('Real-time system monitoring across global nodes', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
                 const SizedBox(height: 32),
@@ -1014,7 +1014,7 @@ class _SystemHealthDetailSheet extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(child: Text(label, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700))),
-          Text(value, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+          Text(value, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         ],
       ),
     );
@@ -1149,11 +1149,11 @@ class _ModernKPICard extends StatelessWidget {
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(value, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                          child: Text(value, style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                       Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 9)),
                     ],
                   ),
@@ -1254,7 +1254,7 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
               children: [
                 Text(
                   'Client Store Control',
-                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900),
+                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1356,7 +1356,7 @@ class _StorePickerSheetState extends ConsumerState<_StorePickerSheet> {
                           ),
                           title: Text(
                             b['businessName'] ?? 'Unnamed',
-                            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800),
+                            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
                             b['ownerEmail'] ?? 'No email',
@@ -1528,7 +1528,7 @@ class _CompactMetricCardState extends State<_CompactMetricCard> with SingleTicke
                           children: [
                             Text(widget.title, style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 2),
-                            Text(widget.value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textPrimary)),
+                            Text(widget.value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.textPrimary)),
                           ],
                         ),
                       ),
@@ -1541,7 +1541,7 @@ class _CompactMetricCardState extends State<_CompactMetricCard> with SingleTicke
                       const SizedBox(height: 8),
                       FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(widget.value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                        child: Text(widget.value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                       ),
                       Text(widget.title, style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
                     ],
@@ -1652,7 +1652,7 @@ class _LiveSummaryItemState extends State<_LiveSummaryItem> with SingleTickerPro
                 children: [
                   Text(
                     _displayValue.toString(),
-                    style: AppTypography.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
+                    style: AppTypography.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                   ),
                   if (widget.isLive) ...[
                     const SizedBox(width: 4),
@@ -1889,7 +1889,7 @@ class _NotificationSheetState extends ConsumerState<_NotificationSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Notifications', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+                Text('Notifications', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
                 TextButton(
                   onPressed: () {
                     ref.read(notificationProvider.notifier).markAsRead();
@@ -1981,7 +1981,7 @@ class _NotificationSheetState extends ConsumerState<_NotificationSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(child: Text(n.title, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w900, color: color))),
+                        Expanded(child: Text(n.title, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700, color: color))),
                         Text("${n.createdAt.hour}:${n.createdAt.minute.toString().padLeft(2, '0')}", style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary)),
                       ],
                     ),

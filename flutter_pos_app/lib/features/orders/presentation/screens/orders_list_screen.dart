@@ -90,7 +90,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                             Text(
                               'Quotes & Invoices',
                               style: AppTypography.titleLarge.copyWith( // Made text smaller
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                               ),
                             ),
@@ -437,7 +437,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                 Text(
                   value,
                   style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontSize: 16,
                   ),
@@ -514,7 +514,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                         Text(
                           '$titlePrefix #${order.orderId.substring(order.orderId.length > 8 ? order.orderId.length - 8 : 0)}',
                           style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -554,7 +554,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                       AppFormatters.formatCurrency(order.total),
                       style: AppTypography.titleLarge.copyWith(
                         color: AppColors.primary,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],

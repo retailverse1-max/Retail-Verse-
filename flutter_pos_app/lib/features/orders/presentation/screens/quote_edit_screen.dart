@@ -108,9 +108,9 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
   Future<void> _saveQuote() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           content: Text('Cannot save an empty quote'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -120,9 +120,9 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
     final totalWithoutDiscount = _subtotal + _tax + _extraCharges;
     if (_discount > totalWithoutDiscount) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        const SnackBar(duration: const Duration(seconds: 2),
           content: Text('Discount value must be lesser than grand total value'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -167,9 +167,9 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
     if (success) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Quote updated successfully!'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -179,9 +179,9 @@ class _QuoteEditScreenState extends ConsumerState<QuoteEditScreen> {
       if (context.mounted) {
         final errorMsg = ref.read(orderCreationProvider).error ?? 'Failed to update quote';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(errorMsg.toString().contains('SocketException') || errorMsg.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $errorMsg'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );

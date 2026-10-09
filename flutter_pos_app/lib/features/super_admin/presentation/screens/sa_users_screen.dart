@@ -70,7 +70,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                               ),
                             ),
                           Expanded(
-                            child: Text('User & Access', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900)),
+                            child: Text('User & Access', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),
@@ -195,7 +195,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                   child: Center(
                     child: Text(
                       initials,
-                      style: AppTypography.titleMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900),
+                      style: AppTypography.titleMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -204,7 +204,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name.isNotEmpty ? name : 'Unnamed Member', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      Text(name.isNotEmpty ? name : 'Unnamed Member', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       Text(email, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 12),
                       Wrap(
@@ -237,7 +237,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
       ),
       child: Text(
         displayRole.toUpperCase(),
-        style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 10),
+        style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 10),
       ),
     );
   }
@@ -320,16 +320,16 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
       if (mounted) {
         setState(() { _f = _svc.listUsers(); });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: const Text('Team updated successfully'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.secondary));
     }
   }
 
@@ -344,7 +344,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true), 
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.secondary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: const Text('Remove'),
           ),
         ],
@@ -364,7 +364,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          title: Text('Add Member', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+          title: Text('Add Member', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -415,7 +415,7 @@ class _SaUsersScreenState extends State<SaUsersScreen> {
           final cleanErr = errStr.contains('SocketException') || errStr.contains('Failed host lookup')
               ? 'You are offline. Please check your internet connection.'
               : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanErr)));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(cleanErr)));
         }
       }
     }

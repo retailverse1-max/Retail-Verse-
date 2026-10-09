@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retail_verse_pos/data/remote/notification_service.dart';
 
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
+import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
 
 
 class InvoiceDetailsModal extends ConsumerWidget {
@@ -26,10 +28,8 @@ class InvoiceDetailsModal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final title = isQuote ? 'Quote Details' : 'Invoice Details';
     
-    return PopScope(
-      canPop: false,
-      child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -51,8 +51,8 @@ class InvoiceDetailsModal extends ConsumerWidget {
                 _buildPaymentMethod(),
                 const SizedBox(height: 16),
                 _buildPaymentStatus(),
-                const SizedBox(height: 32),
-                _buildActionButtons(context),
+                const SizedBox(height: 24),
+                _buildActionButtons(context, ref),
               ],
             ),
           ),
@@ -69,7 +69,6 @@ class InvoiceDetailsModal extends ConsumerWidget {
           ),
         ],
       ),
-    ),
     );
   }
 
@@ -89,7 +88,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
           child: Text(
             isQuote ? 'Quote Details' : 'Invoice Details',
             style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
@@ -126,7 +125,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
           Text(
             customerName,
             style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
@@ -153,7 +152,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
             '$refTitle-${order.orderId}',
             style: AppTypography.titleMedium.copyWith(
               color: AppColors.primary,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
@@ -275,7 +274,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
                 Text('Subtotal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
                 Text(
                   AppFormatters.formatCurrency(order.subtotal),
-                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800),
+                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -289,7 +288,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
                   Text('Discount', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
                   Text(
                     '- ${AppFormatters.formatCurrency(order.discount)}',
-                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800, color: AppColors.error),
+                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.error),
                   ),
                 ],
               ),
@@ -302,7 +301,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
                 Text('Tax', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
                 Text(
                   AppFormatters.formatCurrency(order.tax),
-                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800),
+                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -316,7 +315,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
                   Text('Extra Charges', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
                   Text(
                     '+ ${AppFormatters.formatCurrency(order.extraCharges)}',
-                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800),
+                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -340,14 +339,14 @@ class InvoiceDetailsModal extends ConsumerWidget {
                 Text(
                   'Total Amount',
                   style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primaryDark,
                   ),
                 ),
                 Text(
                   AppFormatters.formatCurrency(order.total),
                   style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
                 ),
@@ -382,7 +381,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
           Text(
             order.paymentMethod,
             style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
@@ -422,185 +421,252 @@ class InvoiceDetailsModal extends ConsumerWidget {
     );
   }
 
-  Future<void> _downloadPdf(BuildContext context, Order order) async {
-    try {
-      final pdf = pw.Document();
+  Future<pw.Document> _generatePdf(Order order, WidgetRef ref) async {
+    final font = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+    final fontItalic = await PdfGoogleFonts.robotoItalic();
+    final settings = ref.read(posSettingsProvider);
 
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) => pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(isQuote ? 'Quote #${order.orderId}' : 'Invoice #${order.orderId}', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 20),
-              pw.Text('Customer: ${order.customerName ?? 'Walk-In'}'),
-              if (order.customerEmail != null && order.customerEmail!.isNotEmpty) pw.Text('Email: ${order.customerEmail}'),
-              if (order.customerPhone != null && order.customerPhone!.isNotEmpty) pw.Text('Phone: ${order.customerPhone}'),
-              pw.Text('Date: ${AppFormatters.formatDateTime(order.dateTime)}'),
-              pw.SizedBox(height: 20),
-              pw.TableHelper.fromTextArray(
-                headers: ['Item', 'Qty', 'Price', 'Total'],
-                data: order.items.map((item) => [
-                  item.product.name,
-                  item.quantity.toString(),
-                  AppFormatters.formatCurrency(item.price).replaceAll('₹', 'Rs.'),
-                  AppFormatters.formatCurrency(item.total).replaceAll('₹', 'Rs.'),
-                ]).toList(),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.end,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text('Subtotal: ${AppFormatters.formatCurrency(order.subtotal).replaceAll('₹', 'Rs.')}'),
-                      pw.Text('Tax: ${AppFormatters.formatCurrency(order.tax).replaceAll('₹', 'Rs.')}'),
-                      if (order.discount > 0) pw.Text('Discount: -${AppFormatters.formatCurrency(order.discount).replaceAll('₹', 'Rs.')}'),
-                      if (order.extraCharges > 0) pw.Text('Extra Charges: +${AppFormatters.formatCurrency(order.extraCharges).replaceAll('₹', 'Rs.')}'),
-                      pw.Divider(),
-                      pw.Text('Total: ${AppFormatters.formatCurrency(order.total).replaceAll('₹', 'Rs.')}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
-                    ]
-                  )
-                ]
-              ),
-              pw.SizedBox(height: 40),
-              pw.Text('Thank you for your business!', style: pw.TextStyle(fontStyle: pw.FontStyle.italic)),
-            ],
-          ),
+    pw.MemoryImage? logoImage;
+    if (settings.showShopLogoOnInvoice && settings.businessLogoPath.isNotEmpty) {
+      try {
+        final file = File(settings.businessLogoPath);
+        if (file.existsSync()) {
+          final bytes = await file.readAsBytes();
+          logoImage = pw.MemoryImage(bytes);
+        }
+      } catch (_) {}
+    }
+
+    final storeTitle = settings.storeName.isNotEmpty ? settings.storeName : 'Retail Verse';
+    final footerNote = settings.invoiceFooterNote.isNotEmpty ? settings.invoiceFooterNote : 'Thank you for your business!';
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: fontBold,
+        italic: fontItalic,
+      ),
+    );
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // Store Logo & Header
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(storeTitle, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                    if (settings.storeAddress.isNotEmpty) pw.Text(settings.storeAddress, style: const pw.TextStyle(fontSize: 10)),
+                    if (settings.gstTaxId.isNotEmpty) pw.Text('GSTIN: ${settings.gstTaxId}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                if (logoImage != null)
+                  pw.Container(
+                    width: 50,
+                    height: 50,
+                    child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                  ),
+              ],
+            ),
+            pw.SizedBox(height: 12),
+            pw.Divider(),
+            pw.SizedBox(height: 12),
+
+            pw.Text(isQuote ? 'Quote #${order.orderId}' : 'Invoice #${order.orderId}', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 12),
+            pw.Text('Customer: ${order.customerName ?? 'Walk-In'}'),
+            if (order.customerEmail != null && order.customerEmail!.isNotEmpty) pw.Text('Email: ${order.customerEmail}'),
+            if (order.customerPhone != null && order.customerPhone!.isNotEmpty) pw.Text('Phone: ${order.customerPhone}'),
+            pw.Text('Date: ${AppFormatters.formatDateTime(order.dateTime)}'),
+            pw.SizedBox(height: 20),
+            pw.TableHelper.fromTextArray(
+              headers: ['Item', 'Qty', 'Price', 'Total'],
+              data: order.items.map((item) => [
+                item.product.name,
+                item.quantity.toString(),
+                AppFormatters.formatCurrency(item.price).replaceAll('₹', 'Rs.'),
+                AppFormatters.formatCurrency(item.total).replaceAll('₹', 'Rs.'),
+              ]).toList(),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.end,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Subtotal: ${AppFormatters.formatCurrency(order.subtotal).replaceAll('₹', 'Rs.')}'),
+                    pw.Text('Tax: ${AppFormatters.formatCurrency(order.tax).replaceAll('₹', 'Rs.')}'),
+                    if (order.discount > 0) pw.Text('Discount: -${AppFormatters.formatCurrency(order.discount).replaceAll('₹', 'Rs.')}'),
+                    if (order.extraCharges > 0) pw.Text('Extra Charges: +${AppFormatters.formatCurrency(order.extraCharges).replaceAll('₹', 'Rs.')}'),
+                    pw.Divider(),
+                    pw.Text('Total: ${AppFormatters.formatCurrency(order.total).replaceAll('₹', 'Rs.')}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
+                  ]
+                )
+              ]
+            ),
+            pw.SizedBox(height: 30),
+            pw.Center(
+              child: pw.Text(footerNote, style: pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 11)),
+            ),
+          ],
         ),
+      ),
+    );
+
+    return pdf;
+  }
+
+  Future<void> _downloadPdf(BuildContext context, WidgetRef ref, Order order) async {
+    try {
+      final pdf = await _generatePdf(order, ref);
+      final bytes = await pdf.save();
+      final prefix = isQuote ? 'Quote' : 'Invoice';
+      
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${prefix}_${order.orderId}.pdf',
       );
 
-      final bytes = await pdf.save();
-
-      Directory? directory;
-      if (Platform.isAndroid) {
-        // On Android 10+ (API 29+), WRITE_EXTERNAL_STORAGE is not required to
-        // write to the public Downloads directory via MediaStore, and on
-        // Android 13+ (API 33) the permission no longer exists at all.
-        // We attempt the Downloads dir directly and fall back to the app's
-        // external storage directory if the write fails (see catch block below).
-        final downloadDir = Directory('/storage/emulated/0/Download');
-        if (await downloadDir.exists()) {
-          directory = downloadDir;
-        } else {
-          directory = await getExternalStorageDirectory();
-        }
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory != null) {
-        final prefix = isQuote ? 'Quote' : 'Invoice';
-        File file = File('${directory.path}/${prefix}_${order.orderId}.pdf');
-        
-        try {
-          await file.writeAsBytes(bytes);
-        } catch (e) {
-          // If permission denied on Download dir (Android 13+), fallback to app dir
-          if (Platform.isAndroid) {
-            final fallbackDir = await getExternalStorageDirectory();
-            if (fallbackDir != null) {
-              file = File('${fallbackDir.path}/${prefix}_${order.orderId}.pdf');
-              await file.writeAsBytes(bytes);
-            } else {
-              throw e;
-            }
-          } else {
-            throw e;
-          }
-        }
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('PDF Downloaded to ${file.path}'),
-              backgroundColor: AppColors.success,
-              duration: const Duration(seconds: 4),
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
+            content: Text('PDF ready! You can now save or share it.'),
+            backgroundColor: AppColors.secondary,
             ),
-          );
-        }
-      } else {
-        throw Exception("Could not access storage directory");
+        );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error downloading PDF: $e'), backgroundColor: AppColors.error),
+          SnackBar(duration: const Duration(seconds: 2),content: Text('Error generating PDF: $e'), backgroundColor: AppColors.secondary),
         );
       }
     }
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Future<void> _printPdf(BuildContext context, WidgetRef ref, Order order) async {
+    try {
+      final pdf = await _generatePdf(order, ref);
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: isQuote ? 'Quote_${order.orderId}' : 'Invoice_${order.orderId}',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(duration: const Duration(seconds: 2),content: Text('Error printing: $e'), backgroundColor: AppColors.secondary),
+        );
+      }
+    }
+  }
+
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FilledButton.icon(
-          onPressed: () async {
-            String? emailToSend = order.customerEmail;
-            
-            if (emailToSend == null || emailToSend.isEmpty) {
-              final emailCtrl = TextEditingController();
-              emailToSend = await showDialog<String>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Enter Email Address'),
-                  content: TextField(
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'customer@example.com',
-                      prefixIcon: Icon(Icons.email),
-                    ),
-                  ),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                    FilledButton(onPressed: () => Navigator.pop(ctx, emailCtrl.text.trim()), child: const Text('Send')),
+          onPressed: () {
+            final emailCtrl = TextEditingController(text: order.customerEmail ?? '');
+            showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: Row(
+                  children: [
+                    const Icon(Icons.email_rounded, color: AppColors.warning, size: 24),
+                    const SizedBox(width: 8),
+                    const Text('Email PDF Invoice', style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
-              );
-            }
-            
-            if (emailToSend == null || emailToSend.isEmpty) return;
-
-            if (context.mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (ctx) => const PopScope(
-                  canPop: false,
-                  child: Center(child: CircularProgressIndicator()),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Enter customer email address to send the PDF invoice receipt:',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email Address',
+                        hintText: 'e.g. john@example.com',
+                        prefixIcon: const Icon(Icons.email),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            }
-            try {
-              await NotificationService().sendEmailInvoice(
-                email: emailToSend,
-                order: order,
-              );
-              if (context.mounted) {
-                Navigator.of(context).pop(); // Pop loading dialog
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Email sent successfully!'),
-                    backgroundColor: AppColors.success,
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
                   ),
-                );
-                Navigator.of(context).pop(); // Close the InvoiceDetailsModal
-              }
-            } catch (e) {
-              if (context.mounted) {
-                Navigator.of(context).pop(); // Pop loading dialog
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to send email: $e'),
-                    backgroundColor: AppColors.error,
+                  FilledButton(
+                    onPressed: () async {
+                      final email = emailCtrl.text.trim();
+                      Navigator.pop(ctx);
+                      if (email.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(duration: const Duration(seconds: 2),
+                            content: Text('Email address is required to send Invoice.'),
+                            backgroundColor: AppColors.secondary,
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+                      );
+                      try {
+                        await NotificationService().sendEmailInvoice(
+                          email: email,
+                          order: order,
+                          settings: ref.read(posSettingsProvider),
+                        );
+                        if (context.mounted) {
+                          Navigator.of(context, rootNavigator: true).pop(); // Pop loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(duration: const Duration(seconds: 2),
+                              content: Text('Email sent successfully!'),
+                              backgroundColor: AppColors.secondary,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.of(context, rootNavigator: true).pop(); // Pop loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(duration: const Duration(seconds: 2),
+                              content: Text('Failed to send email: $e'),
+                              backgroundColor: AppColors.secondary,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Send Email'),
                   ),
-                );
-              }
-            }
+                ],
+              ),
+            );
           },
           icon: const Icon(Icons.email_rounded, size: 20),
           label: Text(
@@ -619,17 +685,13 @@ class InvoiceDetailsModal extends ConsumerWidget {
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const PopScope(
-                canPop: false,
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              builder: (ctx) => const Center(child: CircularProgressIndicator()),
             );
             
-            await _downloadPdf(context, order);
+            await _downloadPdf(context, ref, order);
 
             if (context.mounted) {
               Navigator.of(context, rootNavigator: true).pop(); // pop loading
-              Navigator.of(context).pop(); // pop modal
             }
           },
           icon: const Icon(Icons.download_rounded, size: 20),
@@ -649,18 +711,11 @@ class InvoiceDetailsModal extends ConsumerWidget {
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const PopScope(
-                canPop: false,
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              builder: (ctx) => const Center(child: CircularProgressIndicator()),
             );
-            await Future.delayed(const Duration(seconds: 1));
+            await _printPdf(context, ref, order);
             if (context.mounted) {
-              Navigator.of(context).pop(); // pop loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Receipt Printed')),
-              );
-              Navigator.of(context).pop(); // pop modal
+              Navigator.of(context, rootNavigator: true).pop(); // pop loading
             }
           },
           icon: const Icon(Icons.print_rounded, size: 20),

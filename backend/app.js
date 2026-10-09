@@ -15,6 +15,7 @@ const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const flipkartRoutes = require("./marketplace/flipkart/flipkart.routes");
 const shopifyRoutes = require("./marketplace/shopify/shopify.routes");
+const meeshoRoutes = require("./marketplace/meesho/meesho.routes");
 const app = express();
 
 app.use(cors());
@@ -49,5 +50,6 @@ app.use("/api/categories", categoryRoutes);
 // Marketplace Routes
 app.use("/api/marketplace/flipkart", flipkartRoutes);
 app.use("/api/marketplace/shopify", shopifyRoutes);
+app.use("/api/marketplace/meesho", meeshoRoutes);
 
 module.exports = app;

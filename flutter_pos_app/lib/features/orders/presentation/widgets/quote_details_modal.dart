@@ -83,7 +83,7 @@ class QuoteDetailsModal extends ConsumerWidget {
             isAccepted ? 'ACCEPTED' : (status.isEmpty ? 'PENDING' : status),
             style: AppTypography.labelSmall.copyWith(
               color: isAccepted ? AppColors.success : AppColors.warning,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
             ),
           ),
@@ -108,7 +108,7 @@ class QuoteDetailsModal extends ConsumerWidget {
           child: Text(
             'Quotation Details',
             style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
@@ -144,7 +144,7 @@ class QuoteDetailsModal extends ConsumerWidget {
           Text(
             customerName,
             style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
@@ -171,7 +171,7 @@ class QuoteDetailsModal extends ConsumerWidget {
             'QT-${quote.orderId}',
             style: AppTypography.titleMedium.copyWith(
               color: const Color(0xFFE65100), // Orange
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
@@ -377,14 +377,14 @@ class QuoteDetailsModal extends ConsumerWidget {
                 Text(
                   'FINAL ACCEPTED PRICE',
                   style: AppTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.success,
                   ),
                 ),
                 Text(
                   AppFormatters.formatCurrency(quote.total),
                   style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.success,
                   ),
                 ),
@@ -433,7 +433,7 @@ class QuoteDetailsModal extends ConsumerWidget {
                   if (context.mounted) {
                     Navigator.of(context).pop(); // Pop loading dialog
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Printing completed')),
+                      const SnackBar(duration: const Duration(seconds: 2),content: Text('Printing completed')),
                     );
                     Navigator.of(context).pop(); // Close modal
                   }
@@ -481,7 +481,7 @@ class QuoteDetailsModal extends ConsumerWidget {
           icon: const Icon(Icons.payment_rounded, size: 20, color: Colors.black87),
           label: Text(
             'Pay Now',
-            style: AppTypography.titleSmall.copyWith(color: Colors.black87, fontWeight: FontWeight.w800),
+            style: AppTypography.titleSmall.copyWith(color: Colors.black87, fontWeight: FontWeight.w600),
           ),
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFFF4B400), // Yellow color
@@ -608,9 +608,9 @@ class QuoteDetailsModal extends ConsumerWidget {
     if (success) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Quote successfully converted to Invoice!'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -620,9 +620,9 @@ class QuoteDetailsModal extends ConsumerWidget {
       if (context.mounted) {
         final errorMsg = ref.read(orderCreationProvider).error ?? 'Conversion failed';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text(errorMsg.toString().contains('SocketException') || errorMsg.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $errorMsg'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );

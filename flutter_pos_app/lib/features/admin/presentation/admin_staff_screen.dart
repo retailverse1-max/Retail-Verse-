@@ -61,7 +61,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('User & Access', style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text('User & Access', style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 Text('Manage store staff & roles', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
                               ],
                             ),
@@ -189,7 +189,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                   child: Center(
                     child: Text(
                       initials,
-                      style: AppTypography.titleMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900),
+                      style: AppTypography.titleMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -198,7 +198,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name.isNotEmpty ? name : 'Unnamed Member', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      Text(name.isNotEmpty ? name : 'Unnamed Member', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       Text(email, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 12),
                       Wrap(
@@ -230,7 +230,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
       ),
       child: Text(
         role.toUpperCase(),
-        style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 10),
+        style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 10),
       ),
     );
   }
@@ -313,16 +313,16 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
       if (mounted) {
         setState(() { _f = _svc.listUsers(); });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: const Text('Team updated successfully'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.secondary));
     }
   }
 
@@ -337,7 +337,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true), 
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.secondary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: const Text('Remove'),
           ),
         ],
@@ -357,7 +357,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          title: Text('Add Member', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w900)),
+          title: Text('Add Member', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -408,7 +408,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
           final cleanErr = errStr.contains('SocketException') || errStr.contains('Failed host lookup')
               ? 'You are offline. Please check your internet connection.'
               : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanErr)));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(cleanErr)));
         }
       }
     }

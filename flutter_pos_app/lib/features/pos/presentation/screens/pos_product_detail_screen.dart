@@ -157,7 +157,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
           Text(
             p.name,
             style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
@@ -165,7 +165,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
           Text(
             AppFormatters.formatCurrency(p.price),
             style: AppTypography.headlineMedium.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: AppColors.primary,
             ),
           ),
@@ -219,7 +219,7 @@ class _PosProductDetailScreenState extends ConsumerState<PosProductDetailScreen>
                   child: Text(
                     '$displayQty',
                     style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

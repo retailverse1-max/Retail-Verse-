@@ -242,7 +242,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                         Text(
                           'Manage Support Inquiry',
                           style: AppTypography.headlineSmall.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -278,7 +278,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                       style: TextStyle(
                         color: _getStatusTextColor(item.status),
                         fontSize: 10,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -290,7 +290,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                 'SELECT ACTION',
                 style: AppTypography.labelSmall.copyWith(
                   color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: 1.0,
                 ),
               ),
@@ -399,7 +399,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   Text(
                     title,
                     style: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: isDanger ? textColor : AppColors.textPrimary,
                     ),
                   ),
@@ -429,9 +429,9 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
       final token = ref.read(authProvider).token;
       if (token == null) {
         messenger.showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Error: User not authenticated'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -451,17 +451,17 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
         ref.invalidate(recentTicketsProvider);
         ref.invalidate(supportStatsProvider);
         messenger.showSnackBar(
-          SnackBar(
+          SnackBar(duration: const Duration(seconds: 2),
             content: Text('Successfully marked ticket #${item.id} as $newStatus!'),
-            backgroundColor: AppColors.success,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
         messenger.showSnackBar(
-          const SnackBar(
+          const SnackBar(duration: const Duration(seconds: 2),
             content: Text('Failed to update ticket status in database.'),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -472,9 +472,9 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
         _localTicketStatuses[item.id] = newStatus;
       });
       messenger.showSnackBar(
-        SnackBar(
+        SnackBar(duration: const Duration(seconds: 2),
           content: Text('Simulated status update: Mock submission marked as $newStatus!'),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.secondary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -489,7 +489,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
           title: Text(
             'Delete Submission?',
             style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.error,
             ),
           ),
@@ -516,9 +516,9 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   final token = ref.read(authProvider).token;
                   if (token == null) {
                     messenger.showSnackBar(
-                      const SnackBar(
+                      const SnackBar(duration: const Duration(seconds: 2),
                         content: Text('Error: User not authenticated'),
-                        backgroundColor: AppColors.error,
+                        backgroundColor: AppColors.secondary,
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -534,17 +534,17 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                     ref.invalidate(recentTicketsProvider);
                     ref.invalidate(supportStatsProvider);
                     messenger.showSnackBar(
-                      SnackBar(
+                      SnackBar(duration: const Duration(seconds: 2),
                         content: Text('Successfully deleted support ticket #${item.id}!'),
-                        backgroundColor: AppColors.success,
+                        backgroundColor: AppColors.secondary,
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   } else {
                     messenger.showSnackBar(
-                      const SnackBar(
+                      const SnackBar(duration: const Duration(seconds: 2),
                         content: Text('Failed to delete support ticket from database.'),
-                        backgroundColor: AppColors.error,
+                        backgroundColor: AppColors.secondary,
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -555,16 +555,16 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                     _localDeletedMockIds.add(item.id);
                   });
                   messenger.showSnackBar(
-                    const SnackBar(
+                    const SnackBar(duration: const Duration(seconds: 2),
                       content: Text('Simulated deletion: Mock submission removed from list.'),
-                      backgroundColor: AppColors.success,
+                      backgroundColor: AppColors.secondary,
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
+                backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -619,7 +619,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                       Text(
                         _selectedTab == 0 ? 'Contact Messages' : 'Support Tickets',
                         style: AppTypography.headlineSmall.copyWith(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -707,7 +707,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                               title,
                               style: AppTypography.labelSmall.copyWith(
                                 color: AppColors.textTertiary,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -715,7 +715,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                             Text(
                               value,
                               style: AppTypography.displaySmall.copyWith(
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                               ),
                             ),
@@ -914,7 +914,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                             style: TextStyle(
                               color: _getStatusTextColor(item.status),
                               fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -935,7 +935,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
               Text(
                 item.name,
                 style: AppTypography.titleLarge.copyWith(
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
               ),
@@ -1014,7 +1014,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                           'MESSAGE',
                           style: AppTypography.labelSmall.copyWith(
                             color: AppColors.textTertiary,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                             fontSize: 9,
                           ),
@@ -1123,7 +1123,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'DATE',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1133,7 +1133,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'NAME',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1143,7 +1143,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'EMAIL',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1153,7 +1153,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'MESSAGE',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1163,7 +1163,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'PHONE / REF',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1173,7 +1173,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'STATUS',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1183,7 +1183,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   'ACTIONS',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.textTertiary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1207,7 +1207,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                       item.name,
                       style: AppTypography.titleSmall.copyWith(
                         color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -1265,7 +1265,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                               style: TextStyle(
                                 color: _getStatusTextColor(item.status),
                                 fontSize: 9,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -1325,7 +1325,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
               Text(
                 'Contact Submissions (${submissions.length})',
                 style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
               ),
@@ -1444,7 +1444,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                   ref.invalidate(recentTicketsProvider);
                   ref.invalidate(supportStatsProvider);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    SnackBar(duration: const Duration(seconds: 2),
                       content: const Text('Refreshing support data...'),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1467,7 +1467,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
           Text(
             'Support Tickets (${filtered.length})',
             style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
@@ -1564,7 +1564,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
                         style: TextStyle(
                           color: _getStatusTextColor(status),
                           fontSize: 10,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -1584,7 +1584,7 @@ class _SaContactsScreenState extends ConsumerState<SaContactsScreen> {
           Text(
             subject,
             style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
