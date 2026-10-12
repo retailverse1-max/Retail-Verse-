@@ -12,14 +12,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiEndpoints {
   ApiEndpoints._();
 
-  /// Bump when clearing bad saved URLs; v1/v2/v3 removed on startup.
-  static const String _prefsKey = 'api_base_url_override_v4';
+  /// Bump when clearing bad saved URLs; v1/v2/v3/v4 removed on startup.
+  static const String _prefsKey = 'api_base_url_override_v5';
 
   /// Build-time override (CI / staging).
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   static const String _hostedBaseUrl =
-      'https://app-backend-je91.onrender.com/api';
+      'https://retail-verse-backend.onrender.com/api';
 
   static String _resolvedBaseUrl = '';
 
