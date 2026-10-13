@@ -5,17 +5,19 @@ const meeshoMapper = require('./meesho.mapper');
 
 exports.getConnectionStatus = async (businessId) => {
     const connection = await MarketplaceConnection.findOne({ clientId: businessId, platform: 'meesho' });
-    if (!connection) {
+    if (!connection || connection.status !== 'active') {
         return { connected: false };
     }
     return {
         connected: true,
+        supplierId: connection.credentials?.appId,
+        phoneNumber: connection.credentials?.appSecret,
         status: connection.status,
         lastUpdated: connection.updatedAt
     };
 };
 
-exports.saveConnection = async (businessId, apiKey, supplierId) => {
+exports.saveConnection = async (businessId, { supplierId, phoneNumber, apiKey }) => {
     const connection = await MarketplaceConnection.findOneAndUpdate(
         { clientId: businessId, platform: 'meesho' },
         {
@@ -24,7 +26,8 @@ exports.saveConnection = async (businessId, apiKey, supplierId) => {
             status: 'active',
             credentials: {
                 appId: supplierId || 'MEESHO_SUPPLIER',
-                accessToken: apiKey,
+                appSecret: phoneNumber || '',
+                accessToken: apiKey || `meesho_token_${Date.now()}`,
             }
         },
         { upsert: true, new: true }
@@ -37,7 +40,13 @@ exports.removeConnection = async (businessId) => {
 };
 
 exports.pushSingleProduct = async (businessId, productId) => {
-    // 1. Fetch Product
+    // 1. Verify Connection
+    const connection = await MarketplaceConnection.findOne({ clientId: businessId, platform: 'meesho' });
+    if (!connection || connection.status !== 'active') {
+        throw new Error("Meesho seller account is not connected. Please connect in Marketplace Settings.");
+    }
+
+    // 2. Fetch Product
     const product = await Product.findOne({ _id: productId, businessId: businessId });
     if (!product) {
         throw new Error("Product not found in inventory.");

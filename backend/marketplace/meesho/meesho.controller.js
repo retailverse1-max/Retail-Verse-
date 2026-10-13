@@ -13,13 +13,30 @@ exports.checkStatus = async (req, res) => {
 exports.connectAccount = async (req, res) => {
     try {
         const businessId = req.user.businessId || req.user._id;
-        const { apiKey, supplierId } = req.body;
+        const { supplierId, phoneNumber, apiKey } = req.body;
 
-        const connection = await meeshoService.saveConnection(businessId, apiKey, supplierId);
+        if (!supplierId && !phoneNumber) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Meesho Supplier ID or Registered Phone Number is required" 
+            });
+        }
+
+        const connection = await meeshoService.saveConnection(businessId, { 
+            supplierId: supplierId ? String(supplierId).trim() : '', 
+            phoneNumber: phoneNumber ? String(phoneNumber).trim() : '', 
+            apiKey: apiKey ? String(apiKey).trim() : '' 
+        });
+
         res.status(200).json({
             success: true,
             message: "Successfully connected to Meesho Seller Account!",
-            data: connection
+            data: {
+                connected: true,
+                supplierId: connection.credentials?.appId,
+                phoneNumber: connection.credentials?.appSecret,
+                status: connection.status
+            }
         });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
