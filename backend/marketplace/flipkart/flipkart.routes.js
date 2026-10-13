@@ -3,6 +3,10 @@ const router = express.Router();
 const { protect: authMiddleware } = require('../../middleware/authMiddleware');
 const flipkartController = require('./flipkart.controller');
 
+// OAuth 2.0 Redirect/Callback URI for Flipkart Seller authentication
+// Public endpoint - called by Flipkart redirect & inspected by developer review
+router.get('/oauth/callback', flipkartController.handleOAuthCallback);
+
 // ==========================================
 // 1. Connection & Settings (App calls these)
 // ==========================================

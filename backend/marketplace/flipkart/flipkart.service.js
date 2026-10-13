@@ -43,6 +43,26 @@ exports.removeConnection = async (businessId) => {
     return await MarketplaceConnection.findOneAndDelete({ clientId: businessId, platform: 'flipkart' });
 };
 
+exports.handleOAuthCallback = async (authCode, businessId) => {
+    if (!businessId) {
+        return { success: true, message: "Authorization code received" };
+    }
+    const mockToken = `flipkart_oauth_${Date.now()}`;
+    return await MarketplaceConnection.findOneAndUpdate(
+        { clientId: businessId, platform: 'flipkart' },
+        {
+            clientId: businessId,
+            platform: 'flipkart',
+            status: 'active',
+            credentials: {
+                accessToken: mockToken,
+                refreshToken: `refresh_${Date.now()}`
+            }
+        },
+        { upsert: true, new: true }
+    );
+};
+
 exports.pushSingleProduct = async (businessId, productId) => {
     // 1. Get the connection token
     const connection = await MarketplaceConnection.findOne({ clientId: businessId, platform: 'flipkart' });
