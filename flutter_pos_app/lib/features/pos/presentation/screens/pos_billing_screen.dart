@@ -60,6 +60,10 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
   bool _handleHardwareScanKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
 
+    // Respect user's Barcode Scanner toggle in Settings
+    final posSettings = ref.read(posSettingsProvider);
+    if (!posSettings.barcodeScannerEnabled) return false;
+
     final now = DateTime.now();
     final delta = now.difference(_lastKeystrokeTime).inMilliseconds;
     _lastKeystrokeTime = now;

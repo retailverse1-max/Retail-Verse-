@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:retail_verse_pos/routes/app_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/core/utils/formatters.dart';
@@ -16,6 +15,7 @@ import 'package:retail_verse_pos/features/pos/providers/pos_held_cart_provider.d
 import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
 import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
 
@@ -34,16 +34,119 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
   late AnimationController _rotationController;
   bool isRefreshing = false;
 
+  final StringBuffer _scannerBuffer = StringBuffer();
+  DateTime _lastKeystrokeTime = DateTime.now();
+
+  bool _handleHardwareScanKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    // Respect user's Barcode Scanner toggle in Settings
+    final posSettings = ref.read(posSettingsProvider);
+    if (!posSettings.barcodeScannerEnabled) return false;
+
+    final now = DateTime.now();
+    final delta = now.difference(_lastKeystrokeTime).inMilliseconds;
+    _lastKeystrokeTime = now;
+
+    // Normal human typing gap is 100ms+. Scanners stream at 10-30ms.
+    if (delta > 60) {
+      _scannerBuffer.clear();
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      if (_scannerBuffer.length >= 3) {
+        final scannedBarcode = _scannerBuffer.toString().trim();
+        _scannerBuffer.clear();
+        _onHardwareBarcodeScanned(scannedBarcode);
+        return true;
+      }
+      _scannerBuffer.clear();
+    } else {
+      final character = event.character;
+      if (character != null && character.isNotEmpty && character.codeUnitAt(0) >= 32) {
+        _scannerBuffer.write(character);
+      }
+    }
+    return false;
+  }
+
+  Future<void> _onHardwareBarcodeScanned(String barcode) async {
+    debugPrint('⚡ [POSScreen Hardware Scanner] Scanned barcode: $barcode');
+    if (!mounted || barcode.isEmpty) return;
+
+    final productsAsync = ref.read(productsProvider);
+    final products = productsAsync.value ?? [];
+
+    Product? matchedProduct;
+    try {
+      matchedProduct = products.firstWhere(
+        (p) => p.barcode != null && p.barcode!.trim() == barcode,
+      );
+    } catch (_) {
+      matchedProduct = null;
+    }
+
+    if (matchedProduct == null) {
+      try {
+        final repo = ref.read(productRepositoryProvider);
+        matchedProduct = await repo.getProductByBarcode(barcode);
+      } catch (e) {
+        debugPrint('⚠️ Barcode API lookup failed: $e');
+      }
+    }
+
+    if (matchedProduct != null) {
+      ref.read(cartProvider.notifier).addItem(matchedProduct);
+      if (ref.read(posSettingsProvider).soundOnBilling) {
+        SystemSound.play(SystemSoundType.click);
+      }
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(milliseconds: 1200),
+          behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${matchedProduct.name} added to cart!')),
+            ],
+          ),
+          backgroundColor: AppColors.secondary,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Barcode "$barcode" not found in inventory!')),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleHardwareScanKey);
     _rotationController = AnimationController(
       vsync: this,
+      duration: const Duration(milliseconds: 1000),
     );
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleHardwareScanKey);
     _rotationController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -922,25 +1025,6 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDropdownMock(String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.cardBorder),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: AppTypography.labelSmall),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          ],
-        ),
-      ),
     );
   }
 
