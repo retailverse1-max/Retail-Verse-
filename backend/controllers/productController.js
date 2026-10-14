@@ -56,6 +56,45 @@ const getProductById = async (req, res) => {
   }
 };
 
+const getProductByBarcode = async (req, res) => {
+  try {
+    const { code } = req.params;
+    if (!code) {
+      return res.status(400).json({ message: "Barcode parameter is required" });
+    }
+
+    const filter = { barcode: code.trim() };
+    if (req.user && req.user.clientId) {
+      filter.clientId = req.user.clientId;
+    }
+
+    const product = await Product.findOne(filter).lean();
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        notFound: true,
+        message: "Product not found with barcode",
+        barcode: code.trim(),
+      });
+    }
+
+    const mappings = await MarketplaceProductMapping.find({
+      productId: product._id,
+      syncStatus: "synced",
+    }).lean();
+
+    product.marketplaces = mappings.map((m) => m.platform);
+
+    res.json({
+      success: true,
+      message: "Product found by barcode",
+      data: product,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const Business = require("../models/Business");
 const SubscriptionPlan = require("../models/SubscriptionPlan");
 
@@ -166,6 +205,7 @@ const deleteProduct = async (req, res) => {
 module.exports = {
   getProducts,
   getProductById,
+  getProductByBarcode,
   createProduct,
   updateProduct,
   deleteProduct,

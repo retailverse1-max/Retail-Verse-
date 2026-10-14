@@ -101,8 +101,83 @@ const adjustStock = async (req, res) => {
   }
 };
 
+const quickInward = async (req, res) => {
+  try {
+    const { barcode, productId, quantity, costPrice, batchNo, expiryDate, supplierName } = req.body;
+
+    if (!quantity || Number(quantity) <= 0) {
+      return res.status(400).json({ message: "Valid inward quantity is required" });
+    }
+
+    const filter = {};
+    if (productId) {
+      filter._id = productId;
+    } else if (barcode) {
+      filter.barcode = String(barcode).trim();
+    } else {
+      return res.status(400).json({ message: "Either productId or barcode is required" });
+    }
+
+    if (req.user && req.user.clientId) {
+      filter.clientId = req.user.clientId;
+    }
+
+    const product = await Product.findOne(filter);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        notFound: true,
+        message: "Product not found for inwarding",
+        barcode,
+      });
+    }
+
+    const beforeStock = product.stock || 0;
+    const inwardQty = Number(quantity);
+    const afterStock = beforeStock + inwardQty;
+
+    product.stock = afterStock;
+    if (costPrice && Number(costPrice) > 0) {
+      product.cost = Number(costPrice);
+    }
+    await product.save();
+
+    const referenceParts = [];
+    if (batchNo) referenceParts.push(`Batch: ${batchNo}`);
+    if (expiryDate) referenceParts.push(`Exp: ${expiryDate}`);
+    if (supplierName) referenceParts.push(`Supplier: ${supplierName}`);
+    const referenceId = referenceParts.length > 0 ? referenceParts.join(" | ") : "Shipment Inward";
+
+    const log = await InventoryLog.create({
+      productId: product._id,
+      type: "purchase",
+      quantity: inwardQty,
+      beforeStock,
+      afterStock,
+      referenceId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully inwarded ${inwardQty} units of ${product.name}`,
+      data: {
+        productId: product._id,
+        name: product.name,
+        barcode: product.barcode,
+        inwardQuantity: inwardQty,
+        beforeStock,
+        afterStock,
+        logId: log._id,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getInventory,
   getLowStockProducts,
   adjustStock,
+  quickInward,
 };

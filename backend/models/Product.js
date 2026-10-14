@@ -84,4 +84,7 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+productSchema.index({ clientId: 1, barcode: 1 });
+productSchema.index({ barcode: 1 });
+
 module.exports = mongoose.model("Product", productSchema);
