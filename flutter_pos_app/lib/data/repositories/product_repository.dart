@@ -27,8 +27,26 @@ class ProductRepository {
     return await dataSource.getLowStockProducts(threshold);
   }
 
-  Future<void> updateProductStock(String id, int quantity) async {
-    return await dataSource.updateProductStock(id, quantity);
+  Future<Product?> getProductByBarcode(String barcode) async {
+    return await dataSource.getProductByBarcode(barcode);
+  }
+
+  Future<Map<String, dynamic>> quickInward({
+    String? barcode,
+    String? productId,
+    required int quantity,
+    double? costPrice,
+    String? batchNo,
+    String? expiryDate,
+  }) async {
+    return await dataSource.quickInward(
+      barcode: barcode,
+      productId: productId,
+      quantity: quantity,
+      costPrice: costPrice,
+      batchNo: batchNo,
+      expiryDate: expiryDate,
+    );
   }
 
   Future<Product> createProduct({

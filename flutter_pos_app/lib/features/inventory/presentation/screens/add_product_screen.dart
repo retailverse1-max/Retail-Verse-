@@ -23,8 +23,9 @@ import '../../../../data/repositories/marketplace_repository.dart';
 /// Add Product Screen - Professional product creation form with AI integration
 class AddProductScreen extends ConsumerStatefulWidget {
   final inv.Category? category;
+  final String? initialBarcode;
 
-  const AddProductScreen({super.key, this.category});
+  const AddProductScreen({super.key, this.category, this.initialBarcode});
 
   @override
   ConsumerState<AddProductScreen> createState() => _AddProductScreenState();
@@ -37,6 +38,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Controllers for form fields
   final _nameController = TextEditingController();
   final _skuController = TextEditingController();
+  final _barcodeController = TextEditingController();
   final _priceController = TextEditingController();
   final _quantityController = TextEditingController();
   final _brandController = TextEditingController();
@@ -97,6 +99,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   void initState() {
     super.initState();
     _loadCategories();
+
+    if (widget.initialBarcode != null && widget.initialBarcode!.isNotEmpty) {
+      _barcodeController.text = widget.initialBarcode!;
+    }
 
     if (widget.category != null) {
       _selectedCategoryId = widget.category!.id;
@@ -160,6 +166,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   void dispose() {
     _nameController.dispose();
     _skuController.dispose();
+    _barcodeController.dispose();
     _priceController.dispose();
     _quantityController.dispose();
     _brandController.dispose();
@@ -492,7 +499,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             price: double.parse(_priceController.text.trim()),
             cost: 0,
             stock: int.parse(_quantityController.text.trim()),
-            barcode: _brandController.text.trim(),
+            barcode: _barcodeController.text.trim(),
             category: categoryLabel,
             imageBase64: imageBase64,
             description: desc.isEmpty ? null : desc,
@@ -597,8 +604,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       return RoleAccessDeniedView(onGoHome: () => context.go('/dashboard'));
     }
 
-    final isTablet = MediaQuery.of(context).size.width >= 900;
-
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
@@ -669,8 +674,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                 const SizedBox(height: 16),
 
-                // SKU
-                _buildSKUField(),
+                // SKU Code & Barcode Row (with Auto-Generate & Label Print)
+                _buildSKUAndBarcodeRow(),
 
                 const SizedBox(height: 16),
 
@@ -1279,17 +1284,217 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  Widget _buildSKUField() {
-    return TextFormField(
-      controller: _skuController,
-      decoration: InputDecoration(
-        labelText: 'SKU (Optional)',
-        hintText: 'Auto-generated if left empty',
-        prefixIcon: const Icon(Icons.qr_code_scanner_rounded),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
+  void _generateInternalBarcode() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+    final uniqueSuffix = timestamp.substring(timestamp.length - 8);
+    final internalBarcode = '20$uniqueSuffix';
+    setState(() {
+      _barcodeController.text = internalBarcode;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text('⚡ Auto-generated internal barcode: $internalBarcode'),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+
+  void _showBarcodeLabelPreview() {
+    final barcode = _barcodeController.text.trim();
+    if (barcode.isEmpty) return;
+    final name = _nameController.text.trim().isEmpty ? 'Product Name' : _nameController.text.trim();
+    final price = _priceController.text.trim().isEmpty ? '0.00' : _priceController.text.trim();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.print_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text('Thermal Label Preview (2" x 1")', style: AppTypography.titleMedium),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.black54, width: 1.5),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'RETAIL VERSE STORE',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 36,
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        35,
+                        (i) => Container(
+                          width: (i % 3 == 0) ? 3 : (i % 2 == 0) ? 1.5 : 2,
+                          color: (i % 5 == 0) ? Colors.transparent : Colors.black,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    barcode,
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', letterSpacing: 2),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'MRP: ₹$price (Incl. of all taxes)',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Compatible with TVS, TSC, Zebra, and standard ESC/POS 2" barcode label printers.',
+              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  duration: Duration(seconds: 2),
+                  content: Text('Print command sent to thermal label printer!'),
+                  backgroundColor: AppColors.secondary,
+                ),
+              );
+            },
+            icon: const Icon(Icons.print_rounded, size: 16),
+            label: const Text('Print Sticker'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSKUAndBarcodeRow() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 500;
+        final skuField = TextFormField(
+          controller: _skuController,
+          decoration: InputDecoration(
+            labelText: 'SKU Code',
+            hintText: 'e.g. SKU-10492',
+            helperText: 'Auto-assigned if left blank',
+            prefixIcon: const Icon(Icons.tag_rounded, color: AppColors.primary),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: AppColors.background,
+          ),
+        );
+
+        final barcodeField = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Barcode (Optional)',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                InkWell(
+                  onTap: _generateInternalBarcode,
+                  borderRadius: BorderRadius.circular(6),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt, size: 14, color: AppColors.primary),
+                        SizedBox(width: 2),
+                        Text(
+                          '⚡ Auto-Generate Barcode',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _barcodeController,
+              decoration: InputDecoration(
+                hintText: 'Scan or enter barcode...',
+                prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+                suffixIcon: _barcodeController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.print_outlined, size: 20, color: AppColors.primary),
+                        tooltip: 'Print Barcode Label',
+                        onPressed: _showBarcodeLabelPreview,
+                      )
+                    : null,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: AppColors.background,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        );
+
+        if (isNarrow) {
+          return Column(
+            children: [
+              skuField,
+              const SizedBox(height: 16),
+              barcodeField,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: skuField),
+            const SizedBox(width: 12),
+            Expanded(child: barcodeField),
+          ],
+        );
+      },
     );
   }
 

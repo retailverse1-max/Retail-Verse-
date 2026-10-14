@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
@@ -6,7 +7,6 @@ import 'package:retail_verse_pos/core/widgets/product_media_image.dart';
 import 'package:retail_verse_pos/core/widgets/product_thumbnail.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/models/product_model.dart';
-import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/data/models/cart_model.dart';
 import 'package:retail_verse_pos/data/remote/payment_service.dart';
 import '../../../auth/providers/auth_provider.dart';
@@ -53,9 +53,150 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
   late Razorpay _razorpay;
   final PaymentService _paymentService = PaymentService();
 
+  // ── Hardware Barcode Scanner Engine (e.g. Helett HT20 USB / 2.4G HID) ──
+  final StringBuffer _scannerBuffer = StringBuffer();
+  DateTime _lastKeystrokeTime = DateTime.now();
+
+  bool _handleHardwareScanKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    final now = DateTime.now();
+    final delta = now.difference(_lastKeystrokeTime).inMilliseconds;
+    _lastKeystrokeTime = now;
+
+    // Normal human typing gap is 100ms+. Scanners stream at 10-30ms.
+    if (delta > 60) {
+      _scannerBuffer.clear();
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      if (_scannerBuffer.length >= 3) {
+        final scannedBarcode = _scannerBuffer.toString().trim();
+        _scannerBuffer.clear();
+        _onHardwareBarcodeScanned(scannedBarcode);
+        return true; // Handled, prevent default form submit
+      }
+      _scannerBuffer.clear();
+    } else {
+      final character = event.character;
+      if (character != null && character.isNotEmpty && character.codeUnitAt(0) >= 32) {
+        _scannerBuffer.write(character);
+      }
+    }
+    return false;
+  }
+
+  Future<void> _onHardwareBarcodeScanned(String barcode) async {
+    debugPrint('⚡ [Hardware Scanner] Scanned barcode: $barcode');
+    if (!mounted || barcode.isEmpty) return;
+
+    // 1. Existing Cart Check (0ms local state delay)
+    final existingCartIndex = _cart.indexWhere(
+      (item) => item.product.barcode != null && item.product.barcode!.trim() == barcode,
+    );
+
+    if (existingCartIndex != -1) {
+      final item = _cart[existingCartIndex];
+      if (item.quantity < item.product.stock) {
+        setState(() {
+          item.quantity++;
+        });
+        SystemSound.play(SystemSoundType.click);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(milliseconds: 1200),
+            behavior: SnackBarBehavior.floating,
+            content: Row(
+              children: [
+                const Icon(Icons.qr_code_scanner, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('${item.product.name} × ${item.quantity} in cart'),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.secondary,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            content: Text('Cannot exceed available stock (${item.product.stock}) for ${item.product.name}'),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Check in-memory products list
+    Product? matchedProduct;
+    try {
+      matchedProduct = _products.firstWhere(
+        (p) => p.barcode != null && p.barcode!.trim() == barcode,
+      );
+    } catch (_) {
+      matchedProduct = null;
+    }
+
+    // 3. If not in memory, query backend API
+    if (matchedProduct == null) {
+      try {
+        final repo = ref.read(productRepositoryProvider);
+        matchedProduct = await repo.getProductByBarcode(barcode);
+      } catch (e) {
+        debugPrint('⚠️ Barcode API lookup failed: $e');
+      }
+    }
+
+    if (matchedProduct != null) {
+      _addToCart(matchedProduct);
+      SystemSound.play(SystemSoundType.click);
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(milliseconds: 1500),
+          behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Added ${matchedProduct.name} to cart (₹${matchedProduct.price.toStringAsFixed(2)})'),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.secondary,
+        ),
+      );
+    } else {
+      // Product Not Found
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Barcode "$barcode" not found in inventory!'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleHardwareScanKey);
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
@@ -67,6 +208,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleHardwareScanKey);
     _razorpay.clear();
     _searchController.dispose();
     super.dispose();
@@ -135,10 +277,12 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
       final matchesCategory =
           _selectedCategory == 'All' ||
           product.category.toLowerCase() == _selectedCategory.toLowerCase();
+      final query = _searchQuery.toLowerCase().trim();
       final matchesSearch =
-          _searchQuery.isEmpty ||
-          product.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          product.sku.toLowerCase().contains(_searchQuery.toLowerCase());
+          query.isEmpty ||
+          product.name.toLowerCase().contains(query) ||
+          product.sku.toLowerCase().contains(query) ||
+          (product.barcode != null && product.barcode!.toLowerCase().contains(query));
       return matchesCategory && matchesSearch;
     }).toList();
   }

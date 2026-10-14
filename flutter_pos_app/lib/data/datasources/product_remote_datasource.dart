@@ -129,6 +129,75 @@ class ProductRemoteDataSource implements IProductDataSource {
   }
 
   @override
+  Future<Product?> getProductByBarcode(String barcode) async {
+    try {
+      final token = await _getToken();
+      final url = '$baseUrl/products/barcode/${Uri.encodeComponent(barcode.trim())}';
+      final response = await client
+          .get(
+            Uri.parse(url),
+            headers: ApiResponseHandler.jsonHeaders(token: token),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final decoded = ApiResponseHandler.decodeJsonResponse(
+        response,
+        action: 'get product by barcode',
+      );
+
+      final data = decoded is Map<String, dynamic> ? (decoded['data'] ?? decoded) : null;
+      if (data is! Map<String, dynamic>) {
+        return null;
+      }
+
+      return Product.fromJson(data);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> quickInward({
+    String? barcode,
+    String? productId,
+    required int quantity,
+    double? costPrice,
+    String? batchNo,
+    String? expiryDate,
+  }) async {
+    final token = await _getToken();
+    final body = {
+      if (barcode != null) 'barcode': barcode,
+      if (productId != null) 'productId': productId,
+      'quantity': quantity,
+      if (costPrice != null) 'costPrice': costPrice,
+      if (batchNo != null) 'batchNo': batchNo,
+      if (expiryDate != null) 'expiryDate': expiryDate,
+    };
+    final response = await client.post(
+      Uri.parse('$baseUrl/inventory/inward'),
+      headers: ApiResponseHandler.jsonHeaders(token: token),
+      body: jsonEncode(body),
+    );
+    final decoded = ApiResponseHandler.decodeJsonResponse(
+      response,
+      action: 'quick inward inventory',
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decoded is Map<String, dynamic> ? decoded : {'success': true};
+    } else {
+      throw ApiResponseHandler.errorFromResponse(
+        response,
+        action: 'quick inward inventory',
+        decodedBody: decoded,
+      );
+    }
+  }
+
+  @override
   Future<List<Product>> searchProducts(String query) async {
     try {
       final token = await _getToken();

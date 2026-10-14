@@ -4,6 +4,7 @@ import '../models/product_model.dart';
 abstract class IProductDataSource {
   Future<List<Product>> getAllProducts();
   Future<Product?> getProductById(String id);
+  Future<Product?> getProductByBarcode(String barcode);
   Future<List<Product>> searchProducts(String query);
   Future<List<Product>> getProductsByCategory(String category);
   Future<List<Product>> getLowStockProducts(int threshold);
@@ -31,6 +32,14 @@ abstract class IProductDataSource {
     String? imageBase64,
     String? description,
     bool? isActive,
+  });
+  Future<Map<String, dynamic>> quickInward({
+    String? barcode,
+    String? productId,
+    required int quantity,
+    double? costPrice,
+    String? batchNo,
+    String? expiryDate,
   });
   Future<void> deleteProduct(String id);
 }
