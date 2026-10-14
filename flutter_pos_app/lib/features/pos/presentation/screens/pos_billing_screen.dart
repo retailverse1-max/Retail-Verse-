@@ -193,6 +193,128 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
     }
   }
 
+  void _showSimulateScanDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Simulate Barcode Scan',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Test hardware scanner logic without a physical device. Enter a barcode or tap any product below:',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Enter barcode (e.g. 890123...)',
+                        prefixIcon: const Icon(Icons.barcode_reader, size: 20),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onSubmitted: (code) {
+                        if (code.trim().isNotEmpty) {
+                          Navigator.pop(ctx);
+                          _onHardwareBarcodeScanned(code.trim());
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      final code = controller.text.trim();
+                      if (code.isNotEmpty) {
+                        Navigator.pop(ctx);
+                        _onHardwareBarcodeScanned(code);
+                      }
+                    },
+                    child: const Text('Scan'),
+                  ),
+                ],
+              ),
+              if (_products.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Quick Test from Your Products:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _products.take(6).length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final p = _products[index];
+                      final displayBarcode = (p.barcode != null && p.barcode!.isNotEmpty) ? p.barcode! : p.sku;
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: Text('Code: $displayBarcode · ₹${p.price.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11)),
+                        trailing: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            foregroundColor: AppColors.primary,
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.bolt_rounded, size: 16),
+                          label: const Text('Scan'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _onHardwareBarcodeScanned(displayBarcode);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -820,6 +942,11 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
             ),
           ),
         IconButton(
+          icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+          onPressed: _showSimulateScanDialog,
+          tooltip: 'Simulate Barcode Scan (Test without Hardware)',
+        ),
+        IconButton(
           icon: const Icon(Icons.refresh_rounded),
           onPressed: _loadData,
           tooltip: 'Refresh catalog',
@@ -1109,6 +1236,13 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         isDense: compactTop,
       ),
       onChanged: (value) => setState(() => _searchQuery = value),
+      onSubmitted: (value) {
+        if (value.trim().isNotEmpty) {
+          _onHardwareBarcodeScanned(value.trim());
+          _searchController.clear();
+          setState(() => _searchQuery = '');
+        }
+      },
     );
   }
 
