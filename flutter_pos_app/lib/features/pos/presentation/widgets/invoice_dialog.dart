@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/order_model.dart';
@@ -8,7 +13,7 @@ import '../../../../data/remote/notification_service.dart';
 import '../../../../core/utils/printer_service.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 
-class InvoiceDialog extends StatefulWidget {
+class InvoiceDialog extends ConsumerStatefulWidget {
   final Order order;
   final VoidCallback onDone;
 
@@ -19,48 +24,28 @@ class InvoiceDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<InvoiceDialog> createState() => _InvoiceDialogState();
+  ConsumerState<InvoiceDialog> createState() => _InvoiceDialogState();
 }
 
-class _InvoiceDialogState extends State<InvoiceDialog> {
+class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
   bool _isActionRunning = false;
   String _actionMessage = '';
 
-  // Helpers to run simulated actions with progress/wow effect
-  Future<void> _simulateAction(String title, List<String> steps) async {
-    setState(() {
-      _isActionRunning = true;
-      _actionMessage = steps[0];
-    });
-
-    for (int i = 1; i < steps.length; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 700));
-      if (!mounted) return;
-      setState(() {
-        _actionMessage = steps[i];
-      });
-    }
-
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() {
-      _isActionRunning = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(duration: const Duration(seconds: 2),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Text('$title Completed Successfully!'),
-          ],
-        ),
-        backgroundColor: AppColors.secondary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+  String _getStoreName() {
+    try {
+      final posSettings = ref.read(posSettingsProvider);
+      if (posSettings.storeName.trim().isNotEmpty) {
+        return posSettings.storeName.trim();
+      }
+      final authUser = ref.read(authProvider).user;
+      final busName = authUser?['businessName']?.toString() ??
+          authUser?['storeName']?.toString() ??
+          authUser?['name']?.toString();
+      if (busName != null && busName.trim().isNotEmpty) {
+        return busName.trim();
+      }
+    } catch (_) {}
+    return 'My Store';
   }
 
   final NotificationService _notificationService = NotificationService();
@@ -163,31 +148,74 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
     }
   }
 
-  Future<void> _sendSmsReal(String phone) async {
-    setState(() {
-      _isActionRunning = true;
-      _actionMessage = 'Opening WhatsApp/SMS...';
-    });
+
+
+  Future<void> _onWhatsAppPressed() async {
+    final order = widget.order;
+    String phone = order.customerPhone?.trim() ?? '';
+    phone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (phone.length == 10) {
+      phone = '91$phone';
+    }
+
+    final hasRewardCoupon = order.subtotal >= 3000 || order.total >= 3000;
+    final rewardCode = 'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}';
+
+    final storeName = _getStoreName();
+    final buffer = StringBuffer();
+    buffer.writeln('🏬 *${storeName.toUpperCase()}*');
+    buffer.writeln('🧾 *TAX INVOICE / CASH BILL*');
+    buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    buffer.writeln('*Order ID:* #${order.orderId}');
+    buffer.writeln('*Date:* ${DateFormat('dd MMM yyyy, hh:mm a').format(order.dateTime)}');
+    buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    buffer.writeln('*Items Purchased:*');
+    for (final item in order.items) {
+      buffer.writeln('• ${item.product.name} × ${item.quantity} = ₹${(item.price * item.quantity).toStringAsFixed(2)}');
+    }
+    buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    buffer.writeln('*Subtotal:* ₹${order.subtotal.toStringAsFixed(2)}');
+    if (order.discount > 0) {
+      buffer.writeln('*Discount:* -₹${order.discount.toStringAsFixed(2)}');
+    }
+    if (order.tax > 0) {
+      buffer.writeln('*GST / Tax:* ₹${order.tax.toStringAsFixed(2)}');
+    }
+    buffer.writeln('*GRAND TOTAL:* ₹${order.total.toStringAsFixed(2)}');
+    buffer.writeln('*Payment Mode:* ${order.paymentMethod.toUpperCase()}');
+
+    if (hasRewardCoupon) {
+      buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      buffer.writeln('🎉 *CONGRATULATIONS!*');
+      buffer.writeln('🎁 *YOU UNLOCKED A ₹300 REWARD COUPON!*');
+      buffer.writeln('*Coupon Code:* `$rewardCode`');
+      buffer.writeln('*Benefit:* Flat ₹300 OFF on your next shopping of ₹3,000+');
+      buffer.writeln('_Valid for 30 days. Show this message at checkout!_');
+    }
+
+    buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    buffer.writeln('Thank you for shopping with us! 🙏');
+
+    final message = Uri.encodeComponent(buffer.toString());
+    Uri url;
+    if (phone.isNotEmpty) {
+      url = Uri.parse('https://wa.me/$phone?text=$message');
+    } else {
+      url = Uri.parse('https://api.whatsapp.com/send?text=$message');
+    }
 
     try {
-      await _notificationService.sendSmsInvoice(phone: phone, order: widget.order);
-      if (!mounted) return;
-      setState(() => _isActionRunning = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(duration: const Duration(seconds: 2),
-          content: Text('WhatsApp/SMS opened successfully!'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      }
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isActionRunning = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(duration: const Duration(seconds: 2),
-          content: Text('Failed to send SMS: \$e'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open WhatsApp: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -219,70 +247,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
     }
   }
 
-  void _onSmsPressed() {
-    final phoneCtrl = TextEditingController(text: widget.order.customerPhone ?? '');
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.sms_rounded, color: AppColors.info, size: 24),
-            const SizedBox(width: 8),
-            const Text('Send SMS Invoice', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter customer mobile number to send the text message invoice:',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'e.g. 9876543210',
-                prefixIcon: const Icon(Icons.phone),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          FilledButton(
-            onPressed: () {
-              final phone = phoneCtrl.text.trim();
-              Navigator.pop(ctx);
-              if (phone.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(duration: const Duration(seconds: 2),
-                    content: Text('Phone number is required to send SMS.'),
-                    backgroundColor: AppColors.secondary,
-                  ),
-                );
-                return;
-              }
-              _sendSmsReal(phone);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Send SMS'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _onEmailPressed() {
     final emailCtrl = TextEditingController(text: widget.order.customerEmail ?? '');
@@ -407,10 +372,10 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                             // Store & Receipt Header Info
-                            const Text(
-                              'RETAIL VERSE STORE',
+                            Text(
+                              _getStoreName().toUpperCase(),
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
                                 letterSpacing: 1.2,
@@ -598,6 +563,43 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                                 ),
                               ],
                             ),
+                            if (order.total >= 3000 || order.subtotal >= 3000) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.card_giftcard_rounded, size: 16, color: Color(0xFFB45309)),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'NEXT VISIT REWARD COUPON',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFFB45309)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}',
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.5, color: Color(0xFF92400E), fontFamily: 'monospace'),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'Flat ₹300 OFF on your next order of ₹3,000+',
+                                      style: TextStyle(fontSize: 10, color: Color(0xFF78350F), fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -620,7 +622,7 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                 ),
                 const SizedBox(height: 8),
 
-                // Row of Print, SMS, Email
+                // Row of Print, WhatsApp, Email
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -630,6 +632,15 @@ class _InvoiceDialogState extends State<InvoiceDialog> {
                         label: 'Print',
                         color: AppColors.primary,
                         onTap: _onPrintPressed,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildActionButton(
+                        icon: FontAwesomeIcons.whatsapp,
+                        label: 'WhatsApp',
+                        color: const Color(0xFF25D366),
+                        onTap: _onWhatsAppPressed,
                       ),
                     ),
                     const SizedBox(width: 8),

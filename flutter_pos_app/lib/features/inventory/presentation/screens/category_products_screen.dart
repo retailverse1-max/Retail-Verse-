@@ -419,93 +419,140 @@ class _CategoryProductsScreenState
     final isSeoManager = role == 'seo_manager';
     showModalBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).padding.bottom + 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.cardBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            if (canDelete) ...[
-              ListTile(
-                leading: Icon(
-                  product.isActive
-                      ? Icons.toggle_on_rounded
-                      : Icons.toggle_off_rounded,
-                  color:
-                      product.isActive ? AppColors.success : AppColors.textSecondary,
-                  size: 28,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          bottom: true,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 4, bottom: 12),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-                title: Text(product.isActive
-                    ? 'Active (Tap to Deactivate)'
-                    : 'Inactive (Tap to Activate)'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _toggleActive(product);
-                },
-              ),
-            ],
-            if (canDelete || isSeoManager) ...[
-              ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: const Text('Edit'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _editProduct(product);
-                },
-              ),
-            ],
-            if (canDelete) ...[
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.error),
-                title: const Text('Delete',
-                    style: TextStyle(color: AppColors.error)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  showDialog<void>(
-                    context: context,
-                    builder: (dctx) => AlertDialog(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24)),
-                      title: const Text('Delete product?'),
-                      content:
-                          Text('Remove "${product.name}" from the store?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dctx),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () {
-                            Navigator.pop(dctx);
-                            _deleteProduct(product);
-                          },
-                          child: const Text('Delete'),
-                        ),
-                      ],
+                if (canDelete) ...[
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    leading: Icon(
+                      product.isActive
+                          ? Icons.toggle_on_rounded
+                          : Icons.toggle_off_rounded,
+                      color:
+                          product.isActive ? const Color(0xFF10B981) : AppColors.textSecondary,
+                      size: 26,
                     ),
-                  );
-                },
-              ),
-            ],
-            if (!canDelete && !isSeoManager) ...[
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('You do not have permission to modify this product.', style: AppTypography.bodyMedium),
-              ),
-            ],
-            const SizedBox(height: 8),
-          ],
+                    title: Text(
+                      product.isActive
+                          ? 'Active (Tap to Deactivate)'
+                          : 'Inactive (Tap to Activate)',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _toggleActive(product);
+                    },
+                  ),
+                ],
+                if (canDelete || isSeoManager) ...[
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    leading: const Icon(Icons.edit_outlined, size: 20, color: AppColors.textPrimary),
+                    title: const Text(
+                      'Edit',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _editProduct(product);
+                    },
+                  ),
+                ],
+                if (canDelete) ...[
+                  ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    leading: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.error),
+                    title: const Text(
+                      'Delete',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      showDialog<void>(
+                        context: context,
+                        builder: (dctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                          title: const Text(
+                            'Delete product?',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                          content: Text(
+                            'Remove "${product.name}" from the store?',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dctx),
+                              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w400)),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.error,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(dctx);
+                                _deleteProduct(product);
+                              },
+                              child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w500)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+                if (!canDelete && !isSeoManager) ...[
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'You do not have permission to modify this product.',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+              ],
+            ),
+          ),
         ),
       ),
     );

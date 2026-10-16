@@ -422,7 +422,12 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                       color: AppColors.textSecondary,
                       size: 20,
                     ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    ),
+                    elevation: 3,
+                    color: Colors.white,
                     onSelected: (v) {
                       if (v == 'edit') {
                         _showEditCategoryDialog(category);
@@ -432,30 +437,37 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                     },
                     itemBuilder: (ctx) => [
                       const PopupMenuItem(
+                        height: 38,
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit_rounded, size: 18, color: AppColors.primary),
-                            SizedBox(width: 12),
+                            Icon(Icons.edit_rounded, size: 16, color: AppColors.primary),
+                            SizedBox(width: 10),
                             Text(
                               'Edit Category',
-                              style: TextStyle(fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const PopupMenuDivider(),
+                      const PopupMenuDivider(height: 1),
                       const PopupMenuItem(
+                        height: 38,
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
-                            SizedBox(width: 12),
+                            Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.error),
+                            SizedBox(width: 10),
                             Text(
                               'Delete Category',
                               style: TextStyle(
                                 color: AppColors.error,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w400,
                               ),
                             ),
                           ],
