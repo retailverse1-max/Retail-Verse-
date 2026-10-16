@@ -756,7 +756,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+                          border: Border.all(color: AppColors.border),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: DropdownButtonHideUnderline(
@@ -1132,81 +1132,96 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        leadingWidth: 70,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Center(
-            child: InkWell(
-              onTap: () => Navigator.of(context).pop(),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundTertiary,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
-                ),
-                child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
-              ),
-            ),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(68),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
           ),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Add New Product',
-              style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w500),
-            ),
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Enterprise Catalog • Real-time Sync',
-                    style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
-                    overflow: TextOverflow.ellipsis,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundTertiary,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              onPressed: (_isScanning || _isSaving) ? null : _saveProduct,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.check_rounded, size: 18),
-              label: Text(
-                _isSaving ? 'Saving...' : 'Save',
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Add New Product',
+                          style: AppTypography.titleLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Enterprise Catalog • Real-time Sync',
+                                style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: (_isScanning || _isSaving) ? null : _saveProduct,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.check_rounded, size: 18),
+                    label: Text(
+                      _isSaving ? 'Saving...' : 'Save',
+                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -1487,7 +1502,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0F172A).withValues(alpha: 0.04),
@@ -1734,7 +1749,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9).withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2576,7 +2591,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0F172A).withValues(alpha: 0.03),
