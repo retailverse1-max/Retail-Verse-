@@ -55,9 +55,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _costController = TextEditingController();
   int _selectedGstRate = 0;
 
-  // Hardware Barcode Scanner Listener
+  // Hardware Barcode Scanner Listener & Connection Detection
+  static const _scannerChannel = MethodChannel('com.hexerveSolutions.RetailVerse/hardware_scanner');
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastKeystrokeTime = DateTime.now();
+  bool _isHardwareScannerConnected = false;
 
   // Automatic SKU generation
   int _skuRandomSuffix = 0;
@@ -119,6 +121,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _nameController.addListener(_onProductNameChanged);
     _skuController.addListener(_onSkuChanged);
     HardwareKeyboard.instance.addHandler(_handleHardwareScanKey);
+    _checkHardwareScannerConnection();
+    _scannerChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onScannerConnectionChanged') {
+        final bool isConnected = call.arguments == true;
+        if (mounted && _isHardwareScannerConnected != isConnected) {
+          setState(() {
+            _isHardwareScannerConnected = isConnected;
+          });
+        }
+      }
+    });
     _loadCategories();
 
     if (widget.initialBarcode != null && widget.initialBarcode!.isNotEmpty) {
@@ -132,6 +145,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   @override
   void dispose() {
+    _scannerChannel.setMethodCallHandler(null);
     HardwareKeyboard.instance.removeHandler(_handleHardwareScanKey);
     _nameController.removeListener(_onProductNameChanged);
     _skuController.removeListener(_onSkuChanged);
@@ -153,6 +167,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // ============================================================================
   bool _handleHardwareScanKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
+
+    if (!_isHardwareScannerConnected && mounted) {
+      setState(() {
+        _isHardwareScannerConnected = true;
+      });
+    }
 
     final now = DateTime.now();
     final delta = now.difference(_lastKeystrokeTime).inMilliseconds;
@@ -181,6 +201,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return false;
   }
 
+  Future<void> _checkHardwareScannerConnection() async {
+    try {
+      final bool isConnected = await _scannerChannel.invokeMethod<bool>('isScannerConnected') ?? false;
+      if (mounted && _isHardwareScannerConnected != isConnected) {
+        setState(() {
+          _isHardwareScannerConnected = isConnected;
+        });
+      }
+    } catch (_) {}
+  }
+
   void _onHardwareBarcodeScanned(String barcode) {
     if (!mounted || barcode.isEmpty) return;
 
@@ -190,6 +221,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     setState(() {
       _barcodeController.text = barcode;
+      _isHardwareScannerConnected = true;
     });
 
     _showSnack('Beep! Barcode scanned: $barcode');
@@ -1762,62 +1794,63 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       icon: Icons.qr_code_scanner_rounded,
       iconColor: AppColors.primary,
       title: 'Barcode Scanner',
-      subtitle: 'Hardware scanner auto-listener (wired/wireless) or camera scan',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hardware Scanner Live Status Banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: const BoxDecoration(
+          // Hardware Scanner Live Status Banner (Only shown when wired or wireless scanner is connected)
+          if (_isHardwareScannerConnected) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF16A34A),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hardware Scanner Connected (Wired USB / Wireless Bluetooth)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Point & scan any product barcode — auto-fills with audio beep confirmation',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.sensors_rounded,
                     color: Color(0xFF16A34A),
-                    shape: BoxShape.circle,
+                    size: 20,
                   ),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hardware Scanner Ready (Wired USB / Wireless Bluetooth)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF166534),
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Point & scan any product barcode — auto-fills with audio beep confirmation',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF15803D),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.sensors_rounded,
-                  color: Color(0xFF16A34A),
-                  size: 20,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
+          ],
           // Camera Scanner Button
           SizedBox(
             width: double.infinity,
@@ -2796,7 +2829,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     required IconData icon,
     required Color iconColor,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required Widget child,
     Widget? trailing,
   }) {
@@ -2837,11 +2870,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       title,
                       style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
-                    ),
+                    if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
                   ],
                 ),
               ),
