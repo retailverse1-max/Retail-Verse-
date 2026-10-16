@@ -862,7 +862,6 @@ class _CategoryProductsScreenState
       ),
       _SummaryCard(
         title: 'In Stock',
-        subtitle: '>10 units',
         value: _inStockCount(all).toString(),
         icon: Icons.check_circle_outline,
         color: AppColors.success,
@@ -875,13 +874,16 @@ class _CategoryProductsScreenState
       ),
     ];
 
-    return Row(
-      children: [
-        for (int i = 0; i < cards.length; i++) ...[
-          Expanded(child: cards[i]),
-          if (i < cards.length - 1) const SizedBox(width: 10),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < cards.length; i++) ...[
+            Expanded(child: cards[i]),
+            if (i < cards.length - 1) const SizedBox(width: 10),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -892,7 +894,7 @@ class _CategoryProductsScreenState
         children: [
           Icon(Icons.inventory_2_outlined,
               size: 72,
-              color: AppColors.primary.withOpacity(0.2)),
+              color: AppColors.primary.withValues(alpha: 0.2)),
           const SizedBox(height: 20),
           Text(
             'No products found',
@@ -914,14 +916,12 @@ class _CategoryProductsScreenState
 // ── Summary Card ─────────────────────────────────────────────
 class _SummaryCard extends StatelessWidget {
   final String title;
-  final String? subtitle;
   final String value;
   final IconData icon;
   final Color color;
 
   const _SummaryCard({
     required this.title,
-    this.subtitle,
     required this.value,
     required this.icon,
     required this.color,
@@ -930,57 +930,52 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      constraints: const BoxConstraints(minHeight: 96),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.06),
+            color: color.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: color),
+            child: Icon(icon, size: 18, color: color),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value,
-            style: AppTypography.titleLarge.copyWith(
+            style: const TextStyle(
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
-              fontSize: 18,
             ),
           ),
+          const SizedBox(height: 2),
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: AppTypography.bodySmall.copyWith(
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
             ),
           ),
-          if (subtitle != null)
-            Text(
-              subtitle!,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textTertiary,
-                fontSize: 9,
-              ),
-            ),
         ],
       ),
     );
