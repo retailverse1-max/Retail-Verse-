@@ -174,7 +174,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           children: [
                             Text(
                               product.name,
-                              style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                              style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w500),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -185,7 +185,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                                 Text(
                                   '${product.stock} pcs',
                                   style: AppTypography.bodySmall.copyWith(
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w500,
                                     color: product.stock <= 10 ? AppColors.error : AppColors.success,
                                   ),
                                 ),
@@ -323,7 +323,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Scanned Barcode: $barcode', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Scanned Barcode: $barcode', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
             const SizedBox(height: 8),
             const Text('This product does not exist in your inventory database yet. Would you like to register it as a new product?'),
           ],
@@ -477,7 +477,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                       Text(
                         'Products',
                         style: AppTypography.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -587,7 +587,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     isTablet ? 'Add' : 'Add Product',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                                   ),
                                 ],
                               ),
@@ -692,7 +692,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
             Text(
               value,
               style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
@@ -762,7 +762,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                               'OUT OF STOCK',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w500,
                                 fontSize: 8,
                               ),
                             ),
@@ -808,7 +808,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           AppFormatters.formatCurrency(product.price),
                           style: const TextStyle(
                             color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             fontSize: 11,
                           ),
                         ),
@@ -829,7 +829,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                     style: TextStyle(
                       color: AppColors.primary.withOpacity(0.7),
                       fontSize: 8,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       letterSpacing: 1,
                     ),
                   ),
@@ -837,7 +837,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                   Text(
                     product.name,
                     style: AppTypography.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary,
                     ),
                     maxLines: 1,
@@ -855,7 +855,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                             style: TextStyle(
                               color: AppColors.textTertiary,
                               fontSize: 7,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           Text(
@@ -863,7 +863,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                             style: TextStyle(
                               color: isOutOfStock ? AppColors.error : AppColors.textSecondary,
                               fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],

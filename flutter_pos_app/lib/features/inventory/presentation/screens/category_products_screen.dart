@@ -173,7 +173,7 @@ class _CategoryProductsScreenState
                 Text(
                   'Update Product',
                   style: AppTypography.headlineMedium.copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
@@ -317,7 +317,7 @@ class _CategoryProductsScreenState
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           elevation: 0,
                         ),
-                        child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
                       ),
                     ),
                   ],
@@ -531,86 +531,109 @@ class _CategoryProductsScreenState
     return PopScope(
       canPop: !_isSnackBarActive,
       child: Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AppColors.background,
-        surfaceTintColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        centerTitle: false,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(68),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
           ),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              context.go('/inventory');
-            }
-          },
-        ),
-        title: Text(
-          widget.category.name,
-          style: AppTypography.headlineMedium.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-          ),
-        ),
-        actions: [
-          if (canAddProduct)
-            Padding(
-              padding: EdgeInsets.only(right: isPhone ? 8 : 16),
-              child: isPhone
-                  // On small phones: icon-only circular button
-                  ? IconButton(
-                      onPressed: _navigateToAddProduct,
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        context.go('/inventory');
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundTertiary,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: AppColors.textPrimary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.category.name,
+                          style: AppTypography.titleLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.success,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Enterprise Stock • Real-time Sync',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.add_rounded,
-                            color: Colors.white, size: 20),
-                      ),
-                    )
-                  // On tablets/desktops: full button with label
-                  : ElevatedButton.icon(
+                      ],
+                    ),
+                  ),
+                  if (canAddProduct) ...[
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
                       onPressed: _navigateToAddProduct,
-                      icon: const Icon(Icons.add_rounded, size: 20),
-                      label: Text(isTablet ? 'Add' : 'Add Product'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 14 : 18,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text(
+                        'Add Product',
+                        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                       ),
                     ),
+                  ],
+                ],
+              ),
             ),
-        ],
+          ),
+        ),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -995,7 +1018,7 @@ class _ProductCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -1043,7 +1066,7 @@ class _ProductCard extends StatelessWidget {
                                   statusText,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: statusColor,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w500,
                                     fontSize: 10,
                                   ),
                                 ),
@@ -1178,7 +1201,7 @@ class _ProductGridCard extends StatelessWidget {
                           '₹${product.price.toStringAsFixed(0)}',
                           style: const TextStyle(
                             color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             fontSize: 11,
                           ),
                         ),
@@ -1220,7 +1243,7 @@ class _ProductGridCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: AppColors.textPrimary,
                         height: 1.2,
                       ),
