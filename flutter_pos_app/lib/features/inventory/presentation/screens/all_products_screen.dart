@@ -114,12 +114,13 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
           title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
+                  color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.archive_outlined, color: AppColors.primary, size: 24),
@@ -129,7 +130,10 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Quick Stock Inward', style: AppTypography.titleLarge),
+                    Text(
+                      'Quick Stock Inward',
+                      style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
+                    ),
                     Text(
                       product.barcode != null && product.barcode!.isNotEmpty
                           ? 'Barcode: ${product.barcode}'
@@ -149,9 +153,9 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
                     children: [
@@ -160,11 +164,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                         child: SizedBox(
                           width: 48,
                           height: 48,
-                          child: ProductMediaImage(
-                            imageUrl: product.imageUrl,
-                            width: 48,
-                            height: 48,
-                          ),
+                          child: ProductMediaImage(imageUrl: product.imageUrl, fit: BoxFit.cover),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -200,7 +200,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Inward Quantity *',
-                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 6),
                 TextField(
@@ -210,13 +210,16 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                   decoration: InputDecoration(
                     hintText: 'Enter quantity received',
                     prefixIcon: const Icon(Icons.add_shopping_cart_rounded, color: AppColors.primary),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Cost Price per Unit (Optional)',
-                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 6),
                 TextField(
@@ -225,13 +228,16 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                   decoration: InputDecoration(
                     hintText: 'e.g. 12.50',
                     prefixIcon: const Icon(Icons.currency_rupee_rounded, color: AppColors.primary),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Batch No / Invoice Ref (Optional)',
-                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 6),
                 TextField(
@@ -239,7 +245,10 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                   decoration: InputDecoration(
                     hintText: 'e.g. BATCH-2026-X',
                     prefixIcon: const Icon(Icons.tag_rounded, color: AppColors.primary),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
                   ),
                 ),
               ],
@@ -247,44 +256,56 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              onPressed: isInwarding ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
             ),
             ElevatedButton(
               onPressed: isInwarding
                   ? null
                   : () async {
-                      final qty = int.tryParse(qtyController.text.trim());
-                      if (qty == null || qty <= 0) {
+                      final qty = int.tryParse(qtyController.text.trim()) ?? 0;
+                      if (qty <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter valid inward quantity')),
+                          SnackBar(
+                            duration: const Duration(seconds: 2),
+                            content: const Text('Please enter a valid inward quantity'),
+                            backgroundColor: AppColors.error,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         );
                         return;
                       }
 
                       setModalState(() => isInwarding = true);
+
                       try {
-                        final cost = double.tryParse(costController.text.trim());
                         final repo = ref.read(productRepositoryProvider);
-                        await repo.quickInward(
-                          productId: product.id,
-                          barcode: product.barcode,
-                          quantity: qty,
-                          costPrice: cost,
-                          batchNo: batchController.text.trim(),
+                        final newStock = product.stock + qty;
+                        final cost = double.tryParse(costController.text.trim());
+
+                        await repo.updateProduct(
+                          id: product.id,
+                          stock: newStock,
+                          cost: cost != null && cost > 0 ? cost : product.cost,
                         );
 
                         ref.invalidate(productsProvider);
-                        SystemSound.play(SystemSoundType.click);
-
                         if (context.mounted) {
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              duration: const Duration(seconds: 3),
-                              backgroundColor: AppColors.secondary,
+                              duration: const Duration(seconds: 2),
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text('Inwarded +$qty pcs for ${product.name}! Stock is now $newStock pcs.'),
+                                ],
+                              ),
+                              backgroundColor: AppColors.success,
                               behavior: SnackBarBehavior.floating,
-                              content: Text('✅ Inwarded $qty pcs to ${product.name}! New Stock: ${product.stock + qty} pcs'),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           );
                         }
@@ -292,14 +313,26 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                         setModalState(() => isInwarding = false);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Inward failed: $e'), backgroundColor: Colors.red),
+                            SnackBar(
+                              duration: const Duration(seconds: 2),
+                              content: Text('Failed to update stock: $e'),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
                           );
                         }
                       }
                     },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               child: isInwarding
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Confirm Inward'),
+                  : const Text('Confirm Inward', style: TextStyle(fontWeight: FontWeight.w500)),
             ),
           ],
         ),
@@ -311,12 +344,20 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
         title: Row(
-          children: const [
-            Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
-            SizedBox(width: 10),
-            Text('New Barcode Detected'),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.help_outline_rounded, color: Color(0xFFD97706), size: 24),
+            ),
+            const SizedBox(width: 12),
+            Text('Barcode Not Found', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600)),
           ],
         ),
         content: Column(
@@ -329,7 +370,10 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+          ),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
@@ -339,8 +383,68 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Register New Product'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Register New Product', style: TextStyle(fontWeight: FontWeight.w500)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showManualInwardBarcodeDialog() {
+    final bcController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Quick Inward Scanner',
+          style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
+        ),
+        content: TextField(
+          controller: bcController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Scan or type barcode...',
+            prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+          ),
+          onSubmitted: (v) {
+            Navigator.pop(ctx);
+            if (v.trim().isNotEmpty) {
+              _onInventoryBarcodeScanned(v.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (bcController.text.trim().isNotEmpty) {
+                _onInventoryBarcodeScanned(bcController.text.trim());
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Lookup', style: TextStyle(fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -358,270 +462,257 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
     final canAddProduct = role == 'admin' || role == 'inventory_manager';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // ── PREMIUM APP BAR HEADER ──────────────────────
-          _buildHeader(context, canAddProduct, isPhone, isTablet, isDesktop),
-
-          // ── SCROLLABLE CONTENT ──────────────────
-          Expanded(
-              child: productsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) {
-                  final errStr = e.toString();
-                  final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection') || errStr.contains('Failed host lookup')
-                      ? 'You are offline. Please check your internet connection.'
-                      : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
-                  return Center(
-                    child: Text('Error: $cleanErr', style: const TextStyle(color: AppColors.error)),
-                  );
-                },
-                data: (products) {
-                  final filtered = products.where((p) {
-                    final query = _searchQuery.toLowerCase().trim();
-                    final matchesSearch = query.isEmpty ||
-                        p.name.toLowerCase().contains(query) ||
-                        p.sku.toLowerCase().contains(query) ||
-                        (p.barcode != null && p.barcode!.toLowerCase().contains(query));
-                    return matchesSearch;
-                  }).toList();
-
-                  // Stats calculation
-                  final totalCount = products.length;
-                  final lowStockCount = products.where((p) => p.stock <= 10).length;
-                  // Heuristic for best sellers: products with price > 100
-                  final bestSellersCount = products.where((p) => p.price > 100).length;
-
-                  return RefreshIndicator(
-                    onRefresh: () => ref.refresh(productsProvider.future),
-                    child: CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
-                        // SUMMARY CARDS
-                        SliverToBoxAdapter(
-                          child: _buildSummarySection(
-                            totalCount: totalCount,
-                            bestSellersCount: bestSellersCount,
-                            lowStockCount: lowStockCount,
-                            isTablet: isTablet,
-                          ),
-                        ),
-
-                        // PRODUCT GRID
-                        if (filtered.isEmpty)
-                          SliverFillRemaining(
-                            child: _buildEmptyState(),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(68),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundTertiary,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Navigator.of(context).canPop()
+                        ? InkWell(
+                            onTap: () => Navigator.of(context).pop(),
+                            borderRadius: BorderRadius.circular(12),
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.arrow_back_rounded,
+                                color: AppColors.textPrimary,
+                                size: 20,
+                              ),
+                            ),
                           )
-                        else
-                          SliverPadding(
-                            padding: EdgeInsets.only(
-                              left: isDesktop ? 32 : (isTablet ? 24 : 16),
-                              right: isDesktop ? 32 : (isTablet ? 24 : 16),
-                              top: 16,
-                              bottom: 100,
-                            ),
-                            sliver: SliverGrid(
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: isDesktop ? 4 : (isTablet ? 3 : 2),
-                                mainAxisSpacing: 16,
-                                crossAxisSpacing: 16,
-                                childAspectRatio: isDesktop ? 0.72 : (isTablet ? 0.75 : (isPhone && screenWidth < 380 ? 0.62 : 0.68)),
-                              ),
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) => _buildProductCard(filtered[index]),
-                                childCount: filtered.length,
-                              ),
-                            ),
+                        : const ResponsiveMenuButton(color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Products',
+                          style: AppTypography.titleLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.success,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Enterprise Stock • Real-time Sync',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, bool canAddProduct, bool isPhone, bool isTablet, bool isDesktop) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        isPhone ? 16 : 24,
-        MediaQuery.of(context).padding.top + 16,
-        isPhone ? 16 : 24,
-        20,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 5))],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const ResponsiveMenuButton(),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Products',
-                        style: AppTypography.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'Manage your store products',
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
-                      ),
-                    ],
                   ),
-                ],
-              ),
-              if (canAddProduct)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Quick Inward Button
+                  if (canAddProduct) ...[
                     IconButton(
                       tooltip: 'Quick Inward Scanner',
-                      onPressed: () {
-                        final bcController = TextEditingController();
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            title: const Text('Scan or Enter Barcode for Inward'),
-                            content: TextField(
-                              controller: bcController,
-                              autofocus: true,
-                              decoration: const InputDecoration(
-                                hintText: 'Scan item barcode...',
-                                prefixIcon: Icon(Icons.qr_code_scanner_rounded),
-                              ),
-                              onSubmitted: (v) {
-                                Navigator.pop(ctx);
-                                if (v.trim().isNotEmpty) {
-                                  _onInventoryBarcodeScanned(v.trim());
-                                }
-                              },
-                            ),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  if (bcController.text.trim().isNotEmpty) {
-                                    _onInventoryBarcodeScanned(bcController.text.trim());
-                                  }
-                                },
-                                child: const Text('Lookup'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                      onPressed: _showManualInwardBarcodeDialog,
                       icon: Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(14),
+                          color: AppColors.backgroundTertiary,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
                         ),
-                        child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 22),
+                        child: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    isPhone
-                        // Small phone: icon only
-                        ? IconButton(
-                            onPressed: () => context.push('/inventory/categories/add'),
-                            icon: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AddProductScreen()),
+                        );
+                        ref.invalidate(productsProvider);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text(
+                        'Add Product',
+                        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v),
+                style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Search by name, SKU or barcode...',
+                  hintStyle: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textTertiary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textSecondary),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: productsAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+              ),
+              error: (e, _) {
+                final errStr = e.toString();
+                final cleanErr = errStr.contains('SocketException') ||
+                        errStr.contains('Connection') ||
+                        errStr.contains('Failed host lookup')
+                    ? 'You are offline. Please check your internet connection.'
+                    : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Text(
+                      'Error: $cleanErr',
+                      style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              },
+              data: (products) {
+                final filtered = products.where((p) {
+                  final query = _searchQuery.toLowerCase().trim();
+                  return query.isEmpty ||
+                      p.name.toLowerCase().contains(query) ||
+                      p.sku.toLowerCase().contains(query) ||
+                      (p.barcode != null && p.barcode!.toLowerCase().contains(query));
+                }).toList();
+
+                final totalCount = products.length;
+                final lowStockCount = products.where((p) => p.stock <= 10).length;
+                final bestSellersCount = products.where((p) => p.price > 100).length;
+
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () => ref.refresh(productsProvider.future),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _buildSummarySection(
+                          totalCount: totalCount,
+                          bestSellersCount: bestSellersCount,
+                          lowStockCount: lowStockCount,
+                          isTablet: isTablet,
+                        ),
+                      ),
+                      if (filtered.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _buildEmptyState(),
+                        )
+                      else
+                        SliverPadding(
+                          padding: EdgeInsets.only(
+                            left: isDesktop ? 32 : (isTablet ? 24 : 16),
+                            right: isDesktop ? 32 : (isTablet ? 24 : 16),
+                            top: 8,
+                            bottom: 100,
+                          ),
+                          sliver: SliverGrid(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: isDesktop ? 4 : (isTablet ? 3 : 2),
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 14,
+                              childAspectRatio: isDesktop ? 0.76 : (isTablet ? 0.78 : (isPhone && screenWidth < 380 ? 0.65 : 0.72)),
                             ),
-                          )
-                        // Tablet/Desktop: full button
-                        : Bounceable(
-                            onTap: () => context.push('/inventory/categories/add'),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isTablet ? 14 : 18,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    isTablet ? 'Add' : 'Add Product',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildProductCard(filtered[index]),
+                              childCount: filtered.length,
                             ),
                           ),
-                  ],
-                ),
-            ],
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-          const SizedBox(height: 16),
-          _buildSearchBar(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (v) => setState(() => _searchQuery = v),
-        decoration: InputDecoration(
-          hintText: 'Search by name or SKU...',
-          hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
-          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
-        ),
       ),
     );
   }
@@ -633,7 +724,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
     required bool isTablet,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: [
           _buildSummaryCard(
@@ -641,39 +732,42 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
             totalCount.toString(),
             Icons.inventory_2_rounded,
             AppColors.primary,
+            const Color(0xFFEFF6FF),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           _buildSummaryCard(
             'Best Sellers',
             bestSellersCount.toString(),
             Icons.trending_up_rounded,
             AppColors.success,
+            const Color(0xFFECFDF5),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           _buildSummaryCard(
             'Low Stock',
             lowStockCount.toString(),
             Icons.warning_amber_rounded,
             AppColors.error,
+            const Color(0xFFFEF2F2),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard(String label, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(String label, String value, IconData icon, Color color, Color bgColor) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.04),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -681,17 +775,17 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: bgColor,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: color, size: 16),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               value,
-              style: AppTypography.titleLarge.copyWith(
+              style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
@@ -699,8 +793,9 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
             const SizedBox(height: 2),
             Text(
               label,
-              style: AppTypography.labelSmall.copyWith(
+              style: AppTypography.caption.copyWith(
                 color: AppColors.textSecondary,
+                fontWeight: FontWeight.w400,
                 fontSize: 10,
               ),
               maxLines: 1,
@@ -714,35 +809,35 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
 
   Widget _buildProductCard(Product product) {
     final isOutOfStock = product.stock == 0;
-    
+
     return Bounceable(
       onTap: () => context.push('/pos/product', extra: product),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(color: AppColors.cardBorder),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // IMAGE
             Expanded(
-              flex: 12,
+              flex: 11,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      color: AppColors.backgroundSecondary,
+                      color: const Color(0xFFF8FAFC),
                       child: ProductMediaImage(
                         imageUrl: product.imageUrl,
                         fit: BoxFit.cover,
@@ -750,13 +845,13 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                     ),
                     if (isOutOfStock)
                       Container(
-                        color: Colors.black.withOpacity(0.4),
+                        color: Colors.black.withValues(alpha: 0.35),
                         child: Center(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppColors.error,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
                               'OUT OF STOCK',
@@ -769,37 +864,38 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           ),
                         ),
                       ),
-                    
-                    // Flipkart Sync Badge
                     if (product.isFlipkartSynced)
                       Positioned(
-                        top: 10,
-                        right: 10,
+                        top: 8,
+                        left: 8,
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
+                              BoxShadow(
+                                color: const Color(0xFF0F172A).withValues(alpha: 0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              )
                             ],
                           ),
-                          child: const Icon(Icons.shopping_bag, color: Colors.blue, size: 16),
+                          child: const Icon(Icons.shopping_bag, color: Colors.blue, size: 14),
                         ),
                       ),
-
-                    // Price Tag
                     Positioned(
-                      top: 10,
-                      right: 10,
+                      top: 8,
+                      right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
                               blurRadius: 4,
                             ),
                           ],
@@ -827,13 +923,13 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                   Text(
                     product.category.toUpperCase(),
                     style: TextStyle(
-                      color: AppColors.primary.withOpacity(0.7),
+                      color: AppColors.primary.withValues(alpha: 0.8),
                       fontSize: 8,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: 1,
+                      letterSpacing: 0.8,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     product.name,
                     style: AppTypography.bodyMedium.copyWith(
@@ -885,16 +981,41 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 60, color: AppColors.textTertiary.withOpacity(0.3)),
-          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              size: 54,
+              color: AppColors.primary.withValues(alpha: 0.4),
+            ),
+          ),
+          const SizedBox(height: 20),
           Text(
             'No products found',
-            style: AppTypography.titleMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.titleLarge.copyWith(
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Try adjusting your search query',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ],
       ),
