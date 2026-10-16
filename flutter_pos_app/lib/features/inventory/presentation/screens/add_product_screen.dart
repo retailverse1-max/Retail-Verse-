@@ -1232,50 +1232,63 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               final isWide = constraints.maxWidth > 850;
 
               if (isWide) {
-                return Row(
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left Column (Media & Marketplaces)
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStudioCard(),
-                          if (_aiSuggestion != null) ...[
-                            const SizedBox(height: 16),
-                            _buildAIPreviewCard(),
-                          ],
-                          const SizedBox(height: 20),
-                          _buildMarketplaceSwitchboardCard(),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    // Right Column (Forms)
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildEssentialsCard(),
-                          const SizedBox(height: 16),
-                          _buildClassificationCard(),
-                          const SizedBox(height: 16),
-                          _buildPricingStockCard(),
-                          const SizedBox(height: 16),
-                          _buildOrganizationCard(),
-                        ],
-                      ),
+                    _buildBarcodeScannerCard(),
+                    const SizedBox(height: 16),
+                    _buildBarcodeGeneratorCard(),
+                    const SizedBox(height: 20),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column (Media & Marketplaces)
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildStudioCard(),
+                              if (_aiSuggestion != null) ...[
+                                const SizedBox(height: 16),
+                                _buildAIPreviewCard(),
+                              ],
+                              const SizedBox(height: 20),
+                              _buildMarketplaceSwitchboardCard(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        // Right Column (Forms)
+                        Expanded(
+                          flex: 6,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildEssentialsCard(),
+                              const SizedBox(height: 16),
+                              _buildClassificationCard(),
+                              const SizedBox(height: 16),
+                              _buildPricingStockCard(),
+                              const SizedBox(height: 16),
+                              _buildOrganizationCard(),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 );
               }
 
-              // Mobile Layout
+              // Mobile Layout: Barcode Scanner -> Barcode Generator -> Studio -> Forms
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildBarcodeScannerCard(),
+                  const SizedBox(height: 16),
+                  _buildBarcodeGeneratorCard(),
+                  const SizedBox(height: 16),
                   _buildStudioCard(),
                   if (_aiSuggestion != null) ...[
                     const SizedBox(height: 16),
@@ -1623,27 +1636,232 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   // ============================================================================
-  // CARD 2: ESSENTIALS (With Barcode Scanner & Generator above Product Name)
+  // TOP SECTION 1: BARCODE SCANNER (Directly below Heading)
+  // ============================================================================
+  Widget _buildBarcodeScannerCard() {
+    return _buildSectionContainer(
+      icon: Icons.qr_code_scanner_rounded,
+      iconColor: AppColors.primary,
+      title: 'Barcode Scanner',
+      subtitle: 'Scan product barcode with device camera or enter digits',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _barcodeController,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                  decoration: _buildInputDecoration(
+                    hint: 'Scan or type barcode digits...',
+                    prefixIcon: Icons.qr_code_rounded,
+                    suffix: _barcodeController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
+                            onPressed: () {
+                              setState(() {
+                                _barcodeController.clear();
+                              });
+                            },
+                          )
+                        : null,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: _openCameraBarcodeScanner,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                label: const Text(
+                  'Scan',
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          if (_barcodeController.text.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Captured Barcode: ${_barcodeController.text}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1E40AF),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+  // TOP SECTION 2: BARCODE GENERATOR (Directly below Barcode Scanner)
+  // ============================================================================
+  Widget _buildBarcodeGeneratorCard() {
+    final hasBarcode = _barcodeController.text.isNotEmpty;
+    return _buildSectionContainer(
+      icon: Icons.qr_code_2_rounded,
+      iconColor: const Color(0xFF059669),
+      title: 'Barcode Generator',
+      subtitle: 'Auto-generate unique retail EAN-13 barcode & print label stickers',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _generateInternalBarcode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF059669),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.bolt_rounded, size: 18),
+                  label: const Text(
+                    'Generate Barcode',
+                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _showCustomizableBarcodePrintDialog,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.print_outlined, size: 18),
+                  label: const Text(
+                    'Print Label',
+                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (hasBarcode) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(Icons.view_week_rounded, size: 20, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _barcodeController.text,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            letterSpacing: 1.2,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        const Text(
+                          'Ready for scanning, POS billing & printing',
+                          style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w400),
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _showCustomizableBarcodePrintDialog,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.print_rounded, size: 14, color: AppColors.primary),
+                          SizedBox(width: 4),
+                          Text('Print', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+  // CARD: ESSENTIALS (Product Name & SKU)
   // ============================================================================
   Widget _buildEssentialsCard() {
     return _buildSectionContainer(
       icon: Icons.inventory_2_rounded,
       iconColor: AppColors.primary,
       title: 'Core Identification',
-      subtitle: 'Scan or generate barcode, product title, and SKU',
+      subtitle: 'Product title, brand name and SKU',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Two Quick Action Buttons: Barcode Scanner & Barcode Generator ──
-          _buildBarcodeDualActionButtons(),
-          const SizedBox(height: 18),
-
           // Product Name
           _buildFieldLabel('Product Name *', isRequired: true),
           const SizedBox(height: 6),
           TextFormField(
             controller: _nameController,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(fontWeight: FontWeight.w500),
             decoration: _buildInputDecoration(
               hint: 'e.g. Premium Cotton Polo Shirt',
               prefixIcon: Icons.edit_note_rounded,
@@ -1652,292 +1870,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
           const SizedBox(height: 16),
 
-          // SKU & Barcode Grid
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 450;
-              final skuField = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFieldLabel('SKU Code', optionalText: '(Auto-assigned if empty)'),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _skuController,
-                    decoration: _buildInputDecoration(
-                      hint: 'e.g. SKU-84920',
-                      prefixIcon: Icons.tag_rounded,
-                    ),
-                  ),
-                ],
-              );
-
-              final barcodeField = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildFieldLabel('Barcode (EAN/UPC)'),
-                      if (_barcodeController.text.isNotEmpty)
-                        InkWell(
-                          onTap: _showCustomizableBarcodePrintDialog,
-                          borderRadius: BorderRadius.circular(6),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            child: Row(
-                              children: [
-                                Icon(Icons.print_outlined, size: 14, color: AppColors.primary),
-                                SizedBox(width: 2),
-                                Text(
-                                  'Print Label',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.primary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _barcodeController,
-                    decoration: _buildInputDecoration(
-                      hint: 'Scan or generate barcode...',
-                      prefixIcon: Icons.qr_code_scanner_rounded,
-                      suffix: _barcodeController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
-                              tooltip: 'Print Thermal Label',
-                              onPressed: _showCustomizableBarcodePrintDialog,
-                            )
-                          : null,
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ],
-              );
-
-              if (isNarrow) {
-                return Column(
-                  children: [
-                    skuField,
-                    const SizedBox(height: 14),
-                    barcodeField,
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: skuField),
-                  const SizedBox(width: 14),
-                  Expanded(child: barcodeField),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Two side-by-side action buttons located immediately above Product Name
-  Widget _buildBarcodeDualActionButtons() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9).withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.qr_code_2_rounded, size: 16, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Text(
-                'Barcode Quick Operations',
-                style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-              ),
-              const Spacer(),
-              if (_barcodeController.text.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Code: ${_barcodeController.text}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.success),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              // ── 1ST BUTTON: BARCODE SCANNER (OPENS CAMERA) ──
-              Expanded(
-                child: InkWell(
-                  onTap: _openCameraBarcodeScanner,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF2563EB), size: 20),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Barcode Scanner',
-                                style: AppTypography.titleSmall.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF1E3A8A),
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                'Camera Scan',
-                                style: AppTypography.caption.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 10),
-
-              // ── 2ND BUTTON: BARCODE GENERATOR (GENERATE & PRINT ICON) ──
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Generator Click Zone
-                      Expanded(
-                        child: InkWell(
-                          onTap: _generateInternalBarcode,
-                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Icons.bolt_rounded, color: Color(0xFF059669), size: 20),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Barcode Generator',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppTypography.titleSmall.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF065F46),
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 1),
-                                      Text(
-                                        'Auto-Generate',
-                                        style: AppTypography.caption.copyWith(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Print Icon Button on Side (Opens Customizable Print Popup)
-                      Container(
-                        height: 38,
-                        width: 1,
-                        color: Colors.grey.shade200,
-                      ),
-                      Tooltip(
-                        message: 'Print Barcode Sticker',
-                        child: InkWell(
-                          onTap: () {
-                            if (_barcodeController.text.isEmpty) {
-                              _generateInternalBarcode();
-                            }
-                            _showCustomizableBarcodePrintDialog();
-                          },
-                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                              borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-                            ),
-                            child: const Icon(Icons.print_rounded, color: Color(0xFF059669), size: 20),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          // SKU Code
+          _buildFieldLabel('SKU Code', optionalText: '(Auto-assigned if empty)'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _skuController,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+            decoration: _buildInputDecoration(
+              hint: 'e.g. SKU-84920',
+              prefixIcon: Icons.tag_rounded,
+            ),
           ),
         ],
       ),
