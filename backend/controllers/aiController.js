@@ -61,7 +61,14 @@ The JSON MUST contain the following keys exactly:
   "priceEstimate": 29.99
 }`;
 
-    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+    const modelsToTry = [
+      "gemini-3.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.7-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-2.5-flash-lite",
+      "gemini-3.8-flash",
+    ];
     let result = null;
     let lastError = null;
 
