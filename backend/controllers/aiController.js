@@ -99,7 +99,7 @@ The JSON MUST contain the following keys exactly:
       } catch (fetchErr) {
         availableModelsStr = fetchErr.message;
       }
-      throw new Error(`All Gemini models failed. Available models on your key: ${availableModelsStr}. Last error: ${lastError?.message}`);
+      throw new Error(`All Gemini models failed (Key suffix: ...${apiKey.slice(-8)}). Available models on your key: ${availableModelsStr}. Last error: ${lastError?.message}`);
     }
 
     const responseText = result.response.text();
