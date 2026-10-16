@@ -489,10 +489,10 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.border),
               boxShadow: [
                 BoxShadow(
@@ -504,24 +504,26 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
             ),
             child: Icon(
               Icons.category_outlined,
-              size: 54,
+              size: 42,
               color: AppColors.primary.withValues(alpha: 0.4),
             ),
           ),
-          const SizedBox(height: 20),
-          Text(
+          const SizedBox(height: 16),
+          const Text(
             'No categories found',
-            style: AppTypography.titleLarge.copyWith(
+            style: TextStyle(
+              fontSize: 15,
               fontWeight: FontWeight.w500,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 4),
+          const Text(
             'Try searching for a different category',
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              fontSize: 12,
               fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary,
             ),
           ),
         ],

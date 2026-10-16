@@ -892,20 +892,43 @@ class _CategoryProductsScreenState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined,
-              size: 72,
-              color: AppColors.primary.withValues(alpha: 0.2)),
-          const SizedBox(height: 20),
-          Text(
-            'No products found',
-            style: AppTypography.titleMedium
-                .copyWith(color: AppColors.textSecondary),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              size: 42,
+              color: AppColors.primary.withValues(alpha: 0.4),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 16),
+          const Text(
+            'No products found',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
             'Try adjusting your search',
-            style: AppTypography.bodySmall
-                .copyWith(color: AppColors.textTertiary),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
