@@ -1147,8 +1147,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // SAVE PRODUCT
   // ============================================================================
   Future<void> _saveProduct() async {
-    if (!_formKey.currentState!.validate()) {
-      _showSnack('Please complete all required fields.', isError: true);
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _showSnack('Please enter a product name.', isError: true);
       return;
     }
 
@@ -1157,7 +1158,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final sku = _skuController.text.trim().isEmpty
         ? 'AUTO-${DateTime.now().millisecondsSinceEpoch}'
         : _skuController.text.trim();
-    final categoryLabel = _selectedCategory?.name ?? widget.category?.name ?? '';
+    final categoryLabel = _selectedCategory?.name ?? widget.category?.name ?? 'General';
+    final costVal = double.tryParse(_costController.text.trim()) ?? 0.0;
+    final priceVal = double.tryParse(_priceController.text.trim()) ?? costVal;
+    final stockVal = int.tryParse(_quantityController.text.trim()) ?? 0;
 
     String? imageBase64;
     if (_productImage != null) {
@@ -1183,11 +1187,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     try {
       final desc = _descriptionController.text.trim();
       final created = await ref.read(productRepositoryProvider).createProduct(
-            name: _nameController.text.trim(),
+            name: name,
             sku: sku,
-            price: double.parse(_priceController.text.trim()),
-            cost: double.tryParse(_costController.text.trim()) ?? 0,
-            stock: int.parse(_quantityController.text.trim()),
+            price: priceVal,
+            cost: costVal,
+            stock: stockVal,
             barcode: _barcodeController.text.trim(),
             category: categoryLabel,
             imageBase64: imageBase64,
@@ -1252,7 +1256,51 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (!mounted) return;
       String err = e.toString();
       if (err.contains('ApiException:')) err = err.split('ApiException:').last.trim();
-      _showSnack('Failed to save product: $err', isError: true);
+      final isAuthError = err.toLowerCase().contains('invalid token') ||
+          err.contains('401') ||
+          err.toLowerCase().contains('not authorized');
+
+      if (isAuthError) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.lock_clock_rounded, color: AppColors.primary, size: 22),
+                SizedBox(width: 8),
+                Text('Session Expired', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            content: const Text(
+              'Aapka login session server par expire ho gaya hai (Invalid token).\n\nKripya ek baar re-login karein taaki naya token mil sake aur product turant save ho jaye.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final router = GoRouter.of(context);
+                  Navigator.of(ctx).pop();
+                  await ref.read(authProvider.notifier).logout();
+                  router.go('/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Login Again'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        _showSnack('Failed to save product: $err', isError: true);
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -1386,8 +1434,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     const SizedBox(height: 16),
                     _buildBarcodeGeneratorCard(),
                     const SizedBox(height: 16),
-                    _buildBarcodeEntryCard(),
-                    const SizedBox(height: 16),
                     _buildEssentialsCard(),
                     const SizedBox(height: 20),
                     Row(
@@ -1430,15 +1476,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 );
               }
 
-              // Mobile Layout: Barcode Scanner -> Barcode Generator -> Barcode Entry -> Essentials (SKU) -> Studio -> Forms
+              // Mobile Layout: Barcode Scanner -> Barcode Generator -> Essentials (SKU) -> Studio -> Forms
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildBarcodeScannerCard(),
                   const SizedBox(height: 16),
                   _buildBarcodeGeneratorCard(),
-                  const SizedBox(height: 16),
-                  _buildBarcodeEntryCard(),
                   const SizedBox(height: 16),
                   _buildEssentialsCard(),
                   const SizedBox(height: 16),
@@ -1452,9 +1496,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   const SizedBox(height: 16),
                   _buildPricingStockCard(),
                   const SizedBox(height: 16),
-                  _buildMarketplaceSwitchboardCard(),
-                  const SizedBox(height: 16),
                   _buildOrganizationCard(),
+                  const SizedBox(height: 16),
+                  _buildMarketplaceSwitchboardCard(),
                 ],
               );
             },
@@ -1794,57 +1838,37 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       icon: Icons.qr_code_scanner_rounded,
       iconColor: AppColors.primary,
       title: 'Barcode Scanner',
+      subtitle: 'Scan to auto fill product barcode',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hardware Scanner Live Status Banner (Only shown when wired or wireless scanner is connected)
+          // Hardware Scanner Live Status Banner (Only shown when physical external scanner is connected)
           if (_isHardwareScannerConnected) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFBBF7D0)),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF16A34A),
-                      shape: BoxShape.circle,
+                  Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Hardware Scanner Connected',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF166534),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hardware Scanner Connected (Wired USB / Wireless Bluetooth)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF166534),
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Point & scan any product barcode — auto-fills with audio beep confirmation',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF15803D),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
+                  Icon(
                     Icons.sensors_rounded,
                     color: Color(0xFF16A34A),
-                    size: 20,
+                    size: 18,
                   ),
                 ],
               ),
@@ -1882,7 +1906,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final hasBarcode = _barcodeController.text.isNotEmpty;
     return _buildSectionContainer(
       icon: Icons.qr_code_2_rounded,
-      iconColor: const Color(0xFF059669),
+      iconColor: AppColors.primary,
       title: 'Barcode Generator',
       subtitle: 'Auto-generate unique retail EAN-13 barcode & print label stickers',
       child: Column(
@@ -1891,18 +1915,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
+                child: OutlinedButton.icon(
                   onPressed: _generateInternalBarcode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.bolt_rounded, size: 18),
                   label: const Text(
-                    'Generate Barcode',
+                    'Generate',
                     style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                   ),
                 ),
@@ -1926,91 +1949,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ],
           ),
-          if (hasBarcode) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Icon(Icons.view_week_rounded, size: 20, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _barcodeController.text,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            letterSpacing: 1.2,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        const Text(
-                          'Ready for scanning, POS billing & printing',
-                          style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w400),
-                        ),
-                      ],
-                    ),
-                  ),
-                  InkWell(
-                    onTap: _showCustomizableBarcodePrintDialog,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.print_rounded, size: 14, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text('Print', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.primary)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ============================================================================
-  // TOP SECTION 3: BARCODE ENTRY DABA (Directly below Barcode Generator)
-  // ============================================================================
-  Widget _buildBarcodeEntryCard() {
-    final hasBarcode = _barcodeController.text.isNotEmpty;
-    return _buildSectionContainer(
-      icon: Icons.view_week_rounded,
-      iconColor: AppColors.primary,
-      title: 'Product Barcode',
-      subtitle: 'Auto-fills via scanner or camera, or enter digits manually',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildFieldLabel('Barcode / EAN-13 Number', optionalText: '(Auto-filled on scan)'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _barcodeController,
             style: const TextStyle(
@@ -2019,11 +1958,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               fontFamily: 'monospace',
             ),
             decoration: _buildInputDecoration(
-              hint: 'Scan barcode or enter digits...',
-              prefixIcon: Icons.qr_code_rounded,
+              hint: 'Barcode digits (auto-filled on scan or generate)',
+              prefixIcon: Icons.view_week_rounded,
               suffix: hasBarcode
                   ? IconButton(
-                      tooltip: 'Clear Barcode',
+                      tooltip: 'Clear',
                       icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
                       onPressed: () {
                         setState(() {
@@ -2040,84 +1979,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             },
             onChanged: (_) => setState(() {}),
           ),
-          if (hasBarcode) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFBFDBFE)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Active Barcode: ${_barcodeController.text}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1E40AF),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () {
-                      SystemSound.play(SystemSoundType.click);
-                      HapticFeedback.lightImpact();
-                      _showSnack('Beep test confirmed for ${_barcodeController.text}');
-                    },
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.volume_up_rounded, size: 13, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text(
-                            'Beep',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
   // ============================================================================
-  // TOP SECTION 4: PRODUCT NAME & AUTO-SKU (Directly below Barcode Entry)
+  // TOP SECTION 3: PRODUCT NAME & AUTO-SKU (Directly below Barcode Generator)
   // ============================================================================
   Widget _buildEssentialsCard() {
     return _buildSectionContainer(
       icon: Icons.inventory_2_rounded,
       iconColor: AppColors.primary,
-      title: 'Core Identification & SKU',
-      subtitle: 'Product title and automatic SKU generation',
+      title: 'Product Name',
+      subtitle: null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Product Name
-          _buildFieldLabel('Product Name *', isRequired: true),
+          _buildFieldLabel('Product Name'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _nameController,
@@ -2130,36 +2010,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
           const SizedBox(height: 16),
 
-          // SKU Code (Auto-fills e.g. chips-237)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildFieldLabel('SKU Code', optionalText: '(Auto-generated e.g. chips-237)'),
-              if (_nameController.text.trim().isNotEmpty)
-                InkWell(
-                  onTap: _regenerateSkuSuffix,
-                  borderRadius: BorderRadius.circular(6),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.refresh_rounded, size: 13, color: AppColors.primary),
-                        SizedBox(width: 4),
-                        Text(
-                          'New Number',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          // SKU Code
+          _buildFieldLabel('SKU Code'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _skuController,
@@ -2176,14 +2028,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   : null,
             ),
           ),
+          const SizedBox(height: 14),
+
+          // Product Cost
+          _buildFieldLabel('Product Cost'),
           const SizedBox(height: 6),
-          const Text(
-            'Typing product name (e.g. Chips) automatically fills SKU (e.g. chips-237). You can also edit it manually.',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w400,
+          TextFormField(
+            controller: _costController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+            decoration: _buildInputDecoration(
+              hint: '0.00',
+              prefixWidget: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('₹', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+              ),
             ),
+            onChanged: (_) => setState(() {}),
           ),
         ],
       ),
@@ -2245,7 +2106,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               );
                             }).toList(),
                             onChanged: (v) => setState(() => _selectedCategoryId = v),
-                            validator: (v) => (v == null || v.isEmpty) ? 'Category is required' : null,
+                            validator: null,
                           ),
                   ],
                 ),
@@ -2379,7 +2240,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildFieldLabel('Selling Price (INR) *', isRequired: true),
+                    _buildFieldLabel('Selling Price (INR)'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _priceController,
@@ -2394,7 +2255,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                       onChanged: (_) => setState(() {}),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (v == null || v.trim().isEmpty) return null;
                         if (double.tryParse(v) == null) return 'Invalid price';
                         return null;
                       },
@@ -2437,7 +2298,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildFieldLabel('Current Stock *', isRequired: true),
+                    _buildFieldLabel('Current Stock'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _quantityController,
@@ -2473,7 +2334,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (v == null || v.trim().isEmpty) return null;
                         if (int.tryParse(v) == null) return 'Invalid count';
                         return null;
                       },
@@ -2722,7 +2583,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return _buildSectionContainer(
       icon: Icons.description_rounded,
       iconColor: const Color(0xFF8B5CF6),
-      title: 'Additional Details',
+      title: 'Additional Information',
       subtitle: 'Brand specification and detailed product description',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2904,9 +2765,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         ),
         if (optionalText != null) ...[
           const SizedBox(width: 4),
-          Text(
-            optionalText,
-            style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
+          Flexible(
+            child: Text(
+              optionalText,
+              style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ],

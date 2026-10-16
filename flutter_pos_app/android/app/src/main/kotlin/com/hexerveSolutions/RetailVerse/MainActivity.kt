@@ -30,7 +30,12 @@ class MainActivity : FlutterActivity(), InputManager.InputDeviceListener {
         val inputManager = getSystemService(Context.INPUT_SERVICE) as? InputManager ?: return false
         for (deviceId in inputManager.inputDeviceIds) {
             val device = inputManager.getInputDevice(deviceId) ?: continue
-            if (!device.isVirtual && (device.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
+            val isExternal = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                device.isExternal
+            } else {
+                !device.isVirtual
+            }
+            if (isExternal && !device.isVirtual && (device.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
                 return true
             }
         }
