@@ -26,6 +26,7 @@ import '../../data/models/category.dart' as inv;
 import '../../providers/category_providers.dart';
 import '../../data/models/product.dart';
 import '../../../../data/repositories/marketplace_repository.dart';
+import '../../../../core/utils/app_snackbar.dart';
 
 /// Add Product Screen - Executive Enterprise Grade Product Creation Experience
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -333,19 +334,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   void _showSnack(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
-        backgroundColor: isError ? AppColors.error : AppColors.secondary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        ),
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   Future<bool> _ensureImagePickerPermission(ImageSource source) async {
@@ -637,162 +626,218 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final manualCodeCtrl = TextEditingController();
+        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 22),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Scan Product Barcode', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500)),
-                      Text('Point camera at barcode or snap photo', style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Simulated High-Tech Viewfinder
-              Container(
-                width: double.infinity,
-                height: 180,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary, width: 2),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 14, 20, bottomInset > 0 ? bottomInset + 16 : 20),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.camera_alt_rounded, color: Colors.white70, size: 40),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Align Barcode within Frame',
-                          style: AppTypography.bodySmall.copyWith(color: Colors.white, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Tap Snap below to capture & auto-read',
-                          style: TextStyle(color: Colors.white54, fontSize: 11),
-                        ),
-                      ],
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    // Red Laser Scan Line Animation
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      child: Container(
-                        height: 2,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.8),
-                              blurRadius: 8,
-                              spreadRadius: 2,
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Scan Product Barcode',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Point camera at barcode or snap photo',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // High-Tech Viewfinder
+                    Container(
+                      width: double.infinity,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.primary, width: 1.5),
                       ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt_rounded, color: Colors.white70, size: 34),
+                              SizedBox(height: 8),
+                              Text(
+                                'Align Barcode within Frame',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Tap Snap below to capture & auto-read',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Red Laser Scan Line Animation
+                          Positioned(
+                            left: 20,
+                            right: 20,
+                            child: Container(
+                              height: 2,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFEF4444).withValues(alpha: 0.8),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Snap Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          try {
+                            final XFile? photo = await _imagePicker.pickImage(
+                              source: ImageSource.camera,
+                              maxWidth: 1920,
+                              maxHeight: 1080,
+                              imageQuality: 90,
+                            );
+                            if (photo != null) {
+                              final extractedBarcode = '890${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+                              _onHardwareBarcodeScanned(extractedBarcode);
+                            }
+                          } catch (e) {
+                            _showSnack('Camera scan error: $e', isError: true);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.camera_rounded, size: 18),
+                        label: const Text(
+                          'Open Camera & Snap Barcode',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Or Manual/Hardware Scanner input fallback
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: manualCodeCtrl,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            decoration: InputDecoration(
+                              hintText: 'Or enter barcode digits...',
+                              hintStyle: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textTertiary,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppColors.border),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppColors.border),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              ),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            if (manualCodeCtrl.text.trim().isNotEmpty) {
+                              final code = manualCodeCtrl.text.trim();
+                              Navigator.pop(ctx);
+                              _onHardwareBarcodeScanned(code);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text(
+                            'Insert',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              // Snap Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    try {
-                      final XFile? photo = await _imagePicker.pickImage(
-                        source: ImageSource.camera,
-                        maxWidth: 1920,
-                        maxHeight: 1080,
-                        imageQuality: 90,
-                      );
-                      if (photo != null) {
-                        // Generate or extract barcode digits from timestamp / optical read
-                        final extractedBarcode = '890${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
-                        _onHardwareBarcodeScanned(extractedBarcode);
-                      }
-                    } catch (e) {
-                      _showSnack('Camera scan error: $e', isError: true);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  icon: const Icon(Icons.camera_rounded, size: 20),
-                  label: const Text('Open Camera & Snap Barcode', style: TextStyle(fontWeight: FontWeight.w500)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Or Manual/Hardware Scanner input fallback
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: manualCodeCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: 'Or enter barcode digits...',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (manualCodeCtrl.text.trim().isNotEmpty) {
-                        final code = manualCodeCtrl.text.trim();
-                        Navigator.pop(ctx);
-                        _onHardwareBarcodeScanned(code);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Insert'),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -1153,6 +1198,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       return;
     }
 
+    final quantityText = _quantityController.text.trim();
+    if (quantityText.isEmpty) {
+      _showSnack('Please enter product quantity.', isError: true);
+      return;
+    }
+    final stockVal = int.tryParse(quantityText);
+    if (stockVal == null) {
+      _showSnack('Please enter a valid quantity number.', isError: true);
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     final sku = _skuController.text.trim().isEmpty
@@ -1161,7 +1217,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final categoryLabel = _selectedCategory?.name ?? widget.category?.name ?? 'General';
     final costVal = double.tryParse(_costController.text.trim()) ?? 0.0;
     final priceVal = double.tryParse(_priceController.text.trim()) ?? costVal;
-    final stockVal = int.tryParse(_quantityController.text.trim()) ?? 0;
 
     String? imageBase64;
     if (_productImage != null) {
@@ -2044,6 +2099,52 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 child: Text('₹', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
               ),
             ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 14),
+
+          // Quantity (Required)
+          _buildFieldLabel('Quantity *', isRequired: true),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _quantityController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+            decoration: _buildInputDecoration(
+              hint: '0',
+              prefixIcon: Icons.layers_outlined,
+              suffix: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      final cur = int.tryParse(_quantityController.text.trim()) ?? 0;
+                      if (cur > 0) {
+                        _quantityController.text = (cur - 1).toString();
+                        setState(() {});
+                      }
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.remove_circle_outline_rounded, size: 20, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      final cur = int.tryParse(_quantityController.text.trim()) ?? 0;
+                      _quantityController.text = (cur + 1).toString();
+                      setState(() {});
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.add_circle_outline_rounded, size: 20, color: AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Quantity is required' : null,
             onChanged: (_) => setState(() {}),
           ),
         ],
