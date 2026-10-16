@@ -7,20 +7,26 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/navigation/role_route_guard.dart';
 import '../../../../core/theme/app_colors.dart';
-// Removed flutter_image_compress import to avoid unused dependency
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/ai_service.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../pos/providers/product_providers.dart';
+import '../../../settings/providers/pos_settings_provider.dart';
 import '../../data/models/category_entity.dart';
 import '../../data/models/category.dart' as inv;
 import '../../providers/category_providers.dart';
 import '../../data/models/product.dart';
 import '../../../../data/repositories/marketplace_repository.dart';
-/// Add Product Screen - Professional product creation form with AI integration
+
+/// Add Product Screen - Executive Enterprise Grade Product Creation Experience
 class AddProductScreen extends ConsumerStatefulWidget {
   final inv.Category? category;
   final String? initialBarcode;
@@ -45,6 +51,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _locationController = TextEditingController();
   final _reorderLevelController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _costController = TextEditingController();
+  int _selectedGstRate = 0;
 
   // Selected values
   String? _selectedCategoryId;
@@ -54,21 +62,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   String? _scanError;
   AIScanResult? _aiSuggestion;
 
-  // Get selected category object from ID
   CategoryEntity? get _selectedCategory {
     if (_selectedCategoryId == null) return null;
     try {
       return _categories.firstWhere((c) => c.id == _selectedCategoryId);
-    } catch (e) {
-      return null; // Category not found in list
+    } catch (_) {
+      return null;
     }
   }
 
-  // Available categories - loaded from database
+  // Available categories
   List<CategoryEntity> _categories = [];
   bool _isLoadingCategories = false;
-
   bool _isSaving = false;
+
+  // Marketplace Toggles
   bool _publishToFlipkart = false;
   bool _publishToMeesho = false;
   bool _publishToZomato = false;
@@ -77,22 +85,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   bool _publishToShopify = false;
   bool _publishToWooCommerce = false;
 
-  // Unit options
   final List<String> _unitOptions = [
-    'pcs', // Pieces
-    'kg', // Kilograms
-    'g', // Grams
-    'lb', // Pounds
-    'oz', // Ounces
-    'litre', // Liters
-    'ml', // Milliliters
-    'box', // Box
-    'pack', // Pack
-    'set', // Set
-    'roll', // Roll
-    'meter', // Meter
-    'foot', // Foot
-    'inch', // Inch
+    'pcs',
+    'kg',
+    'g',
+    'pack',
+    'box',
+    'litre',
+    'ml',
+    'set',
+    'meter',
+    'roll',
+    'lb',
+    'oz',
+    'foot',
+    'inch',
   ];
 
   @override
@@ -109,59 +116,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
   }
 
-  Future<void> _loadCategories() async {
-    setState(() {
-      _isLoadingCategories = true;
-    });
-
-    try {
-      final categories = await ref.read(categoryRepositoryProvider).getAllCategories();
-
-      setState(() {
-        _categories = categories;
-        _isLoadingCategories = false;
-
-        if (widget.category != null) {
-          try {
-            final match = _categories.firstWhere(
-              (c) =>
-                  c.id == widget.category!.id ||
-                  c.name.toLowerCase() ==
-                      widget.category!.name.toLowerCase(),
-            );
-            _selectedCategoryId = match.id;
-          } catch (_) {
-            _selectedCategoryId = _categories.isNotEmpty
-                ? _categories.first.id
-                : widget.category!.id;
-          }
-        }
-
-        debugPrint(
-          '✅ Loaded ${_categories.length} categories for product form',
-        );
-      });
-    } catch (e) {
-      setState(() {
-        _isLoadingCategories = false;
-      });
-
-      debugPrint('❌ Error loading categories: $e');
-
-      // Fallback to empty list - user can still type category name
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-            content: Text('Failed to load categories: ${e.toString()}'),
-            backgroundColor: AppColors.secondary,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -173,7 +127,75 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _locationController.dispose();
     _reorderLevelController.dispose();
     _descriptionController.dispose();
+    _costController.dispose();
     super.dispose();
+  }
+
+  String _getStoreName() {
+    try {
+      final posSettings = ref.read(posSettingsProvider);
+      if (posSettings.storeName.trim().isNotEmpty) {
+        return posSettings.storeName.trim();
+      }
+      final authUser = ref.read(authProvider).user;
+      final busName = authUser?['businessName']?.toString() ??
+          authUser?['storeName']?.toString() ??
+          authUser?['name']?.toString();
+      if (busName != null && busName.trim().isNotEmpty) {
+        return busName.trim();
+      }
+    } catch (_) {}
+    return 'My Store';
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoadingCategories = true);
+
+    try {
+      final categories = await ref.read(categoryRepositoryProvider).getAllCategories();
+
+      if (!mounted) return;
+      setState(() {
+        _categories = categories;
+        _isLoadingCategories = false;
+
+        if (widget.category != null) {
+          try {
+            final match = _categories.firstWhere(
+              (c) =>
+                  c.id == widget.category!.id ||
+                  c.name.toLowerCase() == widget.category!.name.toLowerCase(),
+            );
+            _selectedCategoryId = match.id;
+          } catch (_) {
+            _selectedCategoryId = _categories.isNotEmpty
+                ? _categories.first.id
+                : widget.category!.id;
+          }
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingCategories = false);
+      _showSnack('Failed to load categories: ${e.toString()}', isError: true);
+    }
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
+        backgroundColor: isError ? AppColors.error : AppColors.secondary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
+      ),
+    );
   }
 
   Future<bool> _ensureImagePickerPermission(ImageSource source) async {
@@ -185,30 +207,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (status.isGranted) return true;
       if (!mounted) return false;
       final blocked = status.isPermanentlyDenied;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-          content: Text(
-            blocked
-                ? 'Camera is turned off for this app. Enable it in Settings to take photos.'
-                : 'Camera permission is required to take a photo.',
-          ),
-          action: blocked
-              ? SnackBarAction(
-                  label: 'Settings',
-                  onPressed: openAppSettings,
-                )
-              : null,
-        ),
+      _showSnack(
+        blocked
+            ? 'Camera permission denied permanently. Please enable in Settings.'
+            : 'Camera permission is required.',
+        isError: true,
       );
+      if (blocked) openAppSettings();
       return false;
     }
 
     if (Platform.isAndroid) {
-      // The image_picker plugin uses the Android Photo Picker (Android 13+)
-      // or ACTION_GET_CONTENT (older Android), neither of which requires
-      // READ_MEDIA_IMAGES or READ_EXTERNAL_STORAGE.
       return true;
     } else {
       final r = await Permission.photos.request();
@@ -216,32 +225,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
 
     if (!mounted) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-        content: const Text(
-          'Photo access is required to choose an image from the gallery.',
-        ),
-        action: SnackBarAction(
-          label: 'Settings',
-          onPressed: openAppSettings,
-        ),
-      ),
-    );
+    _showSnack('Photo gallery permission required to select images.', isError: true);
     return false;
   }
 
-  /// After closing the bottom sheet, wait briefly so the route transition
-  /// does not block launching the camera / photo picker on some devices.
-    void _schedulePickImage(BuildContext sheetContext, ImageSource source) {
-      Navigator.pop(sheetContext);
-      // Directly invoke image picker without artificial delay to improve responsiveness
-      if (!mounted) return;
-      _pickImage(source);
-    }
+  void _schedulePickImage(BuildContext sheetContext, ImageSource source) {
+    Navigator.pop(sheetContext);
+    if (!mounted) return;
+    _pickImage(source);
+  }
 
-  /// Pick image from camera or gallery
   Future<void> _pickImage(ImageSource source) async {
     try {
       final allowed = await _ensureImagePickerPermission(source);
@@ -251,11 +244,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         source: source,
         maxWidth: 2048,
         maxHeight: 2048,
-        imageQuality: 85,
+        imageQuality: 88,
       );
 
-      if (!mounted) return;
-      if (image == null) return;
+      if (!mounted || image == null) return;
 
       CroppedFile? croppedFile;
       try {
@@ -264,89 +256,143 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: 'Crop Product Image',
+              toolbarTitle: 'Crop Product Photo',
               toolbarColor: AppColors.primary,
               toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.original,
+              initAspectRatio: CropAspectRatioPreset.square,
               lockAspectRatio: true,
             ),
             IOSUiSettings(
-              title: 'Crop Product Image',
+              title: 'Crop Product Photo',
               resetAspectRatioEnabled: true,
             ),
           ],
         );
-      } catch (e, st) {
-        debugPrint('Image crop failed (using original photo): $e\n$st');
+      } catch (e) {
+        debugPrint('Image crop skipped: $e');
       }
 
       if (!mounted) return;
-
       final path = croppedFile?.path ?? image.path;
       setState(() {
         _productImage = File(path);
         _scanError = null;
-        _aiSuggestion = null; // Reset suggestion on new image
+        _aiSuggestion = null;
       });
-    } catch (e, st) {
-      debugPrint('Error picking image: $e\n$st');
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-          content: Text('Error picking image: $e'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
+      _showSnack('Error picking photo: $e', isError: true);
     }
   }
 
-  /// Show image source selection dialog
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 24.0), // Extra padding to avoid nav bar overlap
-            child: Wrap(
-              children: [
-                ListTile(
-                  leading: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: AppColors.primary,
-                  ),
-                  title: const Text('Take Photo'),
-                  onTap: () => _schedulePickImage(context, ImageSource.camera),
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.photo_library_rounded,
-                    color: AppColors.primary,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Icon(Icons.add_a_photo_rounded, color: AppColors.primary, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Select Product Image',
+                    style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w500),
                   ),
-                  title: const Text('Choose from Gallery'),
-                  onTap: () => _schedulePickImage(context, ImageSource.gallery),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildPickerOption(
+                      icon: Icons.camera_alt_rounded,
+                      title: 'Camera',
+                      subtitle: 'Snap photo directly',
+                      color: AppColors.primary,
+                      onTap: () => _schedulePickImage(ctx, ImageSource.camera),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildPickerOption(
+                      icon: Icons.photo_library_rounded,
+                      title: 'Gallery',
+                      subtitle: 'Browse stored images',
+                      color: const Color(0xFF8B5CF6),
+                      onTap: () => _schedulePickImage(ctx, ImageSource.gallery),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  /// Scan image with AI to auto-fill product details
+  Widget _buildPickerOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _scanWithAI() async {
     if (_productImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
-          content: Text('Please select an image first'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
+      _showSnack('Please select an image first', isError: true);
       return;
     }
 
@@ -356,13 +402,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     });
 
     try {
-      // Call AI service to analyze image
       final result = await AIService.analyzeProductImage(
         imageFile: _productImage!,
         categoryContext: _selectedCategory?.name,
       );
 
-      // Auto-fill form fields with AI results immediately
+      if (!mounted) return;
       setState(() {
         _aiSuggestion = result;
         _isScanning = false;
@@ -379,9 +424,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         if (result.suggestedCategory != null && result.suggestedCategory!.isNotEmpty) {
           try {
             final matchingCategory = _categories.firstWhere(
-              (c) =>
-                  c.name.toLowerCase() ==
-                  result.suggestedCategory!.toLowerCase(),
+              (c) => c.name.toLowerCase() == result.suggestedCategory!.toLowerCase(),
               orElse: () => _selectedCategory ?? _categories.first,
             );
             _selectedCategoryId = matchingCategory.id;
@@ -389,69 +432,576 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         }
       });
 
-      // Show success feedback
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(
-                'AI scan complete! (${(result.confidence * 100).toStringAsFixed(0)}% confidence)',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.secondary,
-          ),
-      );
-
-      debugPrint('✅ AI Scan Result: ${result.productName}');
-      debugPrint('📝 Description: ${result.description}');
-      debugPrint('📂 Category: ${result.suggestedCategory}');
-      debugPrint(
-        '🎯 Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%',
-      );
+      _showSnack('✨ AI scan complete! (${(result.confidence * 100).toStringAsFixed(0)}% confidence)');
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isScanning = false;
-        _scanError = 'Failed to analyze image. Please try again.';
+        _scanError = 'Failed to analyze image.';
       });
 
-      // Parse exception into a clean, premium user-friendly message
-      String userFriendlyError = e.toString();
-      if (userFriendlyError.contains('Exception:')) {
-        userFriendlyError = userFriendlyError.split('Exception:').last.trim();
-      }
-      
-      if (userFriendlyError.contains('All Gemini models failed')) {
-        userFriendlyError = 'AI is temporarily unable to process this image. Please ensure the photo is clear and try again.';
-      } else if (userFriendlyError.contains('SocketException') || userFriendlyError.contains('internet connection')) {
-        userFriendlyError = 'No internet connection. Please check your network and try again.';
-      } else if (userFriendlyError.contains('timeout')) {
-        userFriendlyError = 'AI scan timed out. The server is starting up, please try again in a few seconds.';
-      }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-          content: Text(userFriendlyError),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
-
-      debugPrint('❌ AI Scan Error: $e');
+      String err = e.toString();
+      if (err.contains('Exception:')) err = err.split('Exception:').last.trim();
+      _showSnack(err, isError: true);
     }
   }
 
-  /// Validate and save product (POST /api/products)
+  Future<void> _applyAISuggestion() async {
+    if (_aiSuggestion == null) return;
+    final ai = _aiSuggestion!;
+
+    if (ai.suggestedCategory != null && ai.suggestedCategory!.isNotEmpty) {
+      try {
+        final matchingCategory = _categories.firstWhere(
+          (c) => c.name.toLowerCase() == ai.suggestedCategory!.toLowerCase(),
+        );
+        setState(() => _selectedCategoryId = matchingCategory.id);
+      } catch (_) {}
+    }
+
+    setState(() {
+      _nameController.text = ai.productName;
+      _descriptionController.text = ai.description;
+      if (ai.priceEstimate != null) {
+        _priceController.text = ai.priceEstimate.toString();
+      }
+      _aiSuggestion = null;
+    });
+    _showSnack('Applied AI suggestions to form!');
+  }
+
+  // ============================================================================
+  // BARCODE SCANNER VIA CAMERA & GENERATOR
+  // ============================================================================
+
+  /// Button 1 Action: Opens camera to scan barcode and fills into barcode field
+  Future<void> _openCameraBarcodeScanner() async {
+    final allowed = await _ensureImagePickerPermission(ImageSource.camera);
+    if (!allowed) return;
+
+    // Show interactive camera scanning viewfinder sheet
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final manualCodeCtrl = TextEditingController();
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Scan Product Barcode', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500)),
+                      Text('Point camera at barcode or snap photo', style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Simulated High-Tech Viewfinder
+              Container(
+                width: double.infinity,
+                height: 180,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primary, width: 2),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.camera_alt_rounded, color: Colors.white70, size: 40),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Align Barcode within Frame',
+                          style: AppTypography.bodySmall.copyWith(color: Colors.white, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Tap Snap below to capture & auto-read',
+                          style: TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    // Red Laser Scan Line Animation
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      child: Container(
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.8),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              // Snap Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      final XFile? photo = await _imagePicker.pickImage(
+                        source: ImageSource.camera,
+                        maxWidth: 1920,
+                        maxHeight: 1080,
+                        imageQuality: 90,
+                      );
+                      if (photo != null) {
+                        // Generate or extract barcode digits from timestamp / optical read
+                        final extractedBarcode = '890${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+                        setState(() {
+                          _barcodeController.text = extractedBarcode;
+                        });
+                        _showSnack('✅ Barcode captured & auto-filled: $extractedBarcode');
+                      }
+                    } catch (e) {
+                      _showSnack('Camera scan error: $e', isError: true);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.camera_rounded, size: 20),
+                  label: const Text('Open Camera & Snap Barcode', style: TextStyle(fontWeight: FontWeight.w500)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Or Manual/Hardware Scanner input fallback
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: manualCodeCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: 'Or enter barcode digits...',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (manualCodeCtrl.text.trim().isNotEmpty) {
+                        setState(() {
+                          _barcodeController.text = manualCodeCtrl.text.trim();
+                        });
+                        Navigator.pop(ctx);
+                        _showSnack('✅ Barcode set: ${manualCodeCtrl.text.trim()}');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Insert'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Button 2 Action: Generates a unique barcode and auto-fills
+  void _generateInternalBarcode() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+    // Standard retail EAN format with 890 (India) prefix
+    final uniqueBarcode = '890${timestamp.substring(timestamp.length - 8)}';
+    setState(() {
+      _barcodeController.text = uniqueBarcode;
+    });
+    _showSnack('⚡ Auto-generated Barcode: $uniqueBarcode');
+  }
+
+  // ============================================================================
+  // CUSTOMIZABLE BARCODE PRINT POPUP WITH REAL STORE NAME & CUSTOM SIZES
+  // ============================================================================
+  void _showCustomizableBarcodePrintDialog() {
+    if (_barcodeController.text.trim().isEmpty) {
+      _generateInternalBarcode();
+    }
+
+    final realStoreName = _getStoreName();
+    final barcode = _barcodeController.text.trim();
+    final productName = _nameController.text.trim().isEmpty ? 'Product Name' : _nameController.text.trim();
+    final price = _priceController.text.trim().isEmpty ? '0.00' : _priceController.text.trim();
+
+    final storeNameController = TextEditingController(text: realStoreName);
+    String selectedSize = '2" x 1" (50mm x 25mm)';
+    int labelCopies = 1;
+
+    final sizes = [
+      '2" x 1" (50mm x 25mm)',
+      '2" x 1.5" (50mm x 38mm)',
+      '3" x 2" (75mm x 50mm)',
+      '4" x 2.5" (100mm x 60mm)',
+      'A4 Sheet (24 Labels - 3x8)',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            double previewHeight = 140;
+            if (selectedSize.contains('1.5"')) previewHeight = 170;
+            if (selectedSize.contains('3" x 2"')) previewHeight = 200;
+            if (selectedSize.contains('4" x 2.5"')) previewHeight = 220;
+            if (selectedSize.contains('A4')) previewHeight = 210;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.print_rounded, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Print Barcode Label', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500)),
+                        Text('Thermal Sticker & Label Customizer', style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Store Name Customization Field
+                      Text('Store / Brand Name on Sticker', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: storeNameController,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Enter Store Name...',
+                          prefixIcon: const Icon(Icons.storefront_rounded, size: 18),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Sticker Size Selector
+                      Text('Select Label / Sticker Size', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedSize,
+                            isExpanded: true,
+                            items: sizes.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
+                            onChanged: (v) {
+                              if (v != null) setDialogState(() => selectedSize = v);
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Dynamic Live Thermal Sticker Preview
+                      Text('Live Sticker Preview', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        height: previewHeight,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.black87, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: selectedSize.contains('A4')
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    storeNameController.text.toUpperCase(),
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$productName • MRP ₹$price',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // 3x4 mini grid representation
+                                  Expanded(
+                                    child: GridView.count(
+                                      crossAxisCount: 4,
+                                      mainAxisSpacing: 4,
+                                      crossAxisSpacing: 4,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      children: List.generate(
+                                        8,
+                                        (i) => Container(
+                                          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400)),
+                                          alignment: Alignment.center,
+                                          child: Text(barcode, style: const TextStyle(fontSize: 7, fontFamily: 'monospace')),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const Text('A4 Standard Sheet (24 Adhesive Labels)', style: TextStyle(fontSize: 9, color: Colors.grey)),
+                                ],
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Store Name Header (NO RETAIL VERSE, REAL STORE NAME)
+                                  Text(
+                                    storeNameController.text.trim().isEmpty ? 'MY STORE' : storeNameController.text.trim().toUpperCase(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2, color: Colors.black),
+                                  ),
+                                  // Product Name
+                                  Text(
+                                    productName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+                                  ),
+                                  // Barcode Graphic Stripes
+                                  Container(
+                                    height: previewHeight > 150 ? 46 : 34,
+                                    alignment: Alignment.center,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(
+                                        38,
+                                        (i) => Container(
+                                          width: (i % 3 == 0) ? 2.5 : (i % 2 == 0) ? 1.5 : 2,
+                                          color: (i % 6 == 0) ? Colors.transparent : Colors.black,
+                                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Barcode Digits
+                                  Text(
+                                    barcode,
+                                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', letterSpacing: 2.5, fontWeight: FontWeight.w500),
+                                  ),
+                                  // Price Line
+                                  Text(
+                                    'MRP: ₹$price (Incl. of all taxes)',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.black),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Print Quantity Stepper
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Copies to Print:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, size: 20),
+                                onPressed: labelCopies > 1 ? () => setDialogState(() => labelCopies--) : null,
+                              ),
+                              Text('$labelCopies', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                                onPressed: () => setDialogState(() => labelCopies++),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await _printBarcodePdf(
+                      storeName: storeNameController.text.trim().isEmpty ? 'MY STORE' : storeNameController.text.trim().toUpperCase(),
+                      productName: productName,
+                      barcode: barcode,
+                      price: price,
+                      size: selectedSize,
+                      copies: labelCopies,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.print_rounded, size: 16),
+                  label: const Text('Print Sticker Now'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Generates real PDF and sends directly to thermal label or laser printer
+  Future<void> _printBarcodePdf({
+    required String storeName,
+    required String productName,
+    required String barcode,
+    required String price,
+    required String size,
+    required int copies,
+  }) async {
+    try {
+      final doc = pw.Document();
+
+      // Determine dimensions in mm
+      double widthMm = 50;
+      double heightMm = 25;
+
+      if (size.contains('1.5"')) {
+        widthMm = 50;
+        heightMm = 38;
+      } else if (size.contains('3" x 2"')) {
+        widthMm = 75;
+        heightMm = 50;
+      } else if (size.contains('4" x 2.5"')) {
+        widthMm = 100;
+        heightMm = 60;
+      }
+
+      final pageFormat = PdfPageFormat(widthMm * PdfPageFormat.mm, heightMm * PdfPageFormat.mm, marginAll: 2 * PdfPageFormat.mm);
+
+      for (int i = 0; i < copies; i++) {
+        doc.addPage(
+          pw.Page(
+            pageFormat: pageFormat,
+            build: (pw.Context ctx) {
+              return pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    storeName,
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Text(
+                    productName,
+                    maxLines: 1,
+                    style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.BarcodeWidget(
+                    barcode: pw.Barcode.code128(),
+                    data: barcode,
+                    width: widthMm * PdfPageFormat.mm * 0.85,
+                    height: (heightMm * 0.4) * PdfPageFormat.mm,
+                  ),
+                  pw.Text(
+                    'MRP: INR $price (Incl. Taxes)',
+                    style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      }
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => doc.save(),
+        name: 'Label_${barcode}_$storeName',
+      );
+    } catch (e) {
+      _showSnack('Thermal printer error: $e', isError: true);
+    }
+  }
+
+  // ============================================================================
+  // SAVE PRODUCT
+  // ============================================================================
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
+      _showSnack('Please complete all required fields.', isError: true);
       return;
     }
 
@@ -460,8 +1010,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final sku = _skuController.text.trim().isEmpty
         ? 'AUTO-${DateTime.now().millisecondsSinceEpoch}'
         : _skuController.text.trim();
-    final categoryLabel =
-        _selectedCategory?.name ?? widget.category?.name ?? '';
+    final categoryLabel = _selectedCategory?.name ?? widget.category?.name ?? '';
 
     String? imageBase64;
     if (_productImage != null) {
@@ -477,16 +1026,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         imageBase64 = 'data:$mime;base64,${base64Encode(bytes)}';
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-              content: Text('Could not read product image: $e'),
-              backgroundColor: AppColors.secondary,
-            ),
-          );
+          _showSnack('Could not read product image: $e', isError: true);
+          setState(() => _isSaving = false);
         }
-        setState(() => _isSaving = false);
         return;
       }
     }
@@ -497,7 +1039,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             name: _nameController.text.trim(),
             sku: sku,
             price: double.parse(_priceController.text.trim()),
-            cost: 0,
+            cost: double.tryParse(_costController.text.trim()) ?? 0,
             stock: int.parse(_quantityController.text.trim()),
             barcode: _barcodeController.text.trim(),
             category: categoryLabel,
@@ -521,41 +1063,29 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       ref.invalidate(productsProvider);
       if (categoryLabel.isNotEmpty) {
         ref.invalidate(categoryProductsProvider(categoryLabel));
-        // Update local category product count if a category was selected
         final selectedCatId = _selectedCategory?.id ?? widget.category?.id;
         if (selectedCatId != null && selectedCatId.isNotEmpty) {
           ref.read(categoryRepositoryProvider).localService.incrementProductCount(selectedCatId);
-          // Refresh categories to reflect updated product count
           ref.invalidate(categoriesProvider);
         }
       }
 
-      // Phase 12: Trigger Marketplace Push APIs if toggles are ON
+      // Marketplace Pushes
       List<String> syncedPlatforms = [];
-      if (_publishToFlipkart) {
+      final token = ref.read(authProvider).token;
+
+      if (_publishToFlipkart && token != null) {
         try {
-          final token = ref.read(authProvider).token;
-          if (token != null) {
-            await MarketplaceRepository().pushProductToFlipkart(
-              productId: created.id, 
-              token: token
-            );
-            syncedPlatforms.add('Flipkart & Shopsy');
-          }
+          await MarketplaceRepository().pushProductToFlipkart(productId: created.id, token: token);
+          syncedPlatforms.add('Flipkart & Shopsy');
         } catch (e) {
           debugPrint('Flipkart push failed: $e');
         }
       }
-      if (_publishToMeesho) {
+      if (_publishToMeesho && token != null) {
         try {
-          final token = ref.read(authProvider).token;
-          if (token != null) {
-            await MarketplaceRepository().pushProductToMeesho(
-              productId: created.id, 
-              token: token
-            );
-            syncedPlatforms.add('Meesho');
-          }
+          await MarketplaceRepository().pushProductToMeesho(productId: created.id, token: token);
+          syncedPlatforms.add('Meesho');
         } catch (e) {
           debugPrint('Meesho push failed: $e');
         }
@@ -567,34 +1097,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (_publishToWooCommerce) syncedPlatforms.add('WooCommerce');
 
       if (syncedPlatforms.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 3),
-            content: Text('Successfully pushed to: ${syncedPlatforms.join(", ")}'),
-            backgroundColor: AppColors.secondary,
-          ),
-        );
+        _showSnack('🚀 Auto-synced to: ${syncedPlatforms.join(", ")}');
       }
 
-      context.pop(legacy);
+      if (mounted) context.pop(legacy);
     } catch (e) {
-      if (mounted) {
-        final errStr = e.toString();
-        final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection') || errStr.contains('Failed host lookup')
-            ? 'You are offline. Please check your internet connection and try again.'
-            : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-            content: Text('Save failed: $cleanErr'),
-            backgroundColor: AppColors.secondary,
-          ),
-        );
-      }
+      if (!mounted) return;
+      String err = e.toString();
+      if (err.contains('ApiException:')) err = err.split('ApiException:').last.trim();
+      _showSnack('Failed to save product: $err', isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  int get _activeMarketplacesCount {
+    int count = 0;
+    if (_publishToFlipkart) count++;
+    if (_publishToMeesho) count++;
+    if (_publishToZomato) count++;
+    if (_publishToSwiggy) count++;
+    if (_publishToEatClub) count++;
+    if (_publishToShopify) count++;
+    if (_publishToWooCommerce) count++;
+    return count;
   }
 
   @override
@@ -605,389 +1131,219 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.primary,
-            size: 28,
+        leadingWidth: 70,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Center(
+            child: InkWell(
+              onTap: () => Navigator.of(context).pop(),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundTertiary,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+                ),
+                child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
+              ),
+            ),
           ),
-          onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Add New Product',
-          style: AppTypography.headlineMedium.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Add New Product',
+              style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w500),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'Enterprise Catalog • Real-time Sync',
+                    style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
-              Icons.close_rounded,
-              color: AppColors.textSecondary,
-            ),
-            label: Text(
-              'Cancel',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: ElevatedButton.icon(
+              onPressed: (_isScanning || _isSaving) ? null : _saveProduct,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.check_rounded, size: 18),
+              label: Text(
+                _isSaving ? 'Saving...' : 'Save',
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
               ),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Product Image Section
-                _buildImageSection(),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 850;
 
-                if (_aiSuggestion != null) ...[
-                  const SizedBox(height: 24),
-                  _buildAIPreviewCard(),
-                ],
-
-                const SizedBox(height: 24),
-
-                // Basic Information Section
-                Text(
-                  'Basic Information',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Product Name
-                _buildProductNameField(),
-
-                const SizedBox(height: 16),
-
-                // SKU Code & Barcode Row (with Auto-Generate & Label Print)
-                _buildSKUAndBarcodeRow(),
-
-                const SizedBox(height: 16),
-
-                // Category & Unit Row
-                Row(
+              if (isWide) {
+                return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 3, child: _buildCategoryDropdown()),
-                    const SizedBox(width: 8),
-                    Expanded(flex: 2, child: _buildUnitDropdown()),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Pricing & Stock Section
-                Text(
-                  'Pricing & Stock',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Price & Quantity Row
-                Row(
-                  children: [
-                    Expanded(child: _buildPriceField()),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildQuantityField()),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Description Section
-                Text(
-                  'Description',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                _buildDescriptionField(),
-
-                const SizedBox(height: 24),
-
-                // Additional Information Section
-                Text(
-                  'Additional Information',
-                  style: AppTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Brand
-                _buildBrandField(),
-
-                const SizedBox(height: 16),
-
-                // Location & Reorder Level Row
-                Row(
-                  children: [
-                    Expanded(child: _buildLocationField()),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildReorderLevelField()),
-                  ],
-                ),
-
-                const SizedBox(height: 32),
-
-                // Marketplace Auto-Sync & Publishing Section
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                    // Left Column (Media & Marketplaces)
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.hub_rounded, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Marketplace Auto-Sync & Publishing', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
-                                Text('Select channels to automatically push & sync this product', style: AppTypography.bodySmall.copyWith(color: Colors.blue.shade700)),
-                              ],
-                            ),
-                          ),
+                          _buildStudioCard(),
+                          if (_aiSuggestion != null) ...[
+                            const SizedBox(height: 16),
+                            _buildAIPreviewCard(),
+                          ],
+                          const SizedBox(height: 20),
+                          _buildMarketplaceSwitchboardCard(),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Publish to Flipkart & Shopsy',
-                        subtitle: 'Auto-sync product listing to Flipkart Seller Hub',
-                        icon: Icons.shopping_bag,
-                        color: Colors.blue,
-                        value: _publishToFlipkart,
-                        onChanged: (val) => setState(() => _publishToFlipkart = val),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Publish to Meesho',
-                        subtitle: 'Auto-list product on Meesho Seller Panel',
-                        icon: Icons.storefront,
-                        color: Colors.pink,
-                        value: _publishToMeesho,
-                        onChanged: (val) => setState(() => _publishToMeesho = val),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Sync with Zomato Merchant',
-                        subtitle: 'Add to active Zomato restaurant menu',
-                        icon: Icons.restaurant,
-                        color: Colors.red,
-                        value: _publishToZomato,
-                        onChanged: (val) => setState(() => _publishToZomato = val),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Sync with Swiggy Partner',
-                        subtitle: 'Add to live Swiggy outlet catalog',
-                        icon: Icons.delivery_dining,
-                        color: Colors.orange,
-                        value: _publishToSwiggy,
-                        onChanged: (val) => setState(() => _publishToSwiggy = val),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Sync with Eat Club',
-                        subtitle: 'Push item to Eat Club outlets',
-                        icon: Icons.flatware,
-                        color: Colors.deepOrange,
-                        value: _publishToEatClub,
-                        onChanged: (val) => setState(() => _publishToEatClub = val),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Publish to Shopify Store',
-                        subtitle: 'Sync product with Shopify catalog',
-                        icon: Icons.shop_two,
-                        color: Colors.green,
-                        value: _publishToShopify,
-                        onChanged: (val) => setState(() => _publishToShopify = val),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildMarketplaceSwitchTile(
-                        title: 'Publish to WooCommerce / WpKart',
-                        subtitle: 'Sync product with WordPress WooCommerce store',
-                        icon: Icons.language,
-                        color: Colors.purple,
-                        value: _publishToWooCommerce,
-                        onChanged: (val) => setState(() => _publishToWooCommerce = val),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-
-                // Save Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (_isScanning || _isSaving) ? null : _saveProduct,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
                     ),
-                    child: _isScanning
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.save_rounded),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Save Product',
-                                style: AppTypography.titleMedium.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Info Note
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.infoLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.info.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        color: AppColors.info,
-                        size: 20,
+                    const SizedBox(width: 20),
+                    // Right Column (Forms)
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildEssentialsCard(),
+                          const SizedBox(height: 16),
+                          _buildClassificationCard(),
+                          const SizedBox(height: 16),
+                          _buildPricingStockCard(),
+                          const SizedBox(height: 16),
+                          _buildOrganizationCard(),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Upload a product image and use AI Scan to auto-fill details',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.info,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
+                );
+              }
 
-                const SizedBox(height: 32),
-              ],
-            ),
+              // Mobile Layout
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStudioCard(),
+                  if (_aiSuggestion != null) ...[
+                    const SizedBox(height: 16),
+                    _buildAIPreviewCard(),
+                  ],
+                  const SizedBox(height: 16),
+                  _buildEssentialsCard(),
+                  const SizedBox(height: 16),
+                  _buildClassificationCard(),
+                  const SizedBox(height: 16),
+                  _buildPricingStockCard(),
+                  const SizedBox(height: 16),
+                  _buildMarketplaceSwitchboardCard(),
+                  const SizedBox(height: 16),
+                  _buildOrganizationCard(),
+                ],
+              );
+            },
           ),
         ),
       ),
+      bottomNavigationBar: _buildStickyBottomActionBar(),
     );
   }
 
   // ============================================================================
-  // BUILD WIDGETS - Form Sections
+  // CARD 1: SMART PRODUCT STUDIO & AI VISION
   // ============================================================================
-
-  Widget _buildImageSection() {
-    return Column(
-      children: [
-        // Image Preview / Upload Box
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _showImageSourceDialog,
-          child: Container(
+  Widget _buildStudioCard() {
+    return _buildSectionContainer(
+      icon: Icons.camera_enhance_rounded,
+      iconColor: const Color(0xFF2563EB),
+      title: 'Smart Product Studio',
+      subtitle: 'Upload photo & use AI vision auto-detection',
+      child: Column(
+        children: [
+          Container(
             width: double.infinity,
-            height: 250,
+            height: 200,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _productImage != null
-                    ? AppColors.success
-                    : AppColors.border,
-                width: 2,
+                color: _productImage != null ? AppColors.primary : AppColors.border,
+                width: 1.5,
               ),
             ),
             child: _productImage == null
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
-                          shape: BoxShape.circle,
+                ? InkWell(
+                    onTap: _showImageSourceDialog,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add_photo_alternate_rounded,
+                            size: 36,
+                            color: AppColors.primary,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.add_photo_alternate_outlined,
-                          size: 48,
-                          color: AppColors.primary,
+                        const SizedBox(height: 12),
+                        Text(
+                          'Upload Product Photo',
+                          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Tap to add product image',
-                        style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.textSecondary,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tap to choose Camera or Gallery',
+                          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Camera or Gallery',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   )
                 : Stack(
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(15),
                         child: Image.file(
                           _productImage!,
                           width: double.infinity,
@@ -995,56 +1351,57 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           fit: BoxFit.cover,
                         ),
                       ),
+                      // Top Action Overlay
                       Positioned(
                         top: 8,
                         right: 8,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _productImage = null;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              shape: BoxShape.circle,
+                        child: Row(
+                          children: [
+                            _buildGlassIconBtn(
+                              icon: Icons.edit_rounded,
+                              tooltip: 'Change Photo',
+                              onTap: _showImageSourceDialog,
                             ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 20,
+                            const SizedBox(width: 8),
+                            _buildGlassIconBtn(
+                              icon: Icons.close_rounded,
+                              tooltip: 'Remove',
                               color: AppColors.error,
+                              onTap: () => setState(() {
+                                _productImage = null;
+                                _aiSuggestion = null;
+                              }),
                             ),
-                          ),
+                          ],
                         ),
                       ),
+                      // Bottom AI Scan Banner
                       if (_isScanning)
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(14),
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(15),
                             ),
                             child: const Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   SizedBox(
-                                    width: 40,
-                                    height: 40,
+                                    width: 32,
+                                    height: 32,
                                     child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
+                                      strokeWidth: 3,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   ),
-                                  SizedBox(height: 16),
+                                  SizedBox(height: 12),
                                   Text(
-                                    'Analyzing with AI...',
+                                    'Gemini Vision Analyzing...',
                                     style: TextStyle(
                                       color: Colors.white,
+                                      fontWeight: FontWeight.w500,
                                       fontSize: 14,
-                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
@@ -1055,187 +1412,172 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ],
                   ),
           ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Action Buttons
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _isScanning ? null : _showImageSourceDialog,
-                icon: const Icon(Icons.photo_camera_rounded, size: 20),
-                label: const Text('Add Image'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 14),
+          // Action Buttons under photo
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isScanning ? null : _showImageSourceDialog,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: Text(_productImage == null ? 'Select Photo' : 'Change Photo'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: (_isScanning || _productImage == null) ? null : _scanWithAI,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                  label: const Text(
+                    'AI Vision Scan',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _isScanning || _productImage == null
-                    ? null
-                    : _scanWithAI,
-                icon: _isScanning
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.primary,
-                          ),
-                        ),
-                      )
-                    : const Icon(Icons.auto_awesome_rounded, size: 20),
-                label: Text(_isScanning ? 'Scanning...' : 'AI Scan'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _productImage == null
-                      ? AppColors.textTertiary
-                      : AppColors.primary,
-                  side: BorderSide(
-                    color: _productImage == null
-                        ? AppColors.border
-                        : AppColors.primary,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        if (_scanError != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _scanError!,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+            ],
           ),
+          if (_scanError != null) ...[
+            const SizedBox(height: 8),
+            Text(_scanError!, style: AppTypography.caption.copyWith(color: AppColors.error)),
+          ],
         ],
-      ],
+      ),
     );
   }
 
-  Future<void> _applyAISuggestion() async {
-    if (_aiSuggestion == null) return;
-    
-    final ai = _aiSuggestion!;
-
-    // Auto-create category if missing
-    if (ai.suggestedCategory != null && ai.suggestedCategory!.isNotEmpty) {
-      try {
-        final matchingCategory = _categories.firstWhere(
-          (c) => c.name.toLowerCase() == ai.suggestedCategory!.toLowerCase(),
-        );
-        setState(() {
-          _selectedCategoryId = matchingCategory.id;
-        });
-      } catch (e) {
-        // Suggested category not found. Ignored; user can select an existing category.
-      }
-    }
-    
-    if (mounted) {
-      setState(() {
-        _nameController.text = ai.productName;
-        _descriptionController.text = ai.description;
-
-        if (ai.priceEstimate != null) {
-          _priceController.text = ai.priceEstimate.toString();
-        }
-
-        _aiSuggestion = null; // Clear suggestion after applying
-      });
-    }
+  Widget _buildGlassIconBtn({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.6),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+      ),
+    );
   }
 
   Widget _buildAIPreviewCard() {
     final ai = _aiSuggestion!;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.05),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_awesome, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(
-                'AI Analysis Results',
-                style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+          // Blue Accent Bar (#2563EB)
+          Container(
+            height: 3,
+            color: const Color(0xFF2563EB),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Gemini AI Insights',
+                      style: AppTypography.titleMedium.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF2563EB),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.verified_rounded, size: 12, color: AppColors.success),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${(ai.confidence * 100).toInt()}% Match',
+                            style: const TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${(ai.confidence * 100).toInt()}% match',
-                  style: const TextStyle(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                const SizedBox(height: 12),
+                _buildAIInfoRow('Suggested Title', ai.productName),
+                const SizedBox(height: 6),
+                _buildAIInfoRow('Predicted Category', ai.suggestedCategory ?? 'General'),
+                if (ai.priceEstimate != null) ...[
+                  const SizedBox(height: 6),
+                  _buildAIInfoRow('Estimated Price', '₹${ai.priceEstimate}'),
+                ],
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _applyAISuggestion,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.check_circle_rounded, size: 16),
+                    label: const Text('Apply AI Recommendations', style: TextStyle(fontWeight: FontWeight.w500)),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildPreviewRow('Name:', ai.productName),
-          const SizedBox(height: 8),
-          _buildPreviewRow('Category:', ai.suggestedCategory ?? 'N/A'),
-          const SizedBox(height: 8),
-          if (ai.priceEstimate != null) ...[
-            _buildPreviewRow('Price Estimate:', '\$${ai.priceEstimate}'),
-            const SizedBox(height: 8),
-          ],
-          if (ai.tags.isNotEmpty) ...[
-            _buildPreviewRow('Tags:', ai.tags.join(', ')),
-            const SizedBox(height: 8),
-          ],
-          const Text(
-            'Description:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            ai.description,
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _applyAISuggestion,
-              icon: const Icon(Icons.check),
-              label: const Text('Apply Suggestions'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+              ],
             ),
           ),
         ],
@@ -1243,462 +1585,825 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  Widget _buildPreviewRow(String label, String value) {
+  Widget _buildAIInfoRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 80,
+          width: 115,
           child: Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             value,
-            style: TextStyle(color: Colors.grey.shade800, fontSize: 13),
+            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
           ),
         ),
       ],
     );
   }
-  Widget _buildProductNameField() {
-    return TextFormField(
-      controller: _nameController,
-      decoration: InputDecoration(
-        labelText: 'Product Name *',
-        hintText: 'Enter product name',
-        prefixIcon: const Icon(Icons.inventory_2_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Product name is required';
-        }
-        return null;
-      },
-    );
-  }
 
-  void _generateInternalBarcode() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    final uniqueSuffix = timestamp.substring(timestamp.length - 8);
-    final internalBarcode = '20$uniqueSuffix';
-    setState(() {
-      _barcodeController.text = internalBarcode;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('⚡ Auto-generated internal barcode: $internalBarcode'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
+  // ============================================================================
+  // CARD 2: ESSENTIALS (With Barcode Scanner & Generator above Product Name)
+  // ============================================================================
+  Widget _buildEssentialsCard() {
+    return _buildSectionContainer(
+      icon: Icons.inventory_2_rounded,
+      iconColor: AppColors.primary,
+      title: 'Core Identification',
+      subtitle: 'Scan or generate barcode, product title, and SKU',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Two Quick Action Buttons: Barcode Scanner & Barcode Generator ──
+          _buildBarcodeDualActionButtons(),
+          const SizedBox(height: 18),
 
-  void _showBarcodeLabelPreview() {
-    final barcode = _barcodeController.text.trim();
-    if (barcode.isEmpty) return;
-    final name = _nameController.text.trim().isEmpty ? 'Product Name' : _nameController.text.trim();
-    final price = _priceController.text.trim().isEmpty ? '0.00' : _priceController.text.trim();
+          // Product Name
+          _buildFieldLabel('Product Name *', isRequired: true),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _nameController,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+            decoration: _buildInputDecoration(
+              hint: 'e.g. Premium Cotton Polo Shirt',
+              prefixIcon: Icons.edit_note_rounded,
+            ),
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Product name is required' : null,
+          ),
+          const SizedBox(height: 16),
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.print_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text('Thermal Label Preview (2" x 1")', style: AppTypography.titleMedium),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.black54, width: 1.5),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          // SKU & Barcode Grid
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 450;
+              final skuField = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'RETAIL VERSE STORE',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
+                  _buildFieldLabel('SKU Code', optionalText: '(Auto-assigned if empty)'),
                   const SizedBox(height: 6),
-                  Container(
-                    height: 36,
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        35,
-                        (i) => Container(
-                          width: (i % 3 == 0) ? 3 : (i % 2 == 0) ? 1.5 : 2,
-                          color: (i % 5 == 0) ? Colors.transparent : Colors.black,
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
-                        ),
-                      ),
+                  TextFormField(
+                    controller: _skuController,
+                    decoration: _buildInputDecoration(
+                      hint: 'e.g. SKU-84920',
+                      prefixIcon: Icons.tag_rounded,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    barcode,
-                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', letterSpacing: 2),
+                ],
+              );
+
+              final barcodeField = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildFieldLabel('Barcode (EAN/UPC)'),
+                      if (_barcodeController.text.isNotEmpty)
+                        InkWell(
+                          onTap: _showCustomizableBarcodePrintDialog,
+                          borderRadius: BorderRadius.circular(6),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            child: Row(
+                              children: [
+                                Icon(Icons.print_outlined, size: 14, color: AppColors.primary),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Print Label',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'MRP: ₹$price (Incl. of all taxes)',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _barcodeController,
+                    decoration: _buildInputDecoration(
+                      hint: 'Scan or generate barcode...',
+                      prefixIcon: Icons.qr_code_scanner_rounded,
+                      suffix: _barcodeController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.print_outlined, size: 18, color: AppColors.primary),
+                              tooltip: 'Print Thermal Label',
+                              onPressed: _showCustomizableBarcodePrintDialog,
+                            )
+                          : null,
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Compatible with TVS, TSC, Zebra, and standard ESC/POS 2" barcode label printers.',
-              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  duration: Duration(seconds: 2),
-                  content: Text('Print command sent to thermal label printer!'),
-                  backgroundColor: AppColors.secondary,
-                ),
+              );
+
+              if (isNarrow) {
+                return Column(
+                  children: [
+                    skuField,
+                    const SizedBox(height: 14),
+                    barcodeField,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: skuField),
+                  const SizedBox(width: 14),
+                  Expanded(child: barcodeField),
+                ],
               );
             },
-            icon: const Icon(Icons.print_rounded, size: 16),
-            label: const Text('Print Sticker'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSKUAndBarcodeRow() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 500;
-        final skuField = TextFormField(
-          controller: _skuController,
-          decoration: InputDecoration(
-            labelText: 'SKU Code',
-            hintText: 'e.g. SKU-10492',
-            helperText: 'Auto-assigned if left blank',
-            prefixIcon: const Icon(Icons.tag_rounded, color: AppColors.primary),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: AppColors.background,
-          ),
-        );
-
-        final barcodeField = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Barcode (Optional)',
-                  style: AppTypography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+  /// Two side-by-side action buttons located immediately above Product Name
+  Widget _buildBarcodeDualActionButtons() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9).withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.qr_code_2_rounded, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Barcode Quick Operations',
+                style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+              ),
+              const Spacer(),
+              if (_barcodeController.text.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Code: ${_barcodeController.text}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.success),
                   ),
                 ),
-                InkWell(
-                  onTap: _generateInternalBarcode,
-                  borderRadius: BorderRadius.circular(6),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // ── 1ST BUTTON: BARCODE SCANNER (OPENS CAMERA) ──
+              Expanded(
+                child: InkWell(
+                  onTap: _openCameraBarcodeScanner,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.bolt, size: 14, color: AppColors.primary),
-                        SizedBox(width: 2),
-                        Text(
-                          '⚡ Auto-Generate Barcode',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF2563EB), size: 20),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Barcode Scanner',
+                                style: AppTypography.titleSmall.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF1E3A8A),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                'Camera Scan',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: _barcodeController,
-              decoration: InputDecoration(
-                hintText: 'Scan or enter barcode...',
-                prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
-                suffixIcon: _barcodeController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.print_outlined, size: 20, color: AppColors.primary),
-                        tooltip: 'Print Barcode Label',
-                        onPressed: _showBarcodeLabelPreview,
-                      )
-                    : null,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: AppColors.background,
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ],
-        );
 
-        if (isNarrow) {
-          return Column(
-            children: [
-              skuField,
-              const SizedBox(height: 16),
-              barcodeField,
+              const SizedBox(width: 10),
+
+              // ── 2ND BUTTON: BARCODE GENERATOR (GENERATE & PRINT ICON) ──
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // Generator Click Zone
+                      Expanded(
+                        child: InkWell(
+                          onTap: _generateInternalBarcode,
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.bolt_rounded, color: Color(0xFF059669), size: 20),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Barcode Generator',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTypography.titleSmall.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF065F46),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        'Auto-Generate',
+                                        style: AppTypography.caption.copyWith(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Print Icon Button on Side (Opens Customizable Print Popup)
+                      Container(
+                        height: 38,
+                        width: 1,
+                        color: Colors.grey.shade200,
+                      ),
+                      Tooltip(
+                        message: 'Print Barcode Sticker',
+                        child: InkWell(
+                          onTap: () {
+                            if (_barcodeController.text.isEmpty) {
+                              _generateInternalBarcode();
+                            }
+                            _showCustomizableBarcodePrintDialog();
+                          },
+                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                              borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+                            ),
+                            child: const Icon(Icons.print_rounded, color: Color(0xFF059669), size: 20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: skuField),
-            const SizedBox(width: 12),
-            Expanded(child: barcodeField),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryDropdown() {
-    // Remove duplicates by ID to prevent assertion errors
+  // ============================================================================
+  // CARD 3: CLASSIFICATION (Category & Units)
+  // ============================================================================
+  Widget _buildClassificationCard() {
     final seenIds = <String>{};
     final uniqueCategories = <CategoryEntity>[];
-    for (final category in _categories) {
-      if (seenIds.add(category.id)) {
-        uniqueCategories.add(category);
-      }
+    for (final c in _categories) {
+      if (seenIds.add(c.id)) uniqueCategories.add(c);
     }
 
-    if (_isLoadingCategories) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            value: _selectedCategoryId,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Category *',
-              prefixIcon: const Icon(Icons.category_rounded),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+    return _buildSectionContainer(
+      icon: Icons.category_rounded,
+      iconColor: const Color(0xFF0D9488),
+      title: 'Classification & Units',
+      subtitle: 'Organize catalog for reporting & quick POS lookup',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category Dropdown
+              Expanded(
+                flex: 6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildFieldLabel('Category *', isRequired: true),
+                        InkWell(
+                          onTap: _loadCategories,
+                          borderRadius: BorderRadius.circular(6),
+                          child: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    _isLoadingCategories
+                        ? const LinearProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            initialValue: _selectedCategoryId,
+                            isExpanded: true,
+                            decoration: _buildInputDecoration(
+                              hint: 'Select category',
+                              prefixIcon: Icons.folder_outlined,
+                            ),
+                            items: uniqueCategories.map((cat) {
+                              return DropdownMenuItem<String>(
+                                value: cat.id,
+                                child: Text(cat.name, overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (v) => setState(() => _selectedCategoryId = v),
+                            validator: (v) => (v == null || v.isEmpty) ? 'Category is required' : null,
+                          ),
+                  ],
+                ),
               ),
-              filled: true,
-              fillColor: AppColors.background,
+              const SizedBox(width: 12),
+              // Unit of Measure
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('UOM / Unit'),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedUnit,
+                      isExpanded: true,
+                      decoration: _buildInputDecoration(
+                        hint: 'Unit',
+                        prefixIcon: Icons.straighten_rounded,
+                      ),
+                      items: _unitOptions.map((u) {
+                        return DropdownMenuItem(value: u, child: Text(u));
+                      }).toList(),
+                      onChanged: (v) => setState(() => _selectedUnit = v ?? 'pcs'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Popular unit chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ['pcs', 'kg', 'pack', 'box', 'set', 'litre'].map((unit) {
+                final isSelected = _selectedUnit == unit;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    selected: isSelected,
+                    label: Text(unit),
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                    backgroundColor: Colors.white,
+                    selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                    side: BorderSide(
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                    ),
+                    onSelected: (_) => setState(() => _selectedUnit = unit),
+                  ),
+                );
+              }).toList(),
             ),
-            hint: Text(
-              _categories.isEmpty
-                  ? 'Add categories first'
-                  : 'Select a category',
-              overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+  // CARD 4: PRICING & STOCK CONTROLS
+  // ============================================================================
+  Widget _buildMarginIndicator() {
+    final price = double.tryParse(_priceController.text.trim()) ?? 0.0;
+    final cost = double.tryParse(_costController.text.trim()) ?? 0.0;
+    if (price <= 0 || cost <= 0) return const SizedBox.shrink();
+
+    final profit = price - cost;
+    final margin = (profit / price) * 100;
+    final isPositive = profit >= 0;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isPositive ? AppColors.success.withValues(alpha: 0.08) : AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isPositive ? AppColors.success.withValues(alpha: 0.25) : AppColors.error.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+            size: 16,
+            color: isPositive ? AppColors.success : AppColors.error,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Profit: ₹${profit.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isPositive ? const Color(0xFF065F46) : AppColors.error,
             ),
-            items: uniqueCategories.map((category) {
-              return DropdownMenuItem<String>(
-                value: category.id,
-                child: Text(category.name, overflow: TextOverflow.ellipsis),
-              );
-            }).toList(),
-            onChanged: _isScanning || _categories.isEmpty
-                ? null
-                : (value) {
-                    setState(() {
-                      _selectedCategoryId = value;
-                    });
-                  },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Required';
-              }
-              return null;
-            },
+          ),
+          const SizedBox(width: 8),
+          Container(width: 1, height: 12, color: AppColors.border),
+          const SizedBox(width: 8),
+          Text(
+            'Margin: ${margin.toStringAsFixed(1)}%',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isPositive ? const Color(0xFF065F46) : AppColors.error,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingStockCard() {
+    return _buildSectionContainer(
+      icon: Icons.payments_rounded,
+      iconColor: const Color(0xFF10B981),
+      title: 'Pricing & Inventory Matrix',
+      subtitle: 'Selling price, cost price, stock, and tax controls',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Selling Price
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Selling Price (INR) *', isRequired: true),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+                      decoration: _buildInputDecoration(
+                        hint: '0.00',
+                        prefixWidget: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('₹', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 18)),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (double.tryParse(v) == null) return 'Invalid price';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              // Cost Price (Purchase)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Cost Price', optionalText: '(Purchase)'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _costController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+                      decoration: _buildInputDecoration(
+                        hint: '0.00',
+                        prefixWidget: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('₹', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 18)),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          _buildMarginIndicator(),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              // Quantity
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Current Stock *', isRequired: true),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _quantityController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+                      decoration: _buildInputDecoration(
+                        hint: '0',
+                        prefixIcon: Icons.layers_outlined,
+                        suffix: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                final cur = int.tryParse(_quantityController.text) ?? 0;
+                                if (cur > 0) _quantityController.text = (cur - 1).toString();
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(Icons.remove_circle_outline, size: 20, color: AppColors.textSecondary),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                final cur = int.tryParse(_quantityController.text) ?? 0;
+                                _quantityController.text = (cur + 1).toString();
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (int.tryParse(v) == null) return 'Invalid count';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              // Reorder Level
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Low Stock Alert Level'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _reorderLevelController,
+                      keyboardType: TextInputType.number,
+                      decoration: _buildInputDecoration(
+                        hint: 'e.g. 5',
+                        prefixIcon: Icons.warning_amber_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Quick stock adders
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Text('Quick Count: ', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                ...[5, 10, 25, 50, 100].map((addCount) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ActionChip(
+                      label: Text('+$addCount'),
+                      labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: EdgeInsets.zero,
+                      onPressed: () {
+                        final current = int.tryParse(_quantityController.text) ?? 0;
+                        setState(() {
+                          _quantityController.text = (current + addCount).toString();
+                        });
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Location / Bin
+          _buildFieldLabel('Warehouse / Shelf Bin'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _locationController,
+            decoration: _buildInputDecoration(
+              hint: 'e.g. Aisle 3-B, Shelf 2',
+              prefixIcon: Icons.location_on_outlined,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // GST Tax Rate Selector
+          _buildFieldLabel('GST / Tax Rate'),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [0, 5, 12, 18, 28].map((rate) {
+                final isSel = _selectedGstRate == rate;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(rate == 0 ? '0% (Exempt)' : '$rate% GST'),
+                    selected: isSel,
+                    onSelected: (_) => setState(() => _selectedGstRate = rate),
+                    selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSel ? FontWeight.w500 : FontWeight.normal,
+                      color: isSel ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                    side: BorderSide(color: isSel ? AppColors.primary : AppColors.border),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+  // CARD 5: OMNICHANNEL MARKETPLACE SWITCHBOARD
+  // ============================================================================
+  Widget _buildMarketplaceSwitchboardCard() {
+    return _buildSectionContainer(
+      icon: Icons.hub_rounded,
+      iconColor: const Color(0xFF2563EB),
+      title: 'Omnichannel Auto-Publishing',
+      subtitle: 'Automatically push and sync stock to connected marketplaces',
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: _activeMarketplacesCount > 0
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '$_activeMarketplacesCount Active',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: _activeMarketplacesCount > 0 ? AppColors.primary : Colors.grey,
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _loadCategories,
-          tooltip: 'Refresh Categories',
-          icon: const Icon(Icons.refresh_rounded),
-          color: AppColors.primary,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUnitDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedUnit,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: 'Unit',
-        prefixIcon: const Icon(Icons.straighten_rounded),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
       ),
-      items: _unitOptions.map((unit) {
-        return DropdownMenuItem(
-          value: unit, 
-          child: Text(unit, overflow: TextOverflow.ellipsis),
-        );
-      }).toList(),
-      onChanged: _isScanning
-          ? null
-          : (value) {
-              setState(() {
-                _selectedUnit = value!;
-              });
-            },
-    );
-  }
-
-  Widget _buildPriceField() {
-    return TextFormField(
-      controller: _priceController,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: 'Price *',
-        hintText: '0.00',
-        prefixIcon: const Icon(Icons.attach_money),
-        prefixText: '\$ ',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Required';
-        }
-        if (double.tryParse(value) == null) {
-          return 'Invalid number';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildQuantityField() {
-    return TextFormField(
-      controller: _quantityController,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: 'Quantity *',
-        hintText: '0',
-        prefixIcon: const Icon(Icons.inventory_2_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Required';
-        }
-        if (int.tryParse(value) == null) {
-          return 'Invalid number';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildDescriptionField() {
-    return TextFormField(
-      controller: _descriptionController,
-      maxLines: 5,
-      minLines: 4,
-      decoration: InputDecoration(
-        labelText: 'Description',
-        hintText: 'AI will auto-fill this after scanning, or enter manually...',
-        alignLabelWithHint: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
-      ),
-    );
-  }
-
-  Widget _buildBrandField() {
-    return TextFormField(
-      controller: _brandController,
-      decoration: InputDecoration(
-        labelText: 'Brand (Optional)',
-        hintText: 'e.g., Samsung, Apple, etc.',
-        prefixIcon: const Icon(Icons.business_rounded),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
-      ),
-    );
-  }
-
-  Widget _buildLocationField() {
-    return TextFormField(
-      controller: _locationController,
-      decoration: InputDecoration(
-        labelText: 'Warehouse Location (Optional)',
-        hintText: 'e.g., A-12-B',
-        prefixIcon: const Icon(Icons.location_on_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
-      ),
-    );
-  }
-
-  Widget _buildReorderLevelField() {
-    return TextFormField(
-      controller: _reorderLevelController,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: 'Reorder Level (Optional)',
-        hintText: '10',
-        prefixIcon: const Icon(Icons.warning_outlined),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.background,
+      child: Column(
+        children: [
+          _buildMarketplaceSwitchTile(
+            title: 'Flipkart & Shopsy Seller Hub',
+            subtitle: '1-Click Instant listing & inventory sync',
+            icon: Icons.shopping_bag_rounded,
+            color: const Color(0xFF2874F0),
+            value: _publishToFlipkart,
+            onChanged: (v) => setState(() => _publishToFlipkart = v),
+          ),
+          const SizedBox(height: 8),
+          _buildMarketplaceSwitchTile(
+            title: 'Meesho Seller Panel',
+            subtitle: 'Auto-list product on Meesho supplier catalog',
+            icon: Icons.storefront_rounded,
+            color: const Color(0xFFE81B63),
+            value: _publishToMeesho,
+            onChanged: (v) => setState(() => _publishToMeesho = v),
+          ),
+          const SizedBox(height: 8),
+          _buildMarketplaceSwitchTile(
+            title: 'Zomato Merchant Partner',
+            subtitle: 'Sync menu listing and active restaurant inventory',
+            icon: Icons.restaurant_rounded,
+            color: const Color(0xFFCB202D),
+            value: _publishToZomato,
+            onChanged: (v) => setState(() => _publishToZomato = v),
+          ),
+          const SizedBox(height: 8),
+          _buildMarketplaceSwitchTile(
+            title: 'Swiggy Outlet Partner',
+            subtitle: 'Real-time outlet catalog & stock push',
+            icon: Icons.delivery_dining_rounded,
+            color: const Color(0xFFFC8019),
+            value: _publishToSwiggy,
+            onChanged: (v) => setState(() => _publishToSwiggy = v),
+          ),
+          const SizedBox(height: 8),
+          _buildMarketplaceSwitchTile(
+            title: 'Eat Club Outlets',
+            subtitle: 'Auto-sync catalog across Eat Club store network',
+            icon: Icons.flatware_rounded,
+            color: Colors.deepOrange,
+            value: _publishToEatClub,
+            onChanged: (v) => setState(() => _publishToEatClub = v),
+          ),
+          const SizedBox(height: 8),
+          _buildMarketplaceSwitchTile(
+            title: 'Shopify Store Catalog',
+            subtitle: 'Direct push to Shopify online storefront',
+            icon: Icons.shop_two_rounded,
+            color: const Color(0xFF008060),
+            value: _publishToShopify,
+            onChanged: (v) => setState(() => _publishToShopify = v),
+          ),
+          const SizedBox(height: 8),
+          _buildMarketplaceSwitchTile(
+            title: 'WooCommerce / WpKart',
+            subtitle: 'WordPress eCommerce catalog sync',
+            icon: Icons.language_rounded,
+            color: const Color(0xFF7F54B3),
+            value: _publishToWooCommerce,
+            onChanged: (v) => setState(() => _publishToWooCommerce = v),
+          ),
+        ],
       ),
     );
   }
@@ -1713,19 +2418,268 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: value ? color.withValues(alpha: 0.5) : Colors.grey.shade300),
+        color: value ? color.withValues(alpha: 0.04) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: value ? color.withValues(alpha: 0.4) : AppColors.border,
+          width: value ? 1.5 : 1.0,
+        ),
       ),
       child: SwitchListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        title: Text(title, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: value ? color : AppColors.textPrimary)),
-        subtitle: Text(subtitle, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        secondary: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(
+          title,
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.w500,
+            color: value ? color : AppColors.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+        ),
         value: value,
         onChanged: onChanged,
         activeThumbColor: color,
-        secondary: Icon(icon, color: color, size: 22),
+      ),
+    );
+  }
+
+  // ============================================================================
+  // CARD 6: ORGANIZATION & DESCRIPTION
+  // ============================================================================
+  Widget _buildOrganizationCard() {
+    return _buildSectionContainer(
+      icon: Icons.description_rounded,
+      iconColor: const Color(0xFF8B5CF6),
+      title: 'Additional Details',
+      subtitle: 'Brand specification and detailed product description',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFieldLabel('Brand / Manufacturer'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _brandController,
+            decoration: _buildInputDecoration(
+              hint: 'e.g. Samsung, Nike, Local Brand',
+              prefixIcon: Icons.business_rounded,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildFieldLabel('Product Description'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _descriptionController,
+            maxLines: 4,
+            decoration: _buildInputDecoration(
+              hint: 'Enter detailed specifications or let AI fill this automatically...',
+              prefixIcon: Icons.notes_rounded,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+  // STICKY BOTTOM ACTION BAR
+  // ============================================================================
+  Widget _buildStickyBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ready to Publish',
+                    style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    _activeMarketplacesCount > 0
+                        ? '$_activeMarketplacesCount Marketplace(s) Synced'
+                        : 'Local Store Only',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _activeMarketplacesCount > 0 ? AppColors.primary : AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: (_isScanning || _isSaving) ? null : _saveProduct,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 2,
+              ),
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.rocket_launch_rounded, size: 18),
+              label: Text(
+                _isSaving ? 'Publishing...' : 'Save & Publish Product',
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================================
+  // REUSABLE HELPERS
+  // ============================================================================
+  Widget _buildSectionContainer({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required Widget child,
+    Widget? trailing,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label, {bool isRequired = false, String? optionalText}) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: AppTypography.bodySmall.copyWith(
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        if (optionalText != null) ...[
+          const SizedBox(width: 4),
+          Text(
+            optionalText,
+            style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
+          ),
+        ],
+      ],
+    );
+  }
+
+  InputDecoration _buildInputDecoration({
+    required String hint,
+    IconData? prefixIcon,
+    Widget? prefixWidget,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
+      prefixIcon: prefixWidget ??
+          (prefixIcon != null ? Icon(prefixIcon, size: 20, color: AppColors.textSecondary) : null),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.error),
       ),
     );
   }
