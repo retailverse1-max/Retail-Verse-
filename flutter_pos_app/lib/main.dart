@@ -79,11 +79,29 @@ class RetailVerseApp extends ConsumerWidget {
             final fs = settings.fontScale;
             final safeFs =
                 fs.isFinite && fs > 0 ? fs.clamp(0.8, 2.0) : 1.0;
-            return MediaQuery(
-              data: mq.copyWith(
-                textScaler: TextScaler.linear(safeFs),
+            return Listener(
+              onPointerDown: (event) {
+                final currentFocus = FocusManager.instance.primaryFocus;
+                if (currentFocus != null &&
+                    currentFocus.context != null &&
+                    currentFocus.context!.mounted) {
+                  final renderObject = currentFocus.context!.findRenderObject();
+                  if (renderObject is RenderBox && renderObject.hasSize) {
+                    final position = renderObject.localToGlobal(Offset.zero);
+                    final bounds = position & renderObject.size;
+                    if (!bounds.contains(event.position)) {
+                      currentFocus.unfocus();
+                    }
+                  }
+                }
+              },
+              behavior: HitTestBehavior.translucent,
+              child: MediaQuery(
+                data: mq.copyWith(
+                  textScaler: TextScaler.linear(safeFs),
+                ),
+                child: child ?? const SizedBox.shrink(),
               ),
-              child: child ?? const SizedBox.shrink(),
             );
           },
         );
