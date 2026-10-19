@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../routes/app_router.dart';
 import '../constants/api_endpoints.dart';
 import '../services/session_service.dart';
 import 'api_exception.dart';
@@ -76,6 +78,19 @@ class ApiResponseHandler {
     dynamic decodedBody,
   }) {
     final message = _messageFromDecoded(decodedBody);
+
+    if (response.statusCode == 401 ||
+        (message != null &&
+            (message.toLowerCase().contains('user not found') ||
+             message.toLowerCase().contains('invalid token') ||
+             message.toLowerCase().contains('not authorized')))) {
+      // Trigger automatic session cleanup and clean user-facing redirect
+      _handleSessionExpiration();
+      return ApiException(
+        'Your session has expired. Please log in again.',
+        statusCode: 401,
+      );
+    }
 
     if (response.statusCode == 404) {
       return ApiException(
@@ -186,5 +201,48 @@ class ApiResponseHandler {
     }
 
     return null;
+  }
+
+  static DateTime _lastExpirationTrigger = DateTime(2000);
+
+  static void _handleSessionExpiration() {
+    final now = DateTime.now();
+    if (now.difference(_lastExpirationTrigger).inSeconds < 5) return;
+    _lastExpirationTrigger = now;
+
+    // Clear stale credentials in local storage
+    SessionService.clearSession();
+
+    // Show clean user alert and redirect to login
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final messenger = scaffoldMessengerKey.currentState;
+        messenger?.clearSnackBars();
+        messenger?.showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            content: const Row(
+              children: [
+                Icon(Icons.lock_clock_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Your session has expired. Please log in again.',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        // Safe navigate to login
+        appRouter.go('/login');
+      } catch (e) {
+        debugPrint('Error navigating to login on session expiration: $e');
+      }
+    });
   }
 }

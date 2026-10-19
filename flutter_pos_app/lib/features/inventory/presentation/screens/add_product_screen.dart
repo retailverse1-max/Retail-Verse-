@@ -241,16 +241,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   void _onHardwareBarcodeScanned(String barcode) {
     if (!mounted || barcode.isEmpty) return;
 
-    // Beep audio and haptic feedback
-    SystemSound.play(SystemSoundType.click);
-    HapticFeedback.mediumImpact();
+    // Haptic feedback on physical scan
+    HapticFeedback.lightImpact();
 
     setState(() {
       _barcodeController.text = barcode;
       _isHardwareScannerConnected = true;
     });
 
-    _showSnack('Beep! Barcode scanned: $barcode');
+    _showSnack('Barcode scanned: $barcode');
   }
 
   // ============================================================================
@@ -790,11 +789,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               if (barcodes.isNotEmpty) {
                                 final rawValue = barcodes.first.rawValue;
                                 if (rawValue != null && rawValue.trim().isNotEmpty) {
+                                  if (ctx.mounted) Navigator.pop(ctx);
                                   _onHardwareBarcodeScanned(rawValue.trim());
                                   return;
                                 }
                               }
-                              _showSnack('Barcode not found. You can auto generate.', isError: true);
+                              _showSnack('Barcode could not be detected. Please try again.', isError: true);
                             }
                           } catch (e) {
                             _showSnack('Camera scan error: $e', isError: true);
@@ -1162,17 +1162,24 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Copies to Print:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
-                              Text('Default: 2 (Tap + / - or type)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Copies to Print:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                                Text('Tap + / - or type', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, size: 22),
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                icon: const Icon(Icons.remove_circle_outline, size: 20),
                                 onPressed: labelCopies > 1
                                     ? () {
                                         setDialogState(() {
@@ -1183,15 +1190,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                     : null,
                               ),
                               SizedBox(
-                                width: 52,
+                                width: 44,
                                 child: TextField(
                                   controller: copiesController,
                                   keyboardType: TextInputType.number,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                   decoration: InputDecoration(
                                     isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                   ),
                                   onChanged: (val) {
@@ -1205,7 +1212,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.add_circle_outline, size: 22, color: AppColors.primary),
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
                                 onPressed: () {
                                   setDialogState(() {
                                     labelCopies++;
