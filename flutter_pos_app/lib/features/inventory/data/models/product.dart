@@ -11,7 +11,10 @@ class Product {
   final String description;
   final String categoryId;
   final String categoryName;
+  final String? dimensions;
   final bool isFlipkartSynced;
+  final List<String> marketplaces;
+  final double taxRate;
 
   const Product({
     required this.id,
@@ -23,7 +26,10 @@ class Product {
     required this.description,
     required this.categoryId,
     required this.categoryName,
+    this.dimensions,
     this.isFlipkartSynced = false,
+    this.marketplaces = const [],
+    this.taxRate = 0.0,
   });
 
   /// Check if product is in stock

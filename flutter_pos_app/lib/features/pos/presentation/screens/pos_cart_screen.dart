@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,6 +24,9 @@ import 'package:retail_verse_pos/features/dashboard/providers/dashboard_provider
 import 'package:retail_verse_pos/data/models/customer_model.dart';
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
 import 'package:retail_verse_pos/core/services/push_notification_service.dart';
+import 'package:retail_verse_pos/data/models/coupon_model.dart';
+import 'package:retail_verse_pos/data/remote/coupon_service.dart';
+import 'package:retail_verse_pos/features/pos/providers/whatsapp_pending_orders_provider.dart';
 
 /// Full checkout: lines, totals, customer, payment, place order.
 class PosCartScreen extends ConsumerStatefulWidget {
@@ -51,6 +55,10 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
   final PaymentService _paymentService = PaymentService();
   bool _isProcessingRazorpay = false;
   final NotificationService _notificationService = NotificationService();
+  final CouponService _couponService = CouponService();
+  bool _isApplyingCoupon = false;
+  List<CouponModel> _activeCoupons = [];
+  bool _isLoadingCoupons = false;
 
   @override
   void initState() {
@@ -70,6 +78,23 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
+    _loadActiveCoupons();
+  }
+
+  Future<void> _loadActiveCoupons() async {
+    setState(() => _isLoadingCoupons = true);
+    try {
+      final list = await _couponService.getActiveCoupons();
+      if (mounted) {
+        setState(() {
+          _activeCoupons = list;
+          _isLoadingCoupons = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingCoupons = false);
+    }
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
@@ -225,40 +250,79 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     return 'My Store';
   }
 
-  void _applyCoupon() {
-    final code = _couponCodeCtrl.text.trim().toUpperCase();
+  Future<void> _applyCoupon([String? explicitCode]) async {
+    final code = (explicitCode ?? _couponCodeCtrl.text).trim().toUpperCase();
     if (code.isEmpty) {
       _showError('Please enter a coupon code.');
       return;
     }
+
     final cart = ref.read(cartProvider);
-    if (cart.subtotal < 3000) {
-      _showError('Coupon is valid only on subtotal of ₹3,000 or more (Current Subtotal: ₹${cart.subtotal.toStringAsFixed(2)}).');
+    if (cart.items.isEmpty) {
+      _showError('Your cart is empty. Please add items before applying coupon.');
       return;
     }
 
-    setState(() {
-      _appliedCouponCode = code;
-      _discountCtrl.text = '300.00';
-    });
-    ref.read(cartProvider.notifier).updateDiscount(300.0);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 3),
-        backgroundColor: const Color(0xFF16A34A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text('Coupon "$code" applied! Flat ₹300 OFF applied to cart.'),
-            ),
-          ],
+    setState(() => _isApplyingCoupon = true);
+
+    try {
+      final phone = _phoneCtrl.text.trim().isNotEmpty
+          ? _phoneCtrl.text.trim()
+          : cart.customerPhone;
+
+      final result = await _couponService.validateCoupon(
+        code: code,
+        cartSubtotal: cart.subtotal,
+        customerPhone: phone,
+      );
+
+      if (!mounted) return;
+
+      if (!result.isValid) {
+        _showError(result.message);
+        return;
+      }
+
+      setState(() {
+        _appliedCouponCode = result.code ?? code;
+        _couponCodeCtrl.text = _appliedCouponCode!;
+        _discountCtrl.text = result.calculatedDiscount.toStringAsFixed(2);
+      });
+
+      ref.read(cartProvider.notifier).applyCoupon(
+        code: _appliedCouponCode!,
+        discount: result.calculatedDiscount,
+        minOrderAmount: result.minOrderAmount,
+        description: result.description,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  result.message.isNotEmpty
+                      ? result.message
+                      : 'Coupon "$_appliedCouponCode" applied! ₹${result.calculatedDiscount.toStringAsFixed(2)} OFF applied.',
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (mounted) _showError('Failed to apply coupon: $e');
+    } finally {
+      if (mounted) setState(() => _isApplyingCoupon = false);
+    }
   }
 
   void _removeCoupon() {
@@ -267,7 +331,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
       _couponCodeCtrl.clear();
       _discountCtrl.clear();
     });
-    ref.read(cartProvider.notifier).updateDiscount(0.0);
+    ref.read(cartProvider.notifier).removeCoupon();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         duration: const Duration(seconds: 2),
@@ -277,14 +341,15 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
   }
 
   Future<void> _sendWhatsAppPaymentLink(CartState cart) async {
-    String phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) {
-      phone = cart.customerPhone.trim();
+    String rawDigits = _phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (rawDigits.isEmpty) {
+      rawDigits = cart.customerPhone.replaceAll(RegExp(r'[^0-9]'), '');
     }
-    phone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (phone.length == 10) {
-      phone = '91$phone';
+    if (rawDigits.length < 10) {
+      _showError('Please enter a valid 10-digit WhatsApp phone number.');
+      return;
     }
+    final phone = rawDigits.length == 10 ? '91$rawDigits' : rawDigits;
 
     final storeName = _getStoreName();
     final amount = cart.total.toStringAsFixed(2);
@@ -305,12 +370,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     buffer.writeln('After paying, please reply "DONE" or confirm with the cashier. 🙏');
 
     final message = Uri.encodeComponent(buffer.toString());
-    Uri url;
-    if (phone.isNotEmpty) {
-      url = Uri.parse('https://wa.me/$phone?text=$message');
-    } else {
-      url = Uri.parse('https://api.whatsapp.com/send?text=$message');
-    }
+    final url = Uri.parse('https://wa.me/$phone?text=$message');
 
     try {
       if (await canLaunchUrl(url)) {
@@ -370,63 +430,106 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     // Check removed to allow partial/any amount to proceed
 
     // Direct UPI Flow
+    // Direct UPI Flow with 1-min dynamic QR, Paytm/GPay terminal display, and Reset QR capability
     if (_paymentMethod == 'UPI') {
       final upiOk = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => UpiPaymentSimulationDialog(amount: updated.total),
+        builder: (ctx) => UpiPaymentSimulationDialog(
+          amount: updated.total,
+          storeName: _getStoreName(),
+        ),
       );
       if (upiOk != true || !mounted) return;
-      await _executeOrderPlacement();
+      await _executeOrderPlacement(paymentStatus: 'paid');
       return;
     }
 
-    // WhatsApp Payment Flow
+    // WhatsApp Payment Flow with Rush Hour support (No internet on customer's phone)
     if (_paymentMethod == 'WhatsApp') {
-      final confirmed = await showDialog<bool>(
+      final phone = _phoneCtrl.text.trim().isNotEmpty
+          ? _phoneCtrl.text.trim()
+          : updated.customerPhone.trim();
+      if (phone.isEmpty) {
+        _showError('Please enter customer phone number to send WhatsApp pay link.');
+        return;
+      }
+
+      final action = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               FaIcon(FontAwesomeIcons.whatsapp, color: Color(0xFF25D366), size: 22),
-              SizedBox(width: 8),
-              Text('WhatsApp Payment', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              SizedBox(width: 10),
+              Text('WhatsApp Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Total Amount: ₹${updated.total.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Total: ₹${updated.total.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF15803D))),
+                    Text(phone, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF166534))),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               const Text(
-                'Has the customer completed payment via WhatsApp UPI payment link?',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                'Customer ke paas internet nahi chal raha ya counter pe rush hai? Aap payment link bhejkar order park kar sakte hain aur next customer ki billing shuru kar sakte hain!',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF4B5563)),
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Not Yet'),
+              onPressed: () => Navigator.pop(ctx, 'cancel'),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
             ),
-            FilledButton(
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF15803D),
+                side: const BorderSide(color: Color(0xFF86EFAC)),
+              ),
+              onPressed: () => Navigator.pop(ctx, 'park'),
+              icon: const Icon(Icons.bolt_rounded, size: 16),
+              label: const Text('Rush: Park & Next'),
+            ),
+            FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF25D366),
               ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Payment Confirmed'),
+              onPressed: () => Navigator.pop(ctx, 'paid'),
+              icon: const Icon(Icons.check_circle_rounded, size: 16),
+              label: const Text('Customer Paid'),
             ),
           ],
         ),
       );
-      if (confirmed != true || !mounted) return;
-      await _executeOrderPlacement(paymentStatus: 'paid');
-      return;
+
+      if (action == null || action == 'cancel' || !mounted) return;
+
+      if (action == 'park') {
+        await _parkWhatsAppPendingOrder(updated);
+        return;
+      }
+
+      if (action == 'paid') {
+        await _executeOrderPlacement(paymentStatus: 'paid');
+        return;
+      }
     }
 
     final ok = await showDialog<bool>(
@@ -546,6 +649,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
       razorpayOrderId: razorpayOrderId,
       razorpayPaymentId: razorpayPaymentId,
       razorpaySignature: razorpaySignature,
+      couponCode: _appliedCouponCode,
     );
 
     if (mounted) Navigator.of(context, rootNavigator: true).pop();
@@ -613,9 +717,10 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     }
   }
 
-  void _holdSale() {
+  Future<void> _holdSale() async {
     final cart = ref.read(cartProvider);
     if (cart.items.isEmpty) return;
+
     ref.read(cartProvider.notifier).updateCustomer(
           name: _nameCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
@@ -625,10 +730,109 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     _applyDiscount();
     _applyExtra();
     final snap = ref.read(cartProvider);
-    ref.read(posHeldCartProvider.notifier).holdSnapshot(snap);
+
+    final heldList = ref.read(posHeldCartProvider);
+    final defaultLabel = snap.customerName.isNotEmpty
+        ? snap.customerName
+        : 'Customer #${heldList.length + 1}';
+    final labelCtrl = TextEditingController(text: defaultLabel);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.pause_circle_filled_rounded, color: Color(0xFFD97706), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Text('Park / Hold Cart', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter a reference name, token number, or customer note to easily identify and resume this cart later:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: labelCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Reference Label / Token',
+                hintText: 'e.g. Rahul - Milk, Token #12',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.label_outline_rounded),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${snap.itemCount} item(s)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+                  Text('Total: ₹${snap.total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF047857))),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.pause_rounded, size: 18),
+            label: const Text('Hold Cart'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final finalLabel = labelCtrl.text.trim().isEmpty ? defaultLabel : labelCtrl.text.trim();
+    ref.read(posHeldCartProvider.notifier).holdCart(snap, referenceLabel: finalLabel);
     ref.read(cartProvider.notifier).clearCart();
     setState(() => _controllersBound = false);
+
     if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Cart parked as "$finalLabel". Resume anytime from POS screen.'),
+              ),
+            ],
+          ),
+        ),
+      );
       context.pop();
     }
   }
@@ -641,6 +845,20 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
     ref.listen(cartProvider, (prev, next) {
       if (prev == null || prev.total != next.total) {
         _cashReceivedCtrl.text = next.total > 0 ? next.total.toStringAsFixed(2) : '';
+      }
+      if (prev != null && prev.appliedCouponCode != null && next.appliedCouponCode == null && _appliedCouponCode != null) {
+        setState(() {
+          _appliedCouponCode = null;
+          _couponCodeCtrl.clear();
+          _discountCtrl.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 3),
+            content: Text('Coupon removed because cart subtotal fell below the minimum requirement.'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
       }
     });
 
@@ -715,7 +933,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                         children: [
                           _sumRow('Subtotal', AppFormatters.formatCurrency(cart.subtotal)),
                           _sumRow(
-                            'Tax (${(cart.taxRate * 100).toStringAsFixed(0)}%)',
+                            'Tax / GST (${(cart.effectiveTaxRate * 100).toStringAsFixed((cart.effectiveTaxRate * 100).truncateToDouble() == (cart.effectiveTaxRate * 100) ? 0 : 1)}%)',
                             AppFormatters.formatCurrency(cart.taxAmount),
                           ),
                           const SizedBox(height: 8),
@@ -1693,11 +1911,14 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
   }
 
   Widget _buildCouponSection(CartState cart) {
-    final has3000 = cart.subtotal >= 3000;
     if (_appliedCouponCode != null) {
+      final desc = cart.couponDescription != null && cart.couponDescription!.isNotEmpty
+          ? cart.couponDescription!
+          : 'Coupon discount applied to cart';
+
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFFF0FDF4),
           borderRadius: BorderRadius.circular(12),
@@ -1732,7 +1953,7 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(4),
@@ -1746,16 +1967,26 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                           ),
                         ),
                       ),
+                      const Spacer(),
+                      Text(
+                        '-₹${cart.discount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF15803D),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Flat ₹300 OFF coupon discount applied',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF166534)),
+                  const SizedBox(height: 3),
+                  Text(
+                    desc,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF166534)),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 6),
             IconButton(
               tooltip: 'Remove Coupon',
               icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFFDC2626)),
@@ -1799,79 +2030,134 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
             SizedBox(
               height: 48,
               child: FilledButton(
-                onPressed: _applyCoupon,
+                onPressed: _isApplyingCoupon ? null : () => _applyCoupon(),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
                 ),
-                child: const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: _isApplyingCoupon
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            InkWell(
-              onTap: () {
-                _couponCodeCtrl.text = 'SAVE300';
-                setState(() {});
-                _applyCoupon();
-              },
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: has3000 ? const Color(0xFFFEF3C7) : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: has3000 ? const Color(0xFFF59E0B) : Colors.grey.shade300,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.stars_rounded,
-                      size: 14,
-                      color: has3000 ? const Color(0xFFB45309) : Colors.grey,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'SAVE300 (₹300 OFF)',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: has3000 ? const Color(0xFFB45309) : Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                has3000
-                    ? 'Eligible for ₹300 OFF! Tap to apply'
-                    : '* Min subtotal ₹3,000 required',
+        if (_activeCoupons.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text(
+                'AVAILABLE OFFERS',
                 style: TextStyle(
                   fontSize: 10,
-                  color: has3000 ? const Color(0xFF15803D) : AppColors.textTertiary,
-                  fontWeight: has3000 ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
+                  letterSpacing: 0.8,
                 ),
               ),
-            ),
-          ],
-        ),
+              if (_isLoadingCoupons) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: _activeCoupons.map((c) {
+              final isEligible = cart.subtotal >= c.minOrderAmount;
+              final diff = c.minOrderAmount - cart.subtotal;
+
+              return InkWell(
+                onTap: () {
+                  _couponCodeCtrl.text = c.code;
+                  setState(() {});
+                  _applyCoupon(c.code);
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isEligible ? const Color(0xFFFEF3C7) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isEligible ? const Color(0xFFF59E0B) : Colors.grey.shade300,
+                      width: isEligible ? 1.2 : 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.local_offer,
+                        size: 13,
+                        color: isEligible ? const Color(0xFFB45309) : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        c.code,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'monospace',
+                          color: isEligible ? const Color(0xFFB45309) : Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '(${c.discountSummary})',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isEligible ? const Color(0xFF92400E) : Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: isEligible ? const Color(0xFF16A34A) : Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isEligible ? 'TAP TO APPLY' : 'Add ₹${diff.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold,
+                            color: isEligible ? Colors.white : Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
         const SizedBox(height: 8),
       ],
     );
   }
 
   Widget _buildWhatsAppPaymentCard(CartState cart) {
-    final phone = _phoneCtrl.text.trim().isNotEmpty ? _phoneCtrl.text.trim() : cart.customerPhone.trim();
+    final currentText = _phoneCtrl.text.trim();
+    final digits = currentText.replaceAll(RegExp(r'[^0-9]'), '');
+    final isValid10 = digits.length == 10;
+
     return Container(
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.all(16),
@@ -1923,88 +2209,191 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          if (phone.isEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.shade300),
+          TextField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.8),
+            decoration: InputDecoration(
+              labelText: 'Customer WhatsApp Number',
+              hintText: '9876543210',
+              prefixIcon: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.centerLeft,
+                width: 60,
+                child: const Text(
+                  '+91',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF15803D)),
+                ),
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.amber.shade900),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Please enter customer phone number to send WhatsApp link.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF78350F)),
-                    ),
-                  ),
-                ],
+              suffixIcon: _phoneCtrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      tooltip: 'Clear',
+                      onPressed: () {
+                        _phoneCtrl.clear();
+                        ref.read(cartProvider.notifier).updateCustomer(phone: '');
+                        setState(() {});
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: isValid10 ? const Color(0xFF16A34A) : Colors.grey.shade300),
               ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _phoneCtrl,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Customer WhatsApp Number',
-                hintText: 'e.g. 9876543210',
-                prefixIcon: const Icon(Icons.phone),
-                isDense: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isValid10 ? const Color(0xFF22C55E) : Colors.grey.shade300,
+                  width: isValid10 ? 1.5 : 1.0,
+                ),
               ),
-              onChanged: (v) {
-                ref.read(cartProvider.notifier).updateCustomer(phone: v);
-                setState(() {});
-              },
-            ),
-            const SizedBox(height: 10),
-          ] else ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF86EFAC)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.phone_android_rounded, size: 16, color: Color(0xFF16A34A)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Target WhatsApp: $phone',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF14532D)),
-                  ),
-                ],
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2),
               ),
             ),
-            const SizedBox(height: 10),
-          ],
-          FilledButton.icon(
-            onPressed: () => _sendWhatsAppPaymentLink(cart),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF25D366),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 18),
-            label: Text(
-              'Send ₹${cart.total.toStringAsFixed(2)} Link to WhatsApp',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            onChanged: (v) {
+              ref.read(cartProvider.notifier).updateCustomer(phone: v);
+              setState(() {});
+            },
           ),
-          const SizedBox(height: 6),
-          Text(
-            'After customer sends UPI payment, verify and click "Place Your Order" below.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          const SizedBox(height: 8),
+          if (isValid10)
+            Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF16A34A)),
+                const SizedBox(width: 4),
+                Text(
+                  'Valid 10-digit number (+91 $digits)',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF15803D)),
+                ),
+              ],
+            )
+          else
+            Text(
+              digits.isEmpty
+                  ? 'Enter 10-digit mobile number'
+                  : 'Enter remaining ${10 - digits.length} digits (${digits.length}/10)',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _sendWhatsAppPaymentLink(cart),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF16A34A),
+                    side: const BorderSide(color: Color(0xFF86EFAC)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 16),
+                  label: const Text('Send Link', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _parkWhatsAppPendingOrder(cart),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.bolt_rounded, size: 18),
+                  label: const Text('Rush: Park & Next', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _parkWhatsAppPendingOrder(CartState updated) async {
+    String rawDigits = _phoneCtrl.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (rawDigits.isEmpty) {
+      rawDigits = updated.customerPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    }
+    if (rawDigits.length < 10) {
+      _showError('Please enter a valid 10-digit WhatsApp number first');
+      return;
+    }
+    final fullPhone = rawDigits.length == 10 ? '91$rawDigits' : rawDigits;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final notifier = ref.read(orderCreationProvider.notifier);
+    final success = await notifier.createOrder(
+      cartItems: updated.items,
+      customerName: updated.customerName.isEmpty ? null : updated.customerName,
+      customerPhone: fullPhone,
+      customerEmail: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+      customerAddress: updated.customerAddress.isEmpty ? null : updated.customerAddress,
+      orderNotes: updated.orderNotes.isEmpty ? 'WhatsApp Pay Link' : '${updated.orderNotes} (WhatsApp Pay Link)',
+      paymentMethod: 'UPI',
+      discount: updated.discount,
+      taxRate: updated.taxRate,
+      extraCharges: updated.extraCharges,
+      status: 'pending',
+      paymentStatus: 'pending',
+      couponCode: _appliedCouponCode,
+    );
+
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
+    if (success) {
+      final createdOrder = ref.read(orderCreationProvider).createdOrder;
+      if (createdOrder != null) {
+        ref.read(whatsappPendingOrdersProvider.notifier).addPendingOrder(createdOrder);
+        await ref.read(whatsappPendingOrdersProvider.notifier).sendWhatsAppLink(
+              createdOrder,
+              storeName: _getStoreName(),
+            );
+      }
+
+      ref.read(cartProvider.notifier).clearCart();
+      setState(() => _controllersBound = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            content: Row(
+              children: [
+                const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Order parked & pay link sent to $fullPhone. Bill prints automatically once paid!',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        context.go('/pos');
+      }
+    } else {
+      final err = ref.read(orderCreationProvider).error ?? 'Failed to park order';
+      _showError(err);
+    }
   }
 
   Widget _sumRow(String label, String value, {bool emphasize = false}) {

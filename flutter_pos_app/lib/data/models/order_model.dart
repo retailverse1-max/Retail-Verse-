@@ -1,4 +1,3 @@
-import 'package:uuid/uuid.dart';
 import '../models/product_model.dart';
 
 /// Order item model
@@ -39,12 +38,15 @@ class Order {
   final double extraCharges;
   final String paymentMethod;
   final String status;
+  final String paymentStatus;
   final String? customerName;
   final String? customerPhone;
   final String? customerEmail;
   final String? customerAddress;
   final String? notes;
   final String? cashierName;
+  final String? couponCode;
+  final String? rewardCouponCode;
   final bool converted;
 
   Order({
@@ -59,12 +61,15 @@ class Order {
     this.extraCharges = 0.0,
     required this.paymentMethod,
     this.status = 'Completed',
+    this.paymentStatus = 'paid',
     this.customerName,
     this.customerPhone,
     this.customerEmail,
     this.customerAddress,
     this.notes,
     this.cashierName,
+    this.couponCode,
+    this.rewardCouponCode,
     this.converted = false,
   });
 
@@ -84,12 +89,15 @@ class Order {
       'extraCharges': extraCharges,
       'paymentMethod': paymentMethod,
       'status': status,
+      'paymentStatus': paymentStatus,
       'customerName': customerName,
       'customerPhone': customerPhone,
       'customerEmail': customerEmail,
       'customerAddress': customerAddress,
       'notes': notes,
       'cashierName': cashierName,
+      'couponCode': couponCode,
+      'rewardCouponCode': rewardCouponCode,
       'converted': converted,
     };
   }
@@ -106,12 +114,15 @@ class Order {
     double? extraCharges,
     String? paymentMethod,
     String? status,
+    String? paymentStatus,
     String? customerName,
     String? customerPhone,
     String? customerEmail,
     String? customerAddress,
     String? notes,
     String? cashierName,
+    String? couponCode,
+    String? rewardCouponCode,
     bool? converted,
   }) {
     return Order(
@@ -126,12 +137,15 @@ class Order {
       extraCharges: extraCharges ?? this.extraCharges,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       status: status ?? this.status,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
       customerEmail: customerEmail ?? this.customerEmail,
       customerAddress: customerAddress ?? this.customerAddress,
       notes: notes ?? this.notes,
       cashierName: cashierName ?? this.cashierName,
+      couponCode: couponCode ?? this.couponCode,
+      rewardCouponCode: rewardCouponCode ?? this.rewardCouponCode,
       converted: converted ?? this.converted,
     );
   }

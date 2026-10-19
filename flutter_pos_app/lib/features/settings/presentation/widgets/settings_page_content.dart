@@ -4,12 +4,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/constants/legal_constants.dart';
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -25,7 +23,6 @@ import '../../providers/backend_health_provider.dart';
 import '../../providers/connectivity_status_provider.dart';
 import '../../providers/local_database_status_provider.dart';
 import '../../providers/pos_settings_provider.dart';
-import 'settings_api_network_section.dart';
 import 'settings_ui_kit.dart';
 import '../screens/marketplace_settings_screen.dart';
 
@@ -323,9 +320,9 @@ class SettingsPageContent extends ConsumerWidget {
             child: Column(
               children: [
                 SettingsNavTile(
-                  icon: Icons.shopping_cart_checkout_rounded,
-                  title: 'Flipkart Settings',
-                  subtitle: 'Configure API keys & bulk sync',
+                  icon: Icons.hub_rounded,
+                  title: 'Omnichannel Auto-Publishing',
+                  subtitle: '1-Click sync to Flipkart, Meesho, Swiggy, Zomato & Shopify',
                   onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketplaceSettingsScreen()));
                   },
@@ -526,6 +523,26 @@ class SettingsPageContent extends ConsumerWidget {
               value: s.taxEnabled,
               onChanged: (v) => patch((p) => p.copyWith(taxEnabled: v)),
             ),
+            if (s.taxEnabled) ...[
+              const SettingsDividerInset(),
+              SettingsValueTile(
+                icon: Icons.percent_rounded,
+                title: 'Default GST / Tax Rate',
+                subtitle: 'Applied when product has no custom GST',
+                valueLabel: '${s.defaultGstRate.toStringAsFixed(s.defaultGstRate.truncateToDouble() == s.defaultGstRate ? 0 : 1)}%',
+                onTap: () => _pickOption(
+                  context,
+                  ref,
+                  title: 'Default GST / Tax Rate',
+                  options: const ['0%', '5%', '12%', '18%', '28%'],
+                  current: '${s.defaultGstRate.toStringAsFixed(s.defaultGstRate.truncateToDouble() == s.defaultGstRate ? 0 : 1)}%',
+                  onPick: (v) {
+                    final parsed = double.tryParse(v.replaceAll('%', '').trim()) ?? 18.0;
+                    patch((p) => p.copyWith(defaultGstRate: parsed));
+                  },
+                ),
+              ),
+            ],
             const SettingsDividerInset(),
             SettingsSwitchTile(
               icon: Icons.inventory_2_outlined,

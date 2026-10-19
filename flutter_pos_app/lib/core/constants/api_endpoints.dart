@@ -186,4 +186,12 @@ class ApiEndpoints {
   static const String razorpayCreateOrder = '/payments/razorpay/create-order';
   static const String razorpayVerify = '/payments/razorpay/verify';
   static const String zendeskTicket = '/support/ticket';
+
+  // Coupons
+  static const String coupons = '/coupons';
+  static const String validateCoupon = '/coupons/validate';
+  static const String activeCoupons = '/coupons/active';
+
+  // Held / Parked Carts
+  static const String heldCarts = '/pos/held-carts';
 }

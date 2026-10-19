@@ -327,6 +327,9 @@ class ProductRemoteDataSource implements IProductDataSource {
     String category = '',
     String? imageBase64,
     String? description,
+    String? dimensions,
+    List<String>? marketplaces,
+    double? taxRate,
   }) async {
     final token = await _getToken();
     final payload = <String, dynamic>{
@@ -337,12 +340,19 @@ class ProductRemoteDataSource implements IProductDataSource {
       'stock': stock,
       'barcode': barcode,
       'category': category,
+      if (taxRate != null) 'taxRate': taxRate,
     };
     if (imageBase64 != null && imageBase64.isNotEmpty) {
       payload['imageBase64'] = imageBase64;
     }
     if (description != null && description.trim().isNotEmpty) {
       payload['description'] = description.trim();
+    }
+    if (dimensions != null && dimensions.trim().isNotEmpty) {
+      payload['dimensions'] = dimensions.trim();
+    }
+    if (marketplaces != null && marketplaces.isNotEmpty) {
+      payload['marketplaces'] = marketplaces;
     }
     final response = await client
         .post(
@@ -385,6 +395,7 @@ class ProductRemoteDataSource implements IProductDataSource {
     String? imageBase64,
     String? description,
     bool? isActive,
+    double? taxRate,
   }) async {
     final token = await _getToken();
     final body = <String, dynamic>{};
@@ -397,6 +408,7 @@ class ProductRemoteDataSource implements IProductDataSource {
     if (category != null) body['category'] = category;
     if (description != null) body['description'] = description;
     if (isActive != null) body['isActive'] = isActive;
+    if (taxRate != null) body['taxRate'] = taxRate;
     if (imageBase64 != null && imageBase64.isNotEmpty) {
       body['imageBase64'] = imageBase64;
     }

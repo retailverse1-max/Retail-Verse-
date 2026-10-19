@@ -13,9 +13,12 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const couponRoutes = require("./routes/couponRoutes");
+const heldCartRoutes = require("./routes/heldCartRoutes");
 const flipkartRoutes = require("./marketplace/flipkart/flipkart.routes");
 const shopifyRoutes = require("./marketplace/shopify/shopify.routes");
 const meeshoRoutes = require("./marketplace/meesho/meesho.routes");
+const marketplaceRoutes = require("./marketplace/marketplace.routes");
 const app = express();
 
 app.use(cors());
@@ -32,6 +35,10 @@ app.get("/", (req, res) => {
   res.send("POS Backend running 🚀");
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
@@ -46,8 +53,11 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/coupons", couponRoutes);
+app.use("/api/pos/held-carts", heldCartRoutes);
 
 // Marketplace Routes
+app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/marketplace/flipkart", flipkartRoutes);
 app.use("/api/marketplace/shopify", shopifyRoutes);
 app.use("/api/marketplace/meesho", meeshoRoutes);

@@ -1031,6 +1031,25 @@ class _ProductCard extends StatelessWidget {
     return 'Out of Stock';
   }
 
+  Widget _buildMarketplacePill(String name, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.8),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusColor();
@@ -1148,6 +1167,29 @@ class _ProductCard extends StatelessWidget {
                           fontSize: 11,
                         ),
                       ),
+                      if (product.marketplaces.isNotEmpty || product.isFlipkartSynced) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            if (product.isFlipkartActive)
+                              _buildMarketplacePill('Flipkart', const Color(0xFF2874F0)),
+                            if (product.isMeeshoActive)
+                              _buildMarketplacePill('Meesho', const Color(0xFFE81B63)),
+                            if (product.isShopifyActive)
+                              _buildMarketplacePill('Shopify', const Color(0xFF008060)),
+                            if (product.isZomatoActive)
+                              _buildMarketplacePill('Zomato', const Color(0xFFCB202D)),
+                            if (product.isSwiggyActive)
+                              _buildMarketplacePill('Swiggy', const Color(0xFFFC8019)),
+                            if (product.isEatClubActive)
+                              _buildMarketplacePill('Eat Club', Colors.deepOrange),
+                            if (product.isWooCommerceActive)
+                              _buildMarketplacePill('WooCommerce', const Color(0xFF7F54B3)),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

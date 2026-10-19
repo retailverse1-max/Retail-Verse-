@@ -16,6 +16,9 @@ import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
 import 'package:retail_verse_pos/features/notifications/providers/notification_provider.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:retail_verse_pos/data/models/order_model.dart';
+import 'package:retail_verse_pos/features/pos/providers/whatsapp_pending_orders_provider.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
 
@@ -193,41 +196,687 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     }
   }
 
-  Future<void> _promptRecallHold(BuildContext context, CartState current, CartState held) async {
-    if (current.items.isNotEmpty) {
-      final confirm = await showDialog<bool>(
+  String _formatHeldTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _showHeldCartsSheet(BuildContext context, CartState currentCart) =>
+      _showParkedQueueSheet(context, currentCart, initialTab: 0);
+
+  Future<void> _showWhatsAppPendingSheet(BuildContext context) =>
+      _showParkedQueueSheet(context, ref.read(cartProvider), initialTab: 1);
+
+  Future<void> _showParkedQueueSheet(
+    BuildContext context,
+    CartState currentCart, {
+    int initialTab = 0,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        int activeTab = initialTab;
+        return Consumer(
+          builder: (sheetCtx, ref, _) {
+            final heldCarts = ref.watch(posHeldCartProvider);
+            final whatsappPending = ref.watch(whatsappPendingOrdersProvider);
+            final totalParked = heldCarts.length + whatsappPending.length;
+
+            if (totalParked == 0) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle_outline_rounded, size: 48, color: Color(0xFF16A34A)),
+                    const SizedBox(height: 12),
+                    const Text('No Parked Orders', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                    const SizedBox(height: 6),
+                    const Text('All held carts and WhatsApp payments are clear.', style: TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(bottomSheetContext),
+                      style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return StatefulBuilder(
+              builder: (sCtx, setSheetState) {
+                if (activeTab == 0 && heldCarts.isEmpty && whatsappPending.isNotEmpty) {
+                  activeTab = 1;
+                } else if (activeTab == 1 && whatsappPending.isEmpty && heldCarts.isNotEmpty) {
+                  activeTab = 0;
+                }
+
+                return Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 10, bottom: 8),
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD1D5DB),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 6, 16, 10),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.pause_circle_filled_rounded, color: Color(0xFFD97706), size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Parked Orders Queue',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: Color(0xFF111827)),
+                                  ),
+                                  Text(
+                                    '$totalParked active order${totalParked != 1 ? 's' : ''} on hold',
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Color(0xFF6B7280)),
+                              onPressed: () => Navigator.pop(bottomSheetContext),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E7EB),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(9),
+                                  onTap: () => setSheetState(() => activeTab = 0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: activeTab == 0 ? Colors.white : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(9),
+                                      boxShadow: activeTab == 0
+                                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.pause_circle_rounded,
+                                          size: 16,
+                                          color: activeTab == 0 ? const Color(0xFFD97706) : const Color(0xFF6B7280),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Held Carts (${heldCarts.length})',
+                                          style: TextStyle(
+                                            fontWeight: activeTab == 0 ? FontWeight.w700 : FontWeight.w500,
+                                            fontSize: 12.5,
+                                            color: activeTab == 0 ? const Color(0xFF92400E) : const Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(9),
+                                  onTap: () => setSheetState(() => activeTab = 1),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: activeTab == 1 ? Colors.white : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(9),
+                                      boxShadow: activeTab == 1
+                                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        FaIcon(
+                                          FontAwesomeIcons.whatsapp,
+                                          size: 15,
+                                          color: activeTab == 1 ? const Color(0xFF16A34A) : const Color(0xFF6B7280),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'WhatsApp Pay (${whatsappPending.length})',
+                                          style: TextStyle(
+                                            fontWeight: activeTab == 1 ? FontWeight.w700 : FontWeight.w500,
+                                            fontSize: 12.5,
+                                            color: activeTab == 1 ? const Color(0xFF14532D) : const Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+                      Flexible(
+                        child: activeTab == 0
+                            ? (heldCarts.isEmpty
+                                ? const Padding(
+                                    padding: EdgeInsets.all(32),
+                                    child: Center(
+                                      child: Text(
+                                        'No held carts on hold.',
+                                        style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                    shrinkWrap: true,
+                                    itemCount: heldCarts.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                                    itemBuilder: (ctx, index) {
+                                      final item = heldCarts[index];
+                                      return _buildHeldCartCard(context, ref, bottomSheetContext, item, index);
+                                    },
+                                  ))
+                            : (whatsappPending.isEmpty
+                                ? const Padding(
+                                    padding: EdgeInsets.all(32),
+                                    child: Center(
+                                      child: Text(
+                                        'No WhatsApp payment orders pending.',
+                                        style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                    shrinkWrap: true,
+                                    itemCount: whatsappPending.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                                    itemBuilder: (ctx, index) {
+                                      final order = whatsappPending[index];
+                                      return _buildWhatsAppPendingCard(context, ref, bottomSheetContext, order, index);
+                                    },
+                                  )),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildHeldCartCard(
+    BuildContext context,
+    WidgetRef ref,
+    BuildContext sheetContext,
+    HeldCartItem item,
+    int index,
+  ) {
+    final c = item.cart;
+    final tokenNumber = (index + 1).toString().padLeft(2, '0');
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Text(
+                        'TOKEN #$tokenNumber',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        item.referenceLabel,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatHeldTime(item.heldAt),
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Discard',
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (dCtx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      title: const Text('Discard Held Cart?'),
+                      content: Text('Are you sure you want to discard "${item.referenceLabel}"?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dCtx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dCtx, true),
+                          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+                          child: const Text('Discard'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true) {
+                    ref.read(posHeldCartProvider.notifier).removeHeldCart(item.id);
+                  }
+                },
+              ),
+            ],
+          ),
+          if (c.customerName.isNotEmpty || c.customerPhone.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF6B7280)),
+                const SizedBox(width: 4),
+                Text(
+                  [if (c.customerName.isNotEmpty) c.customerName, if (c.customerPhone.isNotEmpty) c.customerPhone].join(' • '),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563)),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              ...c.items.take(4).map((i) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${i.product.name} × ${i.quantity}',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF374151)),
+                  ),
+                );
+              }),
+              if (c.items.length > 4)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '+${c.items.length - 4} more',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${c.itemCount} items',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  ),
+                  Text(
+                    '₹${c.total.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+                  ),
+                ],
+              ),
+              FilledButton.icon(
+                onPressed: () => _resumeHeldCart(context, ref, sheetContext, item),
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: const Text('Resume Cart', style: TextStyle(fontWeight: FontWeight.w700)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF059669),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resumeHeldCart(
+    BuildContext context,
+    WidgetRef ref,
+    BuildContext sheetContext,
+    HeldCartItem heldItem,
+  ) async {
+    final activeCart = ref.read(cartProvider);
+
+    if (activeCart.items.isNotEmpty) {
+      final choice = await showDialog<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Current cart not empty'),
-          content: const Text('You have items in your current cart. Do you want to replace it with the held sale? The current items will be lost.'),
+        builder: (dCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Current Cart Not Empty'),
+          content: Text(
+            'Your counter currently has ${activeCart.itemCount} item(s) worth ₹${activeCart.total.toStringAsFixed(2)}.\n\nWhat would you like to do before resuming "${heldItem.referenceLabel}"?',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: () => Navigator.pop(dCtx, 'cancel'),
               child: const Text('Cancel'),
             ),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(dCtx, 'discard'),
+              style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+              child: const Text('Discard Current'),
+            ),
             FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.secondary),
-              child: const Text('Replace Cart'),
+              onPressed: () => Navigator.pop(dCtx, 'park'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD97706)),
+              child: const Text('Park Current & Resume'),
             ),
           ],
         ),
       );
-      if (confirm != true) return;
+
+      if (choice == null || choice == 'cancel') return;
+
+      if (choice == 'park') {
+        final label = activeCart.customerName.isNotEmpty
+            ? activeCart.customerName
+            : 'Counter Cart';
+        ref.read(posHeldCartProvider.notifier).holdCart(activeCart, referenceLabel: label);
+      }
     }
-    
-    ref.read(cartProvider.notifier).replaceWith(held);
-    ref.read(posHeldCartProvider.notifier).discard();
-    
-    if (mounted) {
+
+    ref.read(cartProvider.notifier).replaceWith(heldItem.cart);
+    ref.read(posHeldCartProvider.notifier).removeHeldCart(heldItem.id);
+
+    if (sheetContext.mounted) {
+      Navigator.pop(sheetContext);
+    }
+
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(duration: const Duration(seconds: 2),
-          content: Text('Held sale recalled successfully.'),
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          backgroundColor: const Color(0xFF047857),
           behavior: SnackBarBehavior.floating,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Resumed "${heldItem.referenceLabel}" with ${heldItem.cart.itemCount} item(s).'),
+              ),
+            ],
+          ),
         ),
       );
       context.push('/pos/cart');
     }
+  }
+
+  Widget _buildWhatsAppPendingCard(
+    BuildContext context,
+    WidgetRef ref,
+    BuildContext sheetContext,
+    Order order,
+    int index,
+  ) {
+    final waToken = (index + 1).toString().padLeft(2, '0');
+    final displayId = order.orderId.length > 6
+        ? order.orderId.substring(order.orderId.length - 6)
+        : order.orderId;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF86EFAC)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const FaIcon(FontAwesomeIcons.whatsapp, size: 12, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'WA #$waToken • $displayId',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              color: Color(0xFF15803D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatHeldTime(order.dateTime),
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Color(0xFF9CA3AF), size: 18),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Dismiss',
+                onPressed: () {
+                  ref.read(whatsappPendingOrdersProvider.notifier).removePendingOrder(order.id);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.person_rounded, size: 15, color: Color(0xFF6B7280)),
+              const SizedBox(width: 6),
+              Text(
+                order.customerName ?? 'Walk-in Customer',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E293B)),
+              ),
+              if (order.customerPhone != null && order.customerPhone!.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                const SizedBox(width: 8),
+                const FaIcon(FontAwesomeIcons.whatsapp, size: 13, color: Color(0xFF16A34A)),
+                const SizedBox(width: 4),
+                Text(
+                  order.customerPhone!,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF15803D), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Pending Total', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  Text(
+                    '₹${order.total.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      ref.read(whatsappPendingOrdersProvider.notifier).sendWhatsAppLink(order);
+                    },
+                    icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 14),
+                    label: const Text('Remind', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF16A34A),
+                      side: const BorderSide(color: Color(0xFF86EFAC)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final confirmed = await ref
+                          .read(whatsappPendingOrdersProvider.notifier)
+                          .markOrderAsPaidAndPrint(order);
+                      if (context.mounted && confirmed) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            duration: const Duration(seconds: 3),
+                            backgroundColor: const Color(0xFF16A34A),
+                            behavior: SnackBarBehavior.floating,
+                            content: Row(
+                              children: [
+                                const Icon(Icons.print_rounded, color: Colors.white),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text('Order #${order.orderId} marked Paid! Printing receipt automatically...'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.print_rounded, size: 16),
+                    label: const Text('Mark Paid & Print', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF16A34A),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -236,7 +885,9 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     final count = cart.itemCount;
     final totalValue = cart.total;
     final isTablet = MediaQuery.of(context).size.width >= 900;
-    final heldCart = ref.watch(posHeldCartProvider);
+    final heldCarts = ref.watch(posHeldCartProvider);
+    final whatsappPending = ref.watch(whatsappPendingOrdersProvider);
+    final totalParked = heldCarts.length + whatsappPending.length;
 
     return PopScope(
       canPop: false,
@@ -291,30 +942,75 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                             Expanded(
                               child: _buildInlineSearchBar(),
                             ),
-                            if (heldCart != null) ...[
+                            if (totalParked > 0) ...[
                               const SizedBox(width: 8),
                               Bounceable(
-                                onTap: () => _promptRecallHold(context, cart, heldCart),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.amazonOrange.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.amazonOrange.withValues(alpha: 0.5)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.play_circle_outline_rounded, size: 18, color: AppColors.amazonOrange),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Recall Hold',
-                                        style: AppTypography.labelMedium.copyWith(
-                                          color: AppColors.amazonOrange,
-                                          fontWeight: FontWeight.w700,
+                                onTap: () => _showParkedQueueSheet(context, cart),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 12 : 10,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFFBEB),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.pause_circle_filled_rounded,
+                                            size: 20,
+                                            color: Color(0xFFD97706),
+                                          ),
+                                          if (isTablet) ...[
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Hold & Pay ($totalParked)',
+                                              style: AppTypography.labelMedium.copyWith(
+                                                color: const Color(0xFF92400E),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: -5,
+                                      right: -5,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFDC2626),
+                                          borderRadius: BorderRadius.circular(10),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                        child: Center(
+                                          child: Text(
+                                            '$totalParked',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

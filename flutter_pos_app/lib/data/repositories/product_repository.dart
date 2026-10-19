@@ -59,6 +59,9 @@ class ProductRepository {
     String category = '',
     String? imageBase64,
     String? description,
+    String? dimensions,
+    List<String>? marketplaces,
+    double? taxRate,
   }) {
     return dataSource.createProduct(
       name: name,
@@ -70,6 +73,9 @@ class ProductRepository {
       category: category,
       imageBase64: imageBase64,
       description: description,
+      dimensions: dimensions,
+      marketplaces: marketplaces,
+      taxRate: taxRate,
     );
   }
 
@@ -85,6 +91,7 @@ class ProductRepository {
     String? imageBase64,
     String? description,
     bool? isActive,
+    double? taxRate,
   }) {
     return dataSource.updateProduct(
       id: id,
@@ -98,6 +105,7 @@ class ProductRepository {
       imageBase64: imageBase64,
       description: description,
       isActive: isActive,
+      taxRate: taxRate,
     );
   }
 

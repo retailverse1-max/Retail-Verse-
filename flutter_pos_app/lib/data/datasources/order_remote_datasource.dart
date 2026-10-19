@@ -37,6 +37,7 @@ class OrderRemoteDataSource {
     String? razorpayOrderId,
     String? razorpayPaymentId,
     String? razorpaySignature,
+    String? couponCode,
   }) async {
     try {
       final token = await _getToken();
@@ -61,6 +62,8 @@ class OrderRemoteDataSource {
         'discount': discount,
         'tax': taxAmount,
         'extraCharges': extra,
+        if (couponCode != null && couponCode.isNotEmpty)
+          'couponCode': couponCode.toUpperCase(),
         if (customerName != null && customerName.isNotEmpty)
           'customerName': customerName,
         if (customerPhone != null && customerPhone.isNotEmpty)
@@ -389,6 +392,7 @@ class OrderRemoteDataSource {
       extraCharges: parseMoney(json['extraCharges']),
       paymentMethod: _prettyPayment(json['paymentMethod']?.toString() ?? 'cash'),
       status: _prettyStatus(json['status']?.toString() ?? 'completed'),
+      paymentStatus: json['paymentStatus']?.toString() ?? 'paid',
       customerName: json['customerName']?.toString(),
       customerPhone: json['customerPhone']?.toString(),
       customerEmail: json['customerEmail']?.toString() ?? json['customerEmailAddress']?.toString(),
@@ -397,6 +401,9 @@ class OrderRemoteDataSource {
       cashierName: json['createdBy'] is Map<String, dynamic>
           ? (json['createdBy']['name']?.toString())
           : json['cashierName']?.toString(),
+      couponCode: json['couponCode']?.toString(),
+      rewardCouponCode: json['rewardCouponCode']?.toString() ??
+          (json['rewardCoupon'] is Map ? json['rewardCoupon']['code']?.toString() : null),
       converted: json['converted'] == true,
     );
   }
@@ -407,6 +414,8 @@ class OrderRemoteDataSource {
     if (p == 'upi' || p.contains('upi')) return 'upi';
     if (p == 'card' || p.contains('card')) return 'card';
     if (p == 'razorpay' || p.contains('razorpay')) return 'razorpay';
+    // WhatsApp pay link is a direct UPI link - map to upi for backend enum compatibility
+    if (p == 'whatsapp' || p.contains('whatsapp')) return 'upi';
     if (p == 'other' || p.contains('other')) return 'other';
     return 'cash';
   }
@@ -419,6 +428,8 @@ class OrderRemoteDataSource {
         return 'Card';
       case 'razorpay':
         return 'Razorpay';
+      case 'whatsapp':
+        return 'WhatsApp';
       default:
         return 'Cash';
     }
@@ -497,6 +508,24 @@ class OrderRemoteDataSource {
           'country': 'India',
         },
     };
+  }
+
+  Future<Order> updateOrderStatus(String id, {String? status, String? paymentStatus}) async {
+    final token = await _getToken();
+    final res = await client.put(
+      Uri.parse('$baseUrl/api/orders/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        if (status != null) 'status': status,
+        if (paymentStatus != null) 'paymentStatus': paymentStatus,
+      }),
+    );
+    final data = jsonDecode(res.body);
+    final raw = data is Map ? (data['order'] ?? data['data'] ?? data) : <String, dynamic>{};
+    return _parseOrder(Map<String, dynamic>.from(raw is Map ? raw : {}));
   }
 
   Future<String?> _getToken() => SessionService.getToken();

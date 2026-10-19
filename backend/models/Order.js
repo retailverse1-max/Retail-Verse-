@@ -60,7 +60,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cash", "upi", "card", "razorpay"],
+      enum: ["cash", "upi", "card", "razorpay", "whatsapp", "other"],
       required: true,
     },
     paymentStatus: {
@@ -123,6 +123,16 @@ const orderSchema = new mongoose.Schema(
     extraCharges: {
       type: Number,
       default: 0,
+    },
+    couponCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    rewardCouponCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
     },
     converted: {
       type: Boolean,

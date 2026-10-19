@@ -21,6 +21,7 @@ class PosSettings {
     required this.defaultPaymentMethod,
     required this.discountEnabled,
     required this.taxEnabled,
+    this.defaultGstRate = 18.0,
     required this.lowStockAlertsPos,
     // Billing
     required this.invoicePrefix,
@@ -72,6 +73,7 @@ class PosSettings {
   final String defaultPaymentMethod;
   final bool discountEnabled;
   final bool taxEnabled;
+  final double defaultGstRate;
   final bool lowStockAlertsPos;
 
   final String invoicePrefix;
@@ -121,6 +123,7 @@ class PosSettings {
         defaultPaymentMethod: 'Cash',
         discountEnabled: true,
         taxEnabled: true,
+        defaultGstRate: 18.0,
         lowStockAlertsPos: true,
         invoicePrefix: 'INV',
         autoInvoiceNumber: true,
@@ -165,6 +168,7 @@ class PosSettings {
     String? defaultPaymentMethod,
     bool? discountEnabled,
     bool? taxEnabled,
+    double? defaultGstRate,
     bool? lowStockAlertsPos,
     String? invoicePrefix,
     bool? autoInvoiceNumber,
@@ -209,6 +213,7 @@ class PosSettings {
       defaultPaymentMethod: defaultPaymentMethod ?? this.defaultPaymentMethod,
       discountEnabled: discountEnabled ?? this.discountEnabled,
       taxEnabled: taxEnabled ?? this.taxEnabled,
+      defaultGstRate: defaultGstRate ?? this.defaultGstRate,
       lowStockAlertsPos: lowStockAlertsPos ?? this.lowStockAlertsPos,
       invoicePrefix: invoicePrefix ?? this.invoicePrefix,
       autoInvoiceNumber: autoInvoiceNumber ?? this.autoInvoiceNumber,
@@ -257,6 +262,7 @@ class PosSettings {
         'defaultPaymentMethod': defaultPaymentMethod,
         'discountEnabled': discountEnabled,
         'taxEnabled': taxEnabled,
+        'defaultGstRate': defaultGstRate,
         'lowStockAlertsPos': lowStockAlertsPos,
         'invoicePrefix': invoicePrefix,
         'autoInvoiceNumber': autoInvoiceNumber,
@@ -308,6 +314,7 @@ class PosSettings {
           j['defaultPaymentMethod'] as String? ?? def.defaultPaymentMethod,
       discountEnabled: j['discountEnabled'] as bool? ?? def.discountEnabled,
       taxEnabled: j['taxEnabled'] as bool? ?? def.taxEnabled,
+      defaultGstRate: (j['defaultGstRate'] as num?)?.toDouble() ?? def.defaultGstRate,
       lowStockAlertsPos:
           j['lowStockAlertsPos'] as bool? ?? def.lowStockAlertsPos,
       invoicePrefix: j['invoicePrefix'] as String? ?? def.invoicePrefix,

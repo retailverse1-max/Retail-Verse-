@@ -33,6 +33,11 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    taxRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     variants: {
       type: Array,
       default: [],
@@ -51,6 +56,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    dimensions: {
+      type: String,
+      default: "",
+      trim: true,
+      required: false,
     },
     reorderLevel: {
       type: Number,

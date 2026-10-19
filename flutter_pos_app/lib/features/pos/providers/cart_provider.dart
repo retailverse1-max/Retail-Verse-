@@ -15,6 +15,9 @@ class CartState {
     this.customerEmail = '',
     this.customerAddress = '',
     this.orderNotes = '',
+    this.appliedCouponCode,
+    this.couponMinOrderAmount,
+    this.couponDescription,
   });
 
   final List<CartItem> items;
@@ -28,11 +31,30 @@ class CartState {
   final String customerEmail;
   final String customerAddress;
   final String orderNotes;
+  final String? appliedCouponCode;
+  final double? couponMinOrderAmount;
+  final String? couponDescription;
 
   double get subtotal =>
       items.fold(0.0, (sum, item) => sum + item.total);
 
-  double get taxAmount => subtotal * taxRate;
+  /// Dynamic GST calculation:
+  /// Uses each item's product.taxRate if configured from inventory (> 0),
+  /// otherwise falls back to cart-level taxRate.
+  double get taxAmount {
+    if (items.isEmpty) return 0.0;
+    final hasItemTax = items.any((i) => i.product.taxRate > 0);
+    if (hasItemTax) {
+      return items.fold(0.0, (sum, item) {
+        final rate = item.product.taxRate > 0 ? item.taxRateDecimal : taxRate;
+        return sum + (item.total * rate);
+      });
+    }
+    return subtotal * taxRate;
+  }
+
+  /// Blended / effective tax rate across all items in cart
+  double get effectiveTaxRate => subtotal > 0 ? (taxAmount / subtotal) : taxRate;
 
   /// Subtotal + tax − discount + extra charges (clamped ≥ 0).
   double get total {
@@ -60,6 +82,45 @@ class CartState {
       customerEmail: customerEmail,
       customerAddress: customerAddress,
       orderNotes: orderNotes,
+      appliedCouponCode: appliedCouponCode,
+      couponMinOrderAmount: couponMinOrderAmount,
+      couponDescription: couponDescription,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'items': items.map((i) => i.toJson()).toList(),
+      'taxRate': taxRate,
+      'discount': discount,
+      'extraCharges': extraCharges,
+      'customerName': customerName,
+      'customerPhone': customerPhone,
+      'customerEmail': customerEmail,
+      'customerAddress': customerAddress,
+      'orderNotes': orderNotes,
+      'appliedCouponCode': appliedCouponCode,
+      'couponMinOrderAmount': couponMinOrderAmount,
+      'couponDescription': couponDescription,
+    };
+  }
+
+  factory CartState.fromJson(Map<String, dynamic> json) {
+    return CartState(
+      items: (json['items'] as List? ?? [])
+          .map((i) => CartItem.fromJson(Map<String, dynamic>.from(i as Map)))
+          .toList(),
+      taxRate: (json['taxRate'] as num?)?.toDouble() ?? 0.18,
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      extraCharges: (json['extraCharges'] as num?)?.toDouble() ?? 0.0,
+      customerName: json['customerName']?.toString() ?? '',
+      customerPhone: json['customerPhone']?.toString() ?? '',
+      customerEmail: json['customerEmail']?.toString() ?? '',
+      customerAddress: json['customerAddress']?.toString() ?? '',
+      orderNotes: json['orderNotes']?.toString() ?? '',
+      appliedCouponCode: json['appliedCouponCode']?.toString(),
+      couponMinOrderAmount: (json['couponMinOrderAmount'] as num?)?.toDouble(),
+      couponDescription: json['couponDescription']?.toString(),
     );
   }
 
@@ -70,6 +131,13 @@ class CartState {
       (item) => item.product.id == product.id,
     );
 
+    double nextTaxRate = taxRate;
+    // When adding product with custom GST from inventory:
+    // If cart was empty or currently at default, adopt the product's tax rate
+    if (product.taxRate > 0 && items.isEmpty) {
+      nextTaxRate = product.taxRateDecimal;
+    }
+
     if (existingIndex != -1) {
       final current = items[existingIndex].quantity;
       if (current >= product.stock) return this;
@@ -77,19 +145,12 @@ class CartState {
       updatedItems[existingIndex] = updatedItems[existingIndex].copyWith(
         quantity: current + 1,
       );
-      return _copyWithItems(updatedItems);
+      return _copyWithItems(updatedItems, taxRate: nextTaxRate);
     }
 
-    return CartState(
-      items: [...items, CartItem(product: product, quantity: 1)],
-      taxRate: taxRate,
-      discount: discount,
-      extraCharges: extraCharges,
-      customerName: customerName,
-      customerPhone: customerPhone,
-      customerEmail: customerEmail,
-      customerAddress: customerAddress,
-      orderNotes: orderNotes,
+    return _copyWithItems(
+      [...items, CartItem(product: product, quantity: 1)],
+      taxRate: nextTaxRate,
     );
   }
 
@@ -118,9 +179,9 @@ class CartState {
   }
 
   CartState clear() {
-    return CartState(
-      items: const [],
-      taxRate: taxRate,
+    return const CartState(
+      items: [],
+      taxRate: 0.18,
       discount: 0,
       extraCharges: 0,
       customerName: '',
@@ -128,6 +189,9 @@ class CartState {
       customerEmail: '',
       customerAddress: '',
       orderNotes: '',
+      appliedCouponCode: null,
+      couponMinOrderAmount: null,
+      couponDescription: null,
     );
   }
 
@@ -142,6 +206,48 @@ class CartState {
       customerEmail: customerEmail,
       customerAddress: customerAddress,
       orderNotes: orderNotes,
+      appliedCouponCode: appliedCouponCode,
+      couponMinOrderAmount: couponMinOrderAmount,
+      couponDescription: couponDescription,
+    );
+  }
+
+  CartState applyCoupon({
+    required String code,
+    required double discount,
+    double? minOrderAmount,
+    String? description,
+  }) {
+    return CartState(
+      items: items,
+      taxRate: taxRate,
+      discount: discount < 0 ? 0 : discount,
+      extraCharges: extraCharges,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      customerEmail: customerEmail,
+      customerAddress: customerAddress,
+      orderNotes: orderNotes,
+      appliedCouponCode: code,
+      couponMinOrderAmount: minOrderAmount,
+      couponDescription: description,
+    );
+  }
+
+  CartState removeCoupon() {
+    return CartState(
+      items: items,
+      taxRate: taxRate,
+      discount: 0.0,
+      extraCharges: extraCharges,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      customerEmail: customerEmail,
+      customerAddress: customerAddress,
+      orderNotes: orderNotes,
+      appliedCouponCode: null,
+      couponMinOrderAmount: null,
+      couponDescription: null,
     );
   }
 
@@ -156,6 +262,9 @@ class CartState {
       customerEmail: customerEmail,
       customerAddress: customerAddress,
       orderNotes: orderNotes,
+      appliedCouponCode: appliedCouponCode,
+      couponMinOrderAmount: couponMinOrderAmount,
+      couponDescription: couponDescription,
     );
   }
 
@@ -170,6 +279,9 @@ class CartState {
       customerEmail: customerEmail,
       customerAddress: customerAddress,
       orderNotes: orderNotes,
+      appliedCouponCode: appliedCouponCode,
+      couponMinOrderAmount: couponMinOrderAmount,
+      couponDescription: couponDescription,
     );
   }
 
@@ -190,6 +302,9 @@ class CartState {
       customerEmail: email ?? customerEmail,
       customerAddress: address ?? customerAddress,
       orderNotes: notes ?? orderNotes,
+      appliedCouponCode: appliedCouponCode,
+      couponMinOrderAmount: couponMinOrderAmount,
+      couponDescription: couponDescription,
     );
   }
 
@@ -204,20 +319,33 @@ class CartState {
       customerEmail: other.customerEmail,
       customerAddress: other.customerAddress,
       orderNotes: other.orderNotes,
+      appliedCouponCode: other.appliedCouponCode,
+      couponMinOrderAmount: other.couponMinOrderAmount,
+      couponDescription: other.couponDescription,
     );
   }
 
-  CartState _copyWithItems(List<CartItem> nextItems) {
+  CartState _copyWithItems(List<CartItem> nextItems, {double? taxRate}) {
+    final nextSubtotal = nextItems.fold(0.0, (sum, item) => sum + item.total);
+
+    // If coupon is applied and new subtotal drops below minOrderAmount, auto-remove coupon
+    final shouldRevokeCoupon = appliedCouponCode != null &&
+        couponMinOrderAmount != null &&
+        nextSubtotal < couponMinOrderAmount!;
+
     return CartState(
       items: nextItems,
-      taxRate: taxRate,
-      discount: discount,
+      taxRate: taxRate ?? this.taxRate,
+      discount: shouldRevokeCoupon ? 0.0 : discount,
       extraCharges: extraCharges,
       customerName: customerName,
       customerPhone: customerPhone,
       customerEmail: customerEmail,
       customerAddress: customerAddress,
       orderNotes: orderNotes,
+      appliedCouponCode: shouldRevokeCoupon ? null : appliedCouponCode,
+      couponMinOrderAmount: shouldRevokeCoupon ? null : couponMinOrderAmount,
+      couponDescription: shouldRevokeCoupon ? null : couponDescription,
     );
   }
 }
@@ -247,17 +375,7 @@ class CartNotifier extends StateNotifier<CartState> {
     final idx = state.items.indexWhere((i) => i.product.id == product.id);
     if (idx < 0) {
       final q = quantity.clamp(1, product.stock);
-      state = CartState(
-        items: [...state.items, CartItem(product: product, quantity: q)],
-        taxRate: state.taxRate,
-        discount: state.discount,
-        extraCharges: state.extraCharges,
-        customerName: state.customerName,
-        customerPhone: state.customerPhone,
-        customerEmail: state.customerEmail,
-        customerAddress: state.customerAddress,
-        orderNotes: state.orderNotes,
-      );
+      state = state._copyWithItems([...state.items, CartItem(product: product, quantity: q)]);
     } else {
       final currentQty = state.items[idx].quantity;
       final newQty = (currentQty + quantity).clamp(1, product.stock);
@@ -279,6 +397,24 @@ class CartNotifier extends StateNotifier<CartState> {
 
   void updateDiscount(double discount) {
     state = state.updateDiscount(discount);
+  }
+
+  void applyCoupon({
+    required String code,
+    required double discount,
+    double? minOrderAmount,
+    String? description,
+  }) {
+    state = state.applyCoupon(
+      code: code,
+      discount: discount,
+      minOrderAmount: minOrderAmount,
+      description: description,
+    );
+  }
+
+  void removeCoupon() {
+    state = state.removeCoupon();
   }
 
   void updateTaxRate(double taxRate) {

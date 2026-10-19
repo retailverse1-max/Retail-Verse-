@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:retail_verse_pos/features/settings/domain/models/pos_settings.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -12,6 +13,9 @@ import '../../../../data/models/order_model.dart';
 import '../../../../data/remote/notification_service.dart';
 import '../../../../core/utils/printer_service.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
+import '../../../orders/utils/receipt_generator.dart';
 
 class InvoiceDialog extends ConsumerStatefulWidget {
   final Order order;
@@ -52,96 +56,181 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
   final PrinterService _printerService = PrinterService();
 
   Future<void> _onPrintPressed() async {
-    setState(() {
-      _isActionRunning = true;
-      _actionMessage = 'Searching for Bluetooth Printers...';
-    });
+    final posSettings = ref.read(posSettingsProvider);
 
+    // Check if any paired Bluetooth printer is available
+    List<BluetoothDevice> btDevices = [];
     try {
-      final devices = await _printerService.getDevices();
-      if (!mounted) return;
-      
-      setState(() => _isActionRunning = false);
+      btDevices = await _printerService.getDevices();
+    } catch (_) {}
 
-      if (devices.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(duration: const Duration(seconds: 2),content: Text('No paired Bluetooth printers found.')),
-        );
-        return;
-      }
-
-      final selectedDevice = await showDialog<BluetoothDevice>(
+    // If bluetooth devices exist, offer choice: 80mm Thermal Printer vs Bluetooth Printer
+    if (btDevices.isNotEmpty && mounted) {
+      final chosen = await showModalBottomSheet<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Select Printer'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: devices.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: const Icon(Icons.print),
-                  title: Text(devices[index].name ?? 'Unknown Device'),
-                  subtitle: Text(devices[index].address ?? ''),
-                  onTap: () => Navigator.pop(ctx, devices[index]),
-                );
-              },
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (sheetCtx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.print_rounded, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Select Print Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text('Choose your thermal printer output', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFE0E7FF),
+                    child: Icon(Icons.receipt_long_rounded, color: Color(0xFF4338CA)),
+                  ),
+                  title: const Text('80mm Thermal Receipt (Supermarket / DMart Standard)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: const Text('Epson, TVS, USB, LAN, Network & System Thermal Printers', style: TextStyle(fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  tileColor: Colors.grey.shade50,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () => Navigator.pop(sheetCtx, '80mm_thermal'),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFDCFCE7),
+                    child: Icon(Icons.bluetooth_connected_rounded, color: Color(0xFF15803D)),
+                  ),
+                  title: const Text('Bluetooth Thermal Printer (ESC/POS)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: Text('${btDevices.length} paired Bluetooth printer(s) found', style: const TextStyle(fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  tileColor: Colors.grey.shade50,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () => Navigator.pop(sheetCtx, 'bluetooth'),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-          ],
         ),
       );
 
-      if (selectedDevice != null && mounted) {
-        setState(() {
-          _isActionRunning = true;
-          _actionMessage = 'Connecting to \${selectedDevice.name}...';
-        });
-
-        final connected = await _printerService.connect(selectedDevice);
-        
-        if (connected) {
-          if (!mounted) return;
-          setState(() => _actionMessage = 'Printing Receipt...');
-          
-          await _printerService.printReceipt(widget.order);
-          
-          if (!mounted) return;
-          setState(() => _isActionRunning = false);
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(duration: const Duration(seconds: 2),
-              content: Text('Receipt printed successfully!'),
-              backgroundColor: AppColors.secondary,
-            ),
-          );
-          
-          // Optional: Disconnect after printing
-          await _printerService.disconnect();
-        } else {
-          if (!mounted) return;
-          setState(() => _isActionRunning = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(duration: const Duration(seconds: 2),
-              content: Text('Failed to connect to printer.'),
-              backgroundColor: AppColors.secondary,
-            ),
-          );
-        }
+      if (chosen == 'bluetooth' && mounted) {
+        await _printViaBluetooth(btDevices);
+        return;
       }
+      if (chosen == null) return; // Dismissed
+    }
+
+    // Default: 80mm Supermarket Thermal Roll Print (DMart style)
+    await _printVia80mmThermal(posSettings);
+  }
+
+  Future<void> _printVia80mmThermal(PosSettings posSettings) async {
+    setState(() {
+      _isActionRunning = true;
+      _actionMessage = 'Generating 80mm Supermarket Bill...';
+    });
+
+    try {
+      final pdfBytes = await ReceiptGenerator.generateReceiptPdf(
+        widget.order,
+        settings: posSettings,
+      );
+
+      if (!mounted) return;
+      setState(() => _isActionRunning = false);
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Bill_${widget.order.orderId}',
+        format: PdfPageFormat.roll80, // Standard 80mm Supermarket Thermal Roll
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _isActionRunning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(duration: const Duration(seconds: 2),
-            content: Text('Print Error: \$e'),
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            content: Text('Print Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _printViaBluetooth(List<BluetoothDevice> devices) async {
+    final selectedDevice = await showDialog<BluetoothDevice>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Select Bluetooth Printer'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: devices.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                leading: const Icon(Icons.print_rounded),
+                title: Text(devices[index].name ?? 'Unknown Device'),
+                subtitle: Text(devices[index].address ?? ''),
+                onTap: () => Navigator.pop(ctx, devices[index]),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        ],
+      ),
+    );
+
+    if (selectedDevice != null && mounted) {
+      setState(() {
+        _isActionRunning = true;
+        _actionMessage = 'Connecting to ${selectedDevice.name}...';
+      });
+
+      final connected = await _printerService.connect(selectedDevice);
+      if (connected) {
+        if (!mounted) return;
+        setState(() => _actionMessage = 'Printing Receipt...');
+        await _printerService.printReceipt(widget.order, storeName: _getStoreName());
+        if (!mounted) return;
+        setState(() => _isActionRunning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 2),
+            content: Text('Receipt printed successfully!'),
             backgroundColor: AppColors.secondary,
+          ),
+        );
+        await _printerService.disconnect();
+      } else {
+        if (!mounted) return;
+        setState(() => _isActionRunning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 2),
+            content: Text('Failed to connect to Bluetooth printer.'),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -158,8 +247,12 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
       phone = '91$phone';
     }
 
-    final hasRewardCoupon = order.subtotal >= 3000 || order.total >= 3000;
-    final rewardCode = 'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}';
+    final hasRewardCoupon = (order.rewardCouponCode != null && order.rewardCouponCode!.isNotEmpty) ||
+        order.subtotal >= 3000 ||
+        order.total >= 3000;
+    final rewardCode = (order.rewardCouponCode != null && order.rewardCouponCode!.isNotEmpty)
+        ? order.rewardCouponCode!
+        : 'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}';
 
     final storeName = _getStoreName();
     final buffer = StringBuffer();
@@ -588,7 +681,8 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}',
+                                      order.rewardCouponCode ??
+                                          'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}',
                                       style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.5, color: Color(0xFF92400E), fontFamily: 'monospace'),
                                     ),
                                     const SizedBox(height: 2),

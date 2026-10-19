@@ -27,6 +27,7 @@ import '../../providers/category_providers.dart';
 import '../../data/models/product.dart';
 import '../../../../data/repositories/marketplace_repository.dart';
 import '../../../../core/utils/app_snackbar.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 
 /// Add Product Screen - Executive Enterprise Grade Product Creation Experience
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -54,6 +55,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _reorderLevelController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _costController = TextEditingController();
+  final _dimensionsController = TextEditingController();
+  final _gstRateController = TextEditingController();
   int _selectedGstRate = 0;
 
   // Hardware Barcode Scanner Listener & Connection Detection
@@ -134,6 +137,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
     });
     _loadCategories();
+    _loadMarketplaceStatuses();
 
     if (widget.initialBarcode != null && widget.initialBarcode!.isNotEmpty) {
       _barcodeController.text = widget.initialBarcode!;
@@ -142,6 +146,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (widget.category != null) {
       _selectedCategoryId = widget.category!.id;
     }
+  }
+
+  Future<void> _loadMarketplaceStatuses() async {
+    try {
+      final token = ref.read(authProvider).token;
+      if (token == null) return;
+      final statuses = await MarketplaceRepository().getAllStatuses(token: token);
+      if (mounted) {
+        setState(() {
+          if (statuses['flipkart'] == true) _publishToFlipkart = true;
+          if (statuses['meesho'] == true) _publishToMeesho = true;
+          if (statuses['shopify'] == true) _publishToShopify = true;
+          if (statuses['zomato'] == true) _publishToZomato = true;
+          if (statuses['swiggy'] == true) _publishToSwiggy = true;
+          if (statuses['eatclub'] == true) _publishToEatClub = true;
+          if (statuses['woocommerce'] == true) _publishToWooCommerce = true;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -160,6 +183,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _reorderLevelController.dispose();
     _descriptionController.dispose();
     _costController.dispose();
+    _dimensionsController.dispose();
+    _gstRateController.dispose();
     super.dispose();
   }
 
@@ -757,8 +782,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               imageQuality: 90,
                             );
                             if (photo != null) {
-                              final extractedBarcode = '890${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
-                              _onHardwareBarcodeScanned(extractedBarcode);
+                              final inputImage = InputImage.fromFilePath(photo.path);
+                              final barcodeScanner = BarcodeScanner();
+                              final List<Barcode> barcodes = await barcodeScanner.processImage(inputImage);
+                              await barcodeScanner.close();
+
+                              if (barcodes.isNotEmpty) {
+                                final rawValue = barcodes.first.rawValue;
+                                if (rawValue != null && rawValue.trim().isNotEmpty) {
+                                  _onHardwareBarcodeScanned(rawValue.trim());
+                                  return;
+                                }
+                              }
+                              _showSnack('Barcode not found. You can auto generate.', isError: true);
                             }
                           } catch (e) {
                             _showSnack('Camera scan error: $e', isError: true);
@@ -871,14 +907,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final price = _priceController.text.trim().isEmpty ? '0.00' : _priceController.text.trim();
 
     final storeNameController = TextEditingController(text: realStoreName);
-    String selectedSize = '2" x 1" (50mm x 25mm)';
-    int labelCopies = 1;
+    String selectedSize = '50mm x 25mm (2" x 1") - Supermarket Standard';
+    int labelCopies = 2; // Default 2 copies as requested
+    final copiesController = TextEditingController(text: '2');
+    final customWidthController = TextEditingController(text: '50');
+    final customHeightController = TextEditingController(text: '25');
 
     final sizes = [
-      '2" x 1" (50mm x 25mm)',
-      '2" x 1.5" (50mm x 38mm)',
-      '3" x 2" (75mm x 50mm)',
-      '4" x 2.5" (100mm x 60mm)',
+      '50mm x 25mm (2" x 1") - Supermarket Standard',
+      '50mm x 38mm (2" x 1.5")',
+      '75mm x 50mm (3" x 2")',
+      '100mm x 60mm (4" x 2.5")',
+      'Custom Dimension (mm)',
       'A4 Sheet (24 Labels - 3x8)',
     ];
 
@@ -888,10 +928,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             double previewHeight = 140;
-            if (selectedSize.contains('1.5"')) previewHeight = 170;
-            if (selectedSize.contains('3" x 2"')) previewHeight = 200;
-            if (selectedSize.contains('4" x 2.5"')) previewHeight = 220;
+            if (selectedSize.contains('1.5"') || selectedSize.contains('38mm')) previewHeight = 170;
+            if (selectedSize.contains('3" x 2"') || selectedSize.contains('75mm')) previewHeight = 200;
+            if (selectedSize.contains('4" x 2.5"') || selectedSize.contains('100mm')) previewHeight = 220;
             if (selectedSize.contains('A4')) previewHeight = 210;
+            if (selectedSize.contains('Custom')) {
+              final h = double.tryParse(customHeightController.text.trim()) ?? 25.0;
+              final w = double.tryParse(customWidthController.text.trim()) ?? 50.0;
+              final ratio = (h / (w > 0 ? w : 50.0)).clamp(0.25, 1.3);
+              previewHeight = (320.0 * ratio).clamp(120.0, 240.0);
+            }
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -962,6 +1008,57 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           ),
                         ),
                       ),
+                      // Custom Dimensions Inputs (Optional mm specification)
+                      if (selectedSize.contains('Custom')) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Width (mm) *Optional', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500, fontSize: 11)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: customWidthController,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    onChanged: (_) => setDialogState(() {}),
+                                    decoration: InputDecoration(
+                                      hintText: '50',
+                                      suffixText: 'mm',
+                                      isDense: true,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Height (mm) *Optional', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500, fontSize: 11)),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: customHeightController,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    onChanged: (_) => setDialogState(() {}),
+                                    decoration: InputDecoration(
+                                      hintText: '25',
+                                      suffixText: 'mm',
+                                      isDense: true,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 16),
 
                       // Dynamic Live Thermal Sticker Preview
@@ -1061,21 +1158,60 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                       const SizedBox(height: 14),
 
-                      // Print Quantity Stepper
+                      // Print Quantity Stepper & Direct Editable Number Input
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Copies to Print:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Copies to Print:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                              Text('Default: 2 (Tap + / - or type)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            ],
+                          ),
                           Row(
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, size: 20),
-                                onPressed: labelCopies > 1 ? () => setDialogState(() => labelCopies--) : null,
+                                icon: const Icon(Icons.remove_circle_outline, size: 22),
+                                onPressed: labelCopies > 1
+                                    ? () {
+                                        setDialogState(() {
+                                          labelCopies--;
+                                          copiesController.text = '$labelCopies';
+                                        });
+                                      }
+                                    : null,
                               ),
-                              Text('$labelCopies', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+                              SizedBox(
+                                width: 52,
+                                child: TextField(
+                                  controller: copiesController,
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  onChanged: (val) {
+                                    final parsed = int.tryParse(val.trim());
+                                    if (parsed != null && parsed > 0) {
+                                      setDialogState(() {
+                                        labelCopies = parsed;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
                               IconButton(
-                                icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
-                                onPressed: () => setDialogState(() => labelCopies++),
+                                icon: const Icon(Icons.add_circle_outline, size: 22, color: AppColors.primary),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    labelCopies++;
+                                    copiesController.text = '$labelCopies';
+                                  });
+                                },
                               ),
                             ],
                           ),
@@ -1089,6 +1225,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
                 ElevatedButton.icon(
                   onPressed: () async {
+                    final customW = double.tryParse(customWidthController.text.trim()) ?? 50.0;
+                    final customH = double.tryParse(customHeightController.text.trim()) ?? 25.0;
+                    final finalCopies = int.tryParse(copiesController.text.trim()) ?? labelCopies;
+
                     Navigator.pop(ctx);
                     await _printBarcodePdf(
                       storeName: storeNameController.text.trim().isEmpty ? 'MY STORE' : storeNameController.text.trim().toUpperCase(),
@@ -1096,7 +1236,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       barcode: barcode,
                       price: price,
                       size: selectedSize,
-                      copies: labelCopies,
+                      copies: finalCopies > 0 ? finalCopies : 2,
+                      customWidthMm: customW,
+                      customHeightMm: customH,
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -1123,6 +1265,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     required String price,
     required String size,
     required int copies,
+    double? customWidthMm,
+    double? customHeightMm,
   }) async {
     try {
       final doc = pw.Document();
@@ -1131,20 +1275,24 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       double widthMm = 50;
       double heightMm = 25;
 
-      if (size.contains('1.5"')) {
+      if (size.contains('Custom') && customWidthMm != null && customHeightMm != null) {
+        widthMm = customWidthMm > 0 ? customWidthMm : 50;
+        heightMm = customHeightMm > 0 ? customHeightMm : 25;
+      } else if (size.contains('1.5"') || size.contains('38mm')) {
         widthMm = 50;
         heightMm = 38;
-      } else if (size.contains('3" x 2"')) {
+      } else if (size.contains('3" x 2"') || size.contains('75mm')) {
         widthMm = 75;
         heightMm = 50;
-      } else if (size.contains('4" x 2.5"')) {
+      } else if (size.contains('4" x 2.5"') || size.contains('100mm')) {
         widthMm = 100;
         heightMm = 60;
       }
 
       final pageFormat = PdfPageFormat(widthMm * PdfPageFormat.mm, heightMm * PdfPageFormat.mm, marginAll: 2 * PdfPageFormat.mm);
 
-      for (int i = 0; i < copies; i++) {
+      final totalCopies = copies > 0 ? copies : 2;
+      for (int i = 0; i < totalCopies; i++) {
         doc.addPage(
           pw.Page(
             pageFormat: pageFormat,
@@ -1241,6 +1389,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     try {
       final desc = _descriptionController.text.trim();
+      final dims = _dimensionsController.text.trim();
+
+      final enabledMarketplaces = <String>[];
+      if (_publishToFlipkart) enabledMarketplaces.add('flipkart');
+      if (_publishToMeesho) enabledMarketplaces.add('meesho');
+      if (_publishToZomato) enabledMarketplaces.add('zomato');
+      if (_publishToSwiggy) enabledMarketplaces.add('swiggy');
+      if (_publishToEatClub) enabledMarketplaces.add('eatclub');
+      if (_publishToShopify) enabledMarketplaces.add('shopify');
+      if (_publishToWooCommerce) enabledMarketplaces.add('woocommerce');
+
+      // GST Rate: check input box first, then preset chip, otherwise 0 (optional)
+      double gstRateVal = 0.0;
+      final gstText = _gstRateController.text.trim();
+      if (gstText.isNotEmpty) {
+        gstRateVal = double.tryParse(gstText) ?? 0.0;
+      } else if (_selectedGstRate > 0) {
+        gstRateVal = _selectedGstRate.toDouble();
+      }
+
       final created = await ref.read(productRepositoryProvider).createProduct(
             name: name,
             sku: sku,
@@ -1251,6 +1419,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             category: categoryLabel,
             imageBase64: imageBase64,
             description: desc.isEmpty ? null : desc,
+            dimensions: dims.isEmpty ? null : dims,
+            marketplaces: enabledMarketplaces,
+            taxRate: gstRateVal,
           );
 
       final legacy = Product(
@@ -1261,8 +1432,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         quantity: created.stock,
         price: created.price,
         description: _descriptionController.text.trim(),
+        dimensions: created.dimensions ?? (dims.isEmpty ? null : dims),
         categoryId: _selectedCategory?.id ?? widget.category?.id ?? '',
         categoryName: categoryLabel.isNotEmpty ? categoryLabel : created.category,
+        marketplaces: enabledMarketplaces,
+        taxRate: gstRateVal,
       );
 
       if (!mounted) return;
@@ -1276,34 +1450,32 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         }
       }
 
-      // Marketplace Pushes
-      List<String> syncedPlatforms = [];
+      // Universal 1-Click Sync
       final token = ref.read(authProvider).token;
-
-      if (_publishToFlipkart && token != null) {
+      if (enabledMarketplaces.isNotEmpty && token != null) {
         try {
-          await MarketplaceRepository().pushProductToFlipkart(productId: created.id, token: token);
-          syncedPlatforms.add('Flipkart & Shopsy');
+          await MarketplaceRepository().syncProductToPlatforms(
+            productId: created.id,
+            platforms: enabledMarketplaces,
+            token: token,
+          );
         } catch (e) {
-          debugPrint('Flipkart push failed: $e');
+          debugPrint('Universal marketplace sync: $e');
         }
       }
-      if (_publishToMeesho && token != null) {
-        try {
-          await MarketplaceRepository().pushProductToMeesho(productId: created.id, token: token);
-          syncedPlatforms.add('Meesho');
-        } catch (e) {
-          debugPrint('Meesho push failed: $e');
-        }
-      }
-      if (_publishToZomato) syncedPlatforms.add('Zomato');
-      if (_publishToSwiggy) syncedPlatforms.add('Swiggy');
-      if (_publishToEatClub) syncedPlatforms.add('Eat Club');
-      if (_publishToShopify) syncedPlatforms.add('Shopify');
-      if (_publishToWooCommerce) syncedPlatforms.add('WooCommerce');
 
-      if (syncedPlatforms.isNotEmpty && mounted) {
-        _showSnack('🚀 Auto-synced to: ${syncedPlatforms.join(", ")}');
+      if (enabledMarketplaces.isNotEmpty && mounted) {
+        final platformTitles = enabledMarketplaces.map((p) {
+          if (p == 'flipkart') return 'Flipkart & Shopsy';
+          if (p == 'meesho') return 'Meesho';
+          if (p == 'shopify') return 'Shopify';
+          if (p == 'zomato') return 'Zomato';
+          if (p == 'swiggy') return 'Swiggy';
+          if (p == 'eatclub') return 'Eat Club';
+          if (p == 'woocommerce') return 'WooCommerce';
+          return p.toUpperCase();
+        }).join(", ");
+        _showSnack('🚀 1-Click Synced to: $platformTitles');
       }
 
       if (mounted) context.pop(legacy);
@@ -2493,6 +2665,68 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ),
           ),
           const SizedBox(height: 14),
+          // GST / Tax Rate Box (Directly under Quantity / Current Stock)
+          _buildFieldLabel('GST / Tax Rate (%)', optionalText: '(Optional - leave blank for 0%)'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _gstRateController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            decoration: _buildInputDecoration(
+              hint: 'e.g. 18 (leave blank if exempt)',
+              prefixIcon: Icons.receipt_long_outlined,
+              suffix: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                child: Text('%', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
+              ),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return null; // Optional: completely valid if left blank
+              if (double.tryParse(v.trim()) == null) return 'Invalid GST %';
+              return null;
+            },
+            onChanged: (val) {
+              final parsed = int.tryParse(val.trim());
+              setState(() {
+                _selectedGstRate = parsed ?? -1;
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Text('Quick GST: ', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                ...[0, 5, 12, 18, 28].map((rate) {
+                  final isSel = _selectedGstRate == rate ||
+                      (_gstRateController.text.trim() == rate.toString());
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(rate == 0 ? '0% (Exempt)' : '$rate% GST'),
+                      selected: isSel,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedGstRate = rate;
+                          _gstRateController.text = rate == 0 ? '0' : rate.toString();
+                        });
+                      },
+                      selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSel ? FontWeight.w600 : FontWeight.normal,
+                        color: isSel ? AppColors.primary : AppColors.textSecondary,
+                      ),
+                      side: BorderSide(color: isSel ? AppColors.primary : AppColors.border),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           // Location / Bin
           _buildFieldLabel('Warehouse / Shelf Bin'),
           const SizedBox(height: 6),
@@ -2501,34 +2735,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             decoration: _buildInputDecoration(
               hint: 'e.g. Aisle 3-B, Shelf 2',
               prefixIcon: Icons.location_on_outlined,
-            ),
-          ),
-          const SizedBox(height: 14),
-          // GST Tax Rate Selector
-          _buildFieldLabel('GST / Tax Rate'),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [0, 5, 12, 18, 28].map((rate) {
-                final isSel = _selectedGstRate == rate;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(rate == 0 ? '0% (Exempt)' : '$rate% GST'),
-                    selected: isSel,
-                    onSelected: (_) => setState(() => _selectedGstRate = rate),
-                    selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      fontSize: 11,
-                      fontWeight: isSel ? FontWeight.w500 : FontWeight.normal,
-                      color: isSel ? AppColors.primary : AppColors.textSecondary,
-                    ),
-                    side: BorderSide(color: isSel ? AppColors.primary : AppColors.border),
-                  ),
-                );
-              }).toList(),
             ),
           ),
         ],
@@ -2696,6 +2902,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             decoration: _buildInputDecoration(
               hint: 'e.g. Samsung, Nike, Local Brand',
               prefixIcon: Icons.business_rounded,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildFieldLabel('Dimensions', optionalText: '(Optional: L x W x H)'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _dimensionsController,
+            decoration: _buildInputDecoration(
+              hint: 'e.g. 10 x 5 x 2 cm or 200 x 150 x 50 mm',
+              prefixIcon: Icons.aspect_ratio_rounded,
             ),
           ),
           const SizedBox(height: 14),

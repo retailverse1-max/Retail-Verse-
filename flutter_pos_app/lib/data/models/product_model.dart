@@ -57,10 +57,14 @@ class Product {
   final String unit;
   final String? barcode;
   final String? imageUrl;
+  /// Optional product physical dimensions (e.g., "10 x 5 x 2 cm").
+  final String? dimensions;
   /// Optional long text from API (`description` / `desc`).
   final String? description;
   final bool isActive;
   final bool isFlipkartSynced;
+  final List<String> marketplaces;
+  final double taxRate;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -76,12 +80,29 @@ class Product {
     required this.unit,
     this.barcode,
     this.imageUrl,
+    this.dimensions,
     this.description,
     this.isActive = true,
     this.isFlipkartSynced = false,
+    this.marketplaces = const [],
+    this.taxRate = 0.0,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Tax rate getters: percentage (e.g. 18.0) and decimal fraction (e.g. 0.18)
+  double get taxRateDecimal => taxRate > 1.0 ? taxRate / 100.0 : taxRate;
+  double get taxRatePercent => taxRate > 1.0 ? taxRate : taxRate * 100.0;
+
+  /// Marketplace Active Getters
+  bool get isFlipkartActive => marketplaces.contains('flipkart') || isFlipkartSynced;
+  bool get isMeeshoActive => marketplaces.contains('meesho');
+  bool get isShopifyActive => marketplaces.contains('shopify');
+  bool get isZomatoActive => marketplaces.contains('zomato');
+  bool get isSwiggyActive => marketplaces.contains('swiggy');
+  bool get isEatClubActive => marketplaces.contains('eatclub') || marketplaces.contains('eat club');
+  bool get isWooCommerceActive => marketplaces.contains('woocommerce') || marketplaces.contains('wpkart');
+  bool get isAmazonActive => marketplaces.contains('amazon');
 
   /// Check if product is in stock
   bool get isInStock => stock > 0;
@@ -115,9 +136,12 @@ class Product {
     String? unit,
     String? barcode,
     String? imageUrl,
+    String? dimensions,
     String? description,
     bool? isActive,
     bool? isFlipkartSynced,
+    List<String>? marketplaces,
+    double? taxRate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -133,9 +157,12 @@ class Product {
       unit: unit ?? this.unit,
       barcode: barcode ?? this.barcode,
       imageUrl: imageUrl ?? this.imageUrl,
+      dimensions: dimensions ?? this.dimensions,
       description: description ?? this.description,
       isActive: isActive ?? this.isActive,
       isFlipkartSynced: isFlipkartSynced ?? this.isFlipkartSynced,
+      marketplaces: marketplaces ?? this.marketplaces,
+      taxRate: taxRate ?? this.taxRate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -155,9 +182,12 @@ class Product {
       'unit': unit,
       'barcode': barcode,
       'imageUrl': imageUrl,
+      if (dimensions != null && dimensions!.isNotEmpty) 'dimensions': dimensions,
       'description': description,
       'isActive': isActive,
       'isFlipkartSynced': isFlipkartSynced,
+      'marketplaces': marketplaces,
+      'taxRate': taxRate,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -165,6 +195,12 @@ class Product {
 
   /// Create from JSON (for API / MongoDB sync)
   factory Product.fromJson(Map<String, dynamic> json) {
+    final parsedMarketplaces = (json['marketplaces'] is List)
+        ? (json['marketplaces'] as List).map((e) => e.toString().toLowerCase().trim()).toList()
+        : <String>[
+            if (json['isFlipkartSynced'] == true) 'flipkart',
+          ];
+
     return Product(
       id: _parseProductId(json),
       name: json['name']?.toString() ?? '',
@@ -179,9 +215,12 @@ class Product {
       unit: json['unit']?.toString() ?? 'pcs',
       barcode: json['barcode']?.toString(),
       imageUrl: _pickImageUrl(json),
+      dimensions: json['dimensions']?.toString(),
       description: _pickDescription(json),
       isActive: json['isActive'] == null ? true : (json['isActive'] as bool? ?? true),
-      isFlipkartSynced: json['isFlipkartSynced'] == true,
+      isFlipkartSynced: json['isFlipkartSynced'] == true || parsedMarketplaces.contains('flipkart'),
+      marketplaces: parsedMarketplaces,
+      taxRate: (json['taxRate'] as num?)?.toDouble() ?? (json['gstRate'] as num?)?.toDouble() ?? 0.0,
       createdAt: _coerceDateTime(json['createdAt'] ?? json['created_at']),
       updatedAt: _coerceDateTime(json['updatedAt'] ?? json['updated_at']),
     );
@@ -223,6 +262,7 @@ class Product {
       'barcode': barcode,
       'image_url': imageUrl,
       'description': description,
+      'tax_rate': taxRate,
       'is_active': isActive ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -249,6 +289,7 @@ class Product {
         if (d == null || d.isEmpty || d == 'null') return null;
         return d;
       }(),
+      taxRate: (map['tax_rate'] as num?)?.toDouble() ?? 0.0,
       isActive: map['is_active'] == null ? true : (map['is_active'] == 1),
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'])

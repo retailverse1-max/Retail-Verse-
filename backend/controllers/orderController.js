@@ -18,6 +18,7 @@ const createOrder = async (req, res) => {
       discount,
       tax,
       extraCharges,
+      couponCode,
     } = req.body;
 
     if (!items || !items.length) {
@@ -92,6 +93,7 @@ const createOrder = async (req, res) => {
       total: total || computedTotal,
       paymentMethod: paymentMethod.toLowerCase(),
       status: req.body.status || "completed",
+      paymentStatus: req.body.paymentStatus || (paymentMethod.toLowerCase() === "whatsapp" ? "pending" : "paid"),
       createdBy: req.user._id,
       clientId: clientId,
       customerName,
@@ -102,7 +104,21 @@ const createOrder = async (req, res) => {
       discount: discount || 0,
       tax: tax || 0,
       extraCharges: extraCharges || 0,
+      couponCode: couponCode ? couponCode.trim().toUpperCase() : undefined,
     });
+
+    // Increment coupon usedCount if coupon applied
+    if (couponCode) {
+      try {
+        const Coupon = require("../models/Coupon");
+        await Coupon.updateOne(
+          { code: couponCode.trim().toUpperCase() },
+          { $inc: { usedCount: 1 } }
+        );
+      } catch (couponErr) {
+        console.error("Failed to increment coupon usedCount:", couponErr.message);
+      }
+    }
 
     // Update stock and logs
     for (const item of finalItems) {
@@ -135,10 +151,44 @@ const createOrder = async (req, res) => {
       }
     }
 
+    // ── Generate Unique Next-Visit Reward Coupon if order qualifies (>= 3000) ──
+    let rewardCoupon = null;
+    const finalTotal = total || computedTotal;
+    if (finalTotal >= 3000) {
+      try {
+        const Coupon = require("../models/Coupon");
+        const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const rewardCode = `SAVE300-${suffix}`;
+        const validUntil = new Date();
+        validUntil.setDate(validUntil.getDate() + 30); // 30 days validity
+
+        rewardCoupon = await Coupon.create({
+          code: rewardCode,
+          description: `Flat ₹300 OFF on next shopping of ₹3,000+ (Unlocked from Order #${orderId})`,
+          discountType: "flat",
+          discountValue: 300,
+          minOrderAmount: 3000,
+          validFrom: new Date(),
+          validUntil: validUntil,
+          usageLimit: 1, // Single-use!
+          usedCount: 0,
+          perCustomerLimit: 1,
+          isActive: true,
+          clientId: clientId || null,
+        });
+
+        order.rewardCouponCode = rewardCode;
+        await order.save();
+      } catch (rewardErr) {
+        console.error("Reward coupon generation error:", rewardErr.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: "Order created successfully",
       order,
+      rewardCoupon,
     });
   } catch (error) {
     console.error("Order Creation Error:", error);

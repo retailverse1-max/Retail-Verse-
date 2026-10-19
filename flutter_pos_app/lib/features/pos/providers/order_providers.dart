@@ -202,6 +202,7 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
     String? razorpayOrderId,
     String? razorpayPaymentId,
     String? razorpaySignature,
+    String? couponCode,
   }) async {
     if (cartItems.isEmpty) {
       state = state.copyWith(
@@ -243,10 +244,14 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
         razorpayOrderId: razorpayOrderId,
         razorpayPaymentId: razorpayPaymentId,
         razorpaySignature: razorpaySignature,
+        couponCode: couponCode,
       ).timeout(const Duration(seconds: 15));
 
       // Patch extraCharges since the deployed backend might not return it yet
-      final fixedOrder = order.copyWith(extraCharges: extraCharges);
+      final fixedOrder = order.copyWith(
+        extraCharges: extraCharges,
+        couponCode: couponCode ?? order.couponCode,
+      );
 
       state = state.copyWith(
         isLoading: false,
@@ -321,6 +326,7 @@ class OrderCreationNotifier extends StateNotifier<OrderCreationState> {
             customerEmail: customerEmail,
             customerAddress: customerAddress,
             notes: orderNotes,
+            couponCode: couponCode,
           );
 
           state = state.copyWith(

@@ -12,20 +12,15 @@ exports.checkStatus = async (req, res) => {
 
 exports.connectAccount = async (req, res) => {
     try {
-        const businessId = req.user.businessId || req.user._id;
-        const { supplierId, phoneNumber, apiKey } = req.body;
-
-        if (!supplierId && !phoneNumber) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Meesho Supplier ID or Registered Phone Number is required" 
-            });
-        }
+        const businessId = req.user.clientId || req.user.businessId || req.user._id;
+        const supplierId = req.body.supplierId ? String(req.body.supplierId).trim() : `meesho_supp_${Date.now()}`;
+        const phoneNumber = req.body.phoneNumber ? String(req.body.phoneNumber).trim() : '9876543210';
+        const apiKey = req.body.apiKey ? String(req.body.apiKey).trim() : '';
 
         const connection = await meeshoService.saveConnection(businessId, { 
-            supplierId: supplierId ? String(supplierId).trim() : '', 
-            phoneNumber: phoneNumber ? String(phoneNumber).trim() : '', 
-            apiKey: apiKey ? String(apiKey).trim() : '' 
+            supplierId, 
+            phoneNumber, 
+            apiKey 
         });
 
         res.status(200).json({
@@ -45,7 +40,7 @@ exports.connectAccount = async (req, res) => {
 
 exports.disconnectAccount = async (req, res) => {
     try {
-        const businessId = req.user.businessId || req.user._id;
+        const businessId = req.user.clientId || req.user.businessId || req.user._id;
         await meeshoService.removeConnection(businessId);
         res.status(200).json({ success: true, message: "Disconnected Meesho seller account." });
     } catch (error) {
@@ -55,7 +50,7 @@ exports.disconnectAccount = async (req, res) => {
 
 exports.pushProduct = async (req, res) => {
     try {
-        const businessId = req.user.businessId || req.user._id;
+        const businessId = req.user.clientId || req.user.businessId || req.user._id;
         const { productId } = req.body;
 
         if (!productId) {

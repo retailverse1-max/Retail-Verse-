@@ -864,24 +864,28 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           ),
                         ),
                       ),
-                    if (product.isFlipkartSynced)
+                    if (product.marketplaces.isNotEmpty || product.isFlipkartSynced)
                       Positioned(
                         top: 8,
                         left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0F172A).withValues(alpha: 0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              )
-                            ],
-                          ),
-                          child: const Icon(Icons.shopping_bag, color: Colors.blue, size: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (product.isFlipkartActive)
+                              _buildMiniMarketplaceBadge(Icons.shopping_bag, const Color(0xFF2874F0), 'Flipkart & Shopsy'),
+                            if (product.isMeeshoActive)
+                              _buildMiniMarketplaceBadge(Icons.storefront, const Color(0xFFE81B63), 'Meesho'),
+                            if (product.isShopifyActive)
+                              _buildMiniMarketplaceBadge(Icons.shop_two, const Color(0xFF008060), 'Shopify'),
+                            if (product.isZomatoActive)
+                              _buildMiniMarketplaceBadge(Icons.restaurant, const Color(0xFFCB202D), 'Zomato'),
+                            if (product.isSwiggyActive)
+                              _buildMiniMarketplaceBadge(Icons.delivery_dining, const Color(0xFFFC8019), 'Swiggy'),
+                            if (product.isEatClubActive)
+                              _buildMiniMarketplaceBadge(Icons.flatware, Colors.deepOrange, 'Eat Club'),
+                            if (product.isWooCommerceActive)
+                              _buildMiniMarketplaceBadge(Icons.language, const Color(0xFF7F54B3), 'WooCommerce'),
+                          ],
                         ),
                       ),
                     Positioned(
@@ -972,6 +976,28 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMiniMarketplaceBadge(IconData icon, Color color, String tooltip) {
+    return Container(
+      margin: const EdgeInsets.only(right: 3),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Tooltip(
+        message: 'Synced to $tooltip',
+        child: Icon(icon, color: color, size: 12),
       ),
     );
   }

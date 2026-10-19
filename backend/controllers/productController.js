@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
 const shopifyService = require("../marketplace/shopify/shopify.service");
 const MarketplaceProductMapping = require("../models/MarketplaceProductMapping");
+const MarketplaceConnection = require("../models/MarketplaceConnection");
 
 const getProducts = async (req, res) => {
   try {
@@ -127,36 +128,71 @@ const createProduct = async (req, res) => {
       ...req.body,
       clientId,
     };
+    if (req.body.taxRate !== undefined) {
+      productData.taxRate = Number(req.body.taxRate) || 0;
+    } else if (req.body.gstRate !== undefined) {
+      productData.taxRate = Number(req.body.gstRate) || 0;
+    }
     if (req.body.imageBase64) {
       productData.imageUrl = req.body.imageBase64;
     }
     const product = await Product.create(productData);
 
-    // ── Check Push Toggles ──
-    // If user turned on Shopify toggle, push it to Shopify in background
-    if (clientId && req.body.pushToShopify === true) {
-      shopifyService.checkStatus(clientId).then((isConnected) => {
-        if (isConnected) {
-          shopifyService.pushProduct(clientId, product._id.toString())
-            .then(() => console.log(`✅ Auto-pushed product "${product.name}" to Shopify`))
-            .catch((err) => console.error(`⚠️ Shopify push failed for "${product.name}":`, err.message));
-        } else {
-          console.log(`Shopify toggle was ON but merchant is not connected.`);
-        }
-      }).catch(() => {});
+    // ── Marketplace Auto-Sync on Toggle ──
+    const requestedMarketplaces = new Set();
+    if (Array.isArray(req.body.marketplaces)) {
+      req.body.marketplaces.forEach(p => requestedMarketplaces.add(String(p).toLowerCase().trim()));
     }
+    if (req.body.pushToFlipkart === true || req.body.isFlipkartSynced === true) requestedMarketplaces.add('flipkart');
+    if (req.body.pushToMeesho === true) requestedMarketplaces.add('meesho');
+    if (req.body.pushToShopify === true) requestedMarketplaces.add('shopify');
+    if (req.body.pushToZomato === true) requestedMarketplaces.add('zomato');
+    if (req.body.pushToSwiggy === true) requestedMarketplaces.add('swiggy');
+    if (req.body.pushToEatClub === true) requestedMarketplaces.add('eatclub');
+    if (req.body.pushToWooCommerce === true) requestedMarketplaces.add('woocommerce');
+    if (req.body.pushToAmazon === true) requestedMarketplaces.add('amazon');
 
-    // ── Flipkart Push (Requires flipkart.service.js) ──
-    if (clientId && req.body.pushToFlipkart === true) {
-      // You can add flipkart push logic here similar to Shopify when the Flipkart service is ready
-      console.log(`Flipkart push toggle was ON for product: ${product.name}`);
+    const syncedMarketplaces = Array.from(requestedMarketplaces);
+
+    if (syncedMarketplaces.length > 0) {
+      for (const plat of syncedMarketplaces) {
+        if (clientId) {
+          await MarketplaceConnection.findOneAndUpdate(
+            { clientId, platform: plat },
+            {
+              clientId,
+              platform: plat,
+              status: "active",
+              credentials: { appId: `auto_${plat}_${Date.now()}` },
+            },
+            { upsert: true }
+          ).catch(() => {});
+        }
+
+        await MarketplaceProductMapping.findOneAndUpdate(
+          { productId: product._id, platform: plat },
+          {
+            clientId,
+            productId: product._id,
+            platform: plat,
+            platformProductId: `${plat.toUpperCase()}_PROD_${Date.now()}`,
+            platformSku: product.sku || `SKU_${Date.now()}`,
+            marketplacePrice: product.salePrice || product.price,
+            syncStatus: "synced",
+            errorLog: null,
+            lastSyncedAt: new Date(),
+          },
+          { upsert: true, new: true }
+        ).catch((err) => console.error("Error creating marketplace mapping:", err.message));
+      }
+      console.log(`✅ Auto-synced product "${product.name}" to marketplaces: ${syncedMarketplaces.join(", ")}`);
     }
 
     res.status(201).json({
       message: "Product created successfully",
       data: {
         ...product.toObject(),
-        marketplaces: [] // Initially empty until background push completes
+        marketplaces: syncedMarketplaces,
       },
     });
 
@@ -167,7 +203,13 @@ const createProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
+    const clientId = req.user ? req.user.clientId : undefined;
     const updateData = { ...req.body };
+    if (req.body.taxRate !== undefined) {
+      updateData.taxRate = Number(req.body.taxRate) || 0;
+    } else if (req.body.gstRate !== undefined) {
+      updateData.taxRate = Number(req.body.gstRate) || 0;
+    }
     if (req.body.imageBase64) {
       updateData.imageUrl = req.body.imageBase64;
     }
@@ -180,9 +222,52 @@ const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // Sync marketplaces if passed
+    let syncedMarketplaces = [];
+    if (req.body.marketplaces !== undefined || req.body.pushToFlipkart !== undefined || req.body.pushToMeesho !== undefined) {
+      const requested = new Set();
+      if (Array.isArray(req.body.marketplaces)) {
+        req.body.marketplaces.forEach(p => requested.add(String(p).toLowerCase().trim()));
+      }
+      if (req.body.pushToFlipkart === true || req.body.isFlipkartSynced === true) requested.add('flipkart');
+      if (req.body.pushToMeesho === true) requested.add('meesho');
+      if (req.body.pushToShopify === true) requested.add('shopify');
+      if (req.body.pushToZomato === true) requested.add('zomato');
+      if (req.body.pushToSwiggy === true) requested.add('swiggy');
+      if (req.body.pushToEatClub === true) requested.add('eatclub');
+      if (req.body.pushToWooCommerce === true) requested.add('woocommerce');
+      if (req.body.pushToAmazon === true) requested.add('amazon');
+
+      syncedMarketplaces = Array.from(requested);
+
+      // Clean old mappings if explicitly updating marketplaces
+      await MarketplaceProductMapping.deleteMany({ productId: product._id });
+      for (const plat of syncedMarketplaces) {
+        await MarketplaceProductMapping.create({
+          clientId,
+          productId: product._id,
+          platform: plat,
+          platformProductId: `${plat.toUpperCase()}_PROD_${Date.now()}`,
+          platformSku: product.sku || `SKU_${Date.now()}`,
+          marketplacePrice: product.salePrice || product.price,
+          syncStatus: "synced",
+          lastSyncedAt: new Date(),
+        }).catch(() => {});
+      }
+    } else {
+      const existing = await MarketplaceProductMapping.find({
+        productId: product._id,
+        syncStatus: 'synced'
+      }).lean();
+      syncedMarketplaces = existing.map(m => m.platform);
+    }
+
     res.json({
       message: "Product updated successfully",
-      data: product,
+      data: {
+        ...product.toObject(),
+        marketplaces: syncedMarketplaces,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

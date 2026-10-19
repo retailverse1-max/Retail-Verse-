@@ -19,6 +19,9 @@ abstract class IProductDataSource {
     String category = '',
     String? imageBase64,
     String? description,
+    String? dimensions,
+    List<String>? marketplaces,
+    double? taxRate,
   });
   Future<Product> updateProduct({
     required String id,
@@ -32,6 +35,7 @@ abstract class IProductDataSource {
     String? imageBase64,
     String? description,
     bool? isActive,
+    double? taxRate,
   });
   Future<Map<String, dynamic>> quickInward({
     String? barcode,
