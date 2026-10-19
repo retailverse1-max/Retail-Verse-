@@ -62,7 +62,21 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
   } catch (_) {}
 
   try {
-    return await repository.getAllProducts();
+    final products = await repository.getAllProducts();
+    // Cache products locally so POS is always 100% offline-ready
+    if (products.isNotEmpty) {
+      try {
+        await ProductLocalService().insertProducts(products);
+        if (kDebugMode) {
+          debugPrint('productsProvider: Cached ${products.length} products to local SQLite database');
+        }
+      } catch (cacheErr) {
+        if (kDebugMode) {
+          debugPrint('productsProvider: Failed to cache products locally: $cacheErr');
+        }
+      }
+    }
+    return products;
   } catch (e) {
     if (kDebugMode) {
       debugPrint('productsProvider: catalog load failed → fallback to local. $e');

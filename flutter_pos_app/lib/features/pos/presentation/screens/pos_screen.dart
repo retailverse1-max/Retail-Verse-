@@ -21,6 +21,9 @@ import 'package:retail_verse_pos/data/models/order_model.dart';
 import 'package:retail_verse_pos/features/pos/providers/whatsapp_pending_orders_provider.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
+import 'package:retail_verse_pos/data/local/product_local_service.dart';
+import 'package:retail_verse_pos/data/local/sync_queue_local_service.dart';
+import 'package:retail_verse_pos/core/providers/sync_providers.dart';
 
 class POSScreen extends ConsumerStatefulWidget {
   const POSScreen({super.key});
@@ -145,6 +148,9 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingSyncCount();
+    });
   }
 
   @override
@@ -158,6 +164,70 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
 
 
 
+  int _pendingSyncCount = 0;
+  bool _isDownloadingCache = false;
+
+  Future<void> _checkPendingSyncCount() async {
+    try {
+      final count = await SyncQueueLocalService().getPendingCount();
+      if (mounted) {
+        setState(() => _pendingSyncCount = count);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _downloadOfflineCache() async {
+    HapticFeedback.mediumImpact();
+    setState(() => _isDownloadingCache = true);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 1),
+        content: Text('Downloading full product catalog to device...'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    try {
+      final products = await ref.refresh(productsProvider.future);
+      if (products.isNotEmpty) {
+        await ProductLocalService().insertProducts(products);
+      }
+      await _checkPendingSyncCount();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            content: Row(
+              children: [
+                const Icon(Icons.cloud_done_rounded, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('${products.length} products cached! POS is 100% offline-ready.')),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            content: Text('Cache download failed: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloadingCache = false);
+      }
+    }
+  }
+
   Future<void> _handleRefresh() async {
     HapticFeedback.mediumImpact();
     setState(() => isRefreshing = true);
@@ -168,10 +238,12 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
         ref.refresh(productsProvider.future),
         ref.refresh(posCategoriesProvider.future),
       ]);
+      await _checkPendingSyncCount();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(duration: const Duration(seconds: 2),
-            content: Text('Inventory refreshed successfully'),
+          const SnackBar(
+            duration: Duration(seconds: 2),
+            content: Text('Inventory refreshed and cached offline successfully'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppColors.primary,
           ),
@@ -180,7 +252,8 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(duration: const Duration(seconds: 2),
+          SnackBar(
+            duration: const Duration(seconds: 2),
             content: Text('Failed to refresh: $e'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppColors.secondary,
@@ -1011,6 +1084,85 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                       ),
                                     ),
                                   ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 8),
+                            // ── Download Offline Cache / Offline Ready Button ──
+                            Bounceable(
+                              onTap: () {
+                                if (!_isDownloadingCache) {
+                                  _downloadOfflineCache();
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.cardBorder),
+                                ),
+                                child: _isDownloadingCache
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF16A34A)),
+                                      )
+                                    : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.cloud_download_rounded, size: 20, color: Color(0xFF16A34A)),
+                                          if (isTablet) ...[
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Offline Cache',
+                                              style: AppTypography.labelMedium.copyWith(
+                                                color: const Color(0xFF15803D),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            if (_pendingSyncCount > 0) ...[
+                              const SizedBox(width: 8),
+                              Bounceable(
+                                onTap: () async {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      duration: const Duration(seconds: 2),
+                                      content: Text('$_pendingSyncCount offline orders waiting for internet sync.'),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: const Color(0xFFD97706),
+                                    ),
+                                  );
+                                  ref.read(syncServiceProvider).processSyncQueue();
+                                  await _checkPendingSyncCount();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFFBEB),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFF59E0B)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.sync_problem_rounded, size: 20, color: Color(0xFFD97706)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$_pendingSyncCount',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          color: Color(0xFFB45309),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

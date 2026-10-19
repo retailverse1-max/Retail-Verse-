@@ -138,6 +138,12 @@ const createOrder = async (req, res) => {
         referenceId: order._id.toString(),
       });
 
+      // ── Auto-Sync stock to connected marketplaces (Flipkart, Meesho, Shopify, Amazon) ──
+      const { syncProductStockToAllMarketplaces } = require("../marketplace/marketplaceInventorySync");
+      syncProductStockToAllMarketplaces(clientId, product._id, afterStock).catch((err) => {
+        console.error("Marketplace inventory sync failed:", err.message);
+      });
+
       // Push notification for out of stock
       if (afterStock === 0 && beforeStock > 0) {
         await createAndSendNotification({

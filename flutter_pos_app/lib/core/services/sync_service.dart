@@ -139,6 +139,12 @@ class SyncService {
     final totalVal = orderData['totalAmount'] ?? orderData['total'];
     final total = totalVal is num ? totalVal.toDouble() : double.tryParse('$totalVal') ?? 0.0;
 
+    final customerName = orderData['customerName']?.toString();
+    final discountVal = orderData['discount'];
+    final discount = discountVal is num ? discountVal.toDouble() : double.tryParse('$discountVal') ?? 0.0;
+    final taxVal = orderData['tax'] ?? orderData['taxRate'];
+    final tax = taxVal is num ? taxVal.toDouble() : double.tryParse('$taxVal') ?? 0.0;
+
     try {
       final response = await _httpClient
           .post(
@@ -148,6 +154,9 @@ class SyncService {
               'items': items,
               'paymentMethod': pm,
               'total': total,
+              'customerName': customerName,
+              'discount': discount,
+              'tax': tax,
             }),
           )
           .timeout(const Duration(seconds: 20));
