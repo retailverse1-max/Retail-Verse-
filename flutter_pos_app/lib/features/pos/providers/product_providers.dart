@@ -40,6 +40,10 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
         ref.read(productCatalogErrorProvider.notifier).state = null;
       }
     });
+    try {
+      final local = await ProductLocalService().getAllProducts();
+      if (local.isNotEmpty) return local;
+    } catch (_) {}
     return [];
   }
   final repository = ref.watch(productRepositoryProvider);
@@ -152,20 +156,58 @@ final lowStockProductsProvider = FutureProvider<List<Product>>((ref) async {
   }
 });
 
-/// Products whose `category` matches [categoryName] (case-insensitive). Uses GET /products + filter.
+/// Products whose `category` matches [categoryName] (case-insensitive).
+/// Guaranteed to never lose saved products: queries local SQLite DB and merges with remote.
 final categoryProductsProvider =
     FutureProvider.autoDispose.family<List<Product>, String>((ref, categoryName) async {
   final repository = ref.watch(productRepositoryProvider);
+  final cleanName = categoryName.trim();
+  final target = cleanName.toLowerCase();
+
+  // 1. Fetch from local SQLite DB first (instant offline availability)
+  List<Product> localMatching = [];
   try {
-    return await repository.getProductsByCategory(categoryName);
-  } catch (e) {
-    try {
-      final all = await ProductLocalService().getAllProducts();
-      return all.where((p) => p.category.toLowerCase() == categoryName.toLowerCase()).toList();
-    } catch (_) {
-      return [];
+    final localAll = await ProductLocalService().getAllProducts();
+    if (target.isEmpty || target == 'all') {
+      localMatching = localAll;
+    } else {
+      localMatching = localAll.where((p) {
+        final pCat = p.category.trim().toLowerCase();
+        return pCat == target || (pCat.isNotEmpty && (pCat.startsWith(target) || target.startsWith(pCat)));
+      }).toList();
     }
+  } catch (e) {
+    debugPrint('categoryProductsProvider: local DB error: $e');
   }
+
+  // 2. Fetch from remote API
+  List<Product> remoteProducts = [];
+  bool remoteSuccess = false;
+  try {
+    remoteProducts = await repository.getProductsByCategory(cleanName);
+    remoteSuccess = true;
+    if (remoteProducts.isNotEmpty) {
+      try {
+        await ProductLocalService().insertProducts(remoteProducts);
+      } catch (_) {}
+    }
+  } catch (e) {
+    debugPrint('categoryProductsProvider: remote error: $e');
+  }
+
+  // 3. If remote succeeded, merge remote products with any local-only products
+  if (remoteSuccess && remoteProducts.isNotEmpty) {
+    final remoteIds = remoteProducts.map((p) => p.id).toSet();
+    final extraLocal = localMatching.where((p) => !remoteIds.contains(p.id)).toList();
+    return [...remoteProducts, ...extraLocal];
+  }
+
+  // 4. If remote failed or returned empty, return local DB products (never empty if products exist locally!)
+  if (localMatching.isNotEmpty) {
+    return localMatching;
+  }
+
+  return remoteProducts;
 });
 
 final posCategoriesProvider = FutureProvider<List<CategoryEntity>>((ref) async {

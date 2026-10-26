@@ -15,6 +15,7 @@ import '../../providers/order_providers.dart';
 import '../../providers/product_providers.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'pos_product_detail_screen.dart';
+import '../widgets/invoice_dialog.dart';
 
 
 /// Cart item for POS
@@ -59,6 +60,11 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
 
   bool _handleHardwareScanKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
+
+    // Only process scanner keys when POS billing screen is the active foreground route
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
+      return false;
+    }
 
     // Respect user's Barcode Scanner toggle in Settings
     final posSettings = ref.read(posSettingsProvider);
@@ -176,24 +182,8 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         ),
       );
     } else {
-      // Product Not Found
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-          content: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('Barcode "$barcode" not found in inventory!'),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      // Backend / Console log only, suppressed from frontend UI
+      debugPrint('⚡ [POS Billing Hardware Scanner] Barcode "$barcode" not found in inventory');
     }
   }
 
@@ -562,20 +552,36 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
 
         if (mounted) {
           setState(() => _isProcessingOrder = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(duration: const Duration(seconds: 2),
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 12),
-                  const Text('Order placed successfully!'),
-                ],
+          if (createdOrder != null) {
+            await showDialog<void>(
+              context: context,
+              barrierColor: Colors.black.withOpacity(0.8),
+              barrierDismissible: false,
+              builder: (ctx) => InvoiceDialog(
+                order: createdOrder,
+                onDone: () {
+                  Navigator.pop(ctx);
+                  if (context.mounted) context.go('/pos');
+                },
               ),
-              backgroundColor: AppColors.secondary,
-              behavior: SnackBarBehavior.floating,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                duration: Duration(seconds: 2),
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Order placed successfully!'),
+                  ],
+                ),
+                backgroundColor: AppColors.secondary,
+                behavior: SnackBarBehavior.floating,
               ),
-          );
-          context.go('/pos');
+            );
+            context.go('/pos');
+          }
         }
       } else {
         final err = ref.read(orderCreationProvider).error ?? 'Unknown error';

@@ -1,5 +1,6 @@
 import '../models/product_model.dart';
 import '../datasources/product_data_source.dart';
+import '../local/product_local_service.dart';
 
 /// Product repository for business logic
 class ProductRepository {
@@ -62,8 +63,8 @@ class ProductRepository {
     String? dimensions,
     List<String>? marketplaces,
     double? taxRate,
-  }) {
-    return dataSource.createProduct(
+  }) async {
+    final product = await dataSource.createProduct(
       name: name,
       sku: sku,
       price: price,
@@ -77,6 +78,10 @@ class ProductRepository {
       marketplaces: marketplaces,
       taxRate: taxRate,
     );
+    try {
+      await ProductLocalService().insertProduct(product);
+    } catch (_) {}
+    return product;
   }
 
   Future<Product> updateProduct({
@@ -92,8 +97,10 @@ class ProductRepository {
     String? description,
     bool? isActive,
     double? taxRate,
-  }) {
-    return dataSource.updateProduct(
+    String? dimensions,
+    List<String>? marketplaces,
+  }) async {
+    final product = await dataSource.updateProduct(
       id: id,
       name: name,
       sku: sku,
@@ -106,10 +113,19 @@ class ProductRepository {
       description: description,
       isActive: isActive,
       taxRate: taxRate,
+      dimensions: dimensions,
+      marketplaces: marketplaces,
     );
+    try {
+      await ProductLocalService().updateProduct(product);
+    } catch (_) {}
+    return product;
   }
 
-  Future<void> deleteProduct(String id) {
-    return dataSource.deleteProduct(id);
+  Future<void> deleteProduct(String id) async {
+    try {
+      await ProductLocalService().deleteProduct(id);
+    } catch (_) {}
+    return await dataSource.deleteProduct(id);
   }
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -32,7 +31,18 @@ class ApiResponseHandler {
   }
 
   static Uri uri(String endpoint) {
-    return Uri.parse('${ApiEndpoints.baseUrl}$endpoint');
+    var base = ApiEndpoints.baseUrl.trim();
+    if (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    var path = endpoint.trim();
+    if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+    if (base.endsWith('/api') && path.startsWith('/api/')) {
+      path = path.substring(4);
+    }
+    return Uri.parse('$base$path');
   }
 
   static void logResponse(String label, http.Response response) {
@@ -46,6 +56,19 @@ class ApiResponseHandler {
   }) {
     final trimmedBody = response.body.trim();
     final contentType = response.headers['content-type'] ?? '';
+
+    final isAuthAction = action.toLowerCase().contains('login') ||
+        action.toLowerCase().contains('sign in') ||
+        action.toLowerCase().contains('register') ||
+        action.toLowerCase().contains('sign up');
+
+    if (!isAuthAction && response.statusCode == 401) {
+      _handleSessionExpiration();
+      throw const ApiException(
+        'Your session has expired. Please log in again.',
+        statusCode: 401,
+      );
+    }
 
     if (trimmedBody.isEmpty) {
       throw ApiException(
@@ -63,7 +86,28 @@ class ApiResponseHandler {
     }
 
     try {
-      return jsonDecode(trimmedBody);
+      final decoded = jsonDecode(trimmedBody);
+
+      // Safety net: some backends return 200 with auth-error messages instead
+      // of a proper 401. Catch "user not found", "invalid token", etc. here
+      // so the user gets a clean "session expired → /login" redirect instead
+      // of a raw error snackbar.
+      if (!isAuthAction && decoded is Map<String, dynamic>) {
+        final msg = (decoded['message'] ?? decoded['error'] ?? '').toString().toLowerCase();
+        if (msg.contains('user not found') ||
+            msg.contains('invalid token') ||
+            msg.contains('not authorized') ||
+            msg.contains('jwt expired') ||
+            msg.contains('token expired')) {
+          _handleSessionExpiration();
+          throw const ApiException(
+            'Your session has expired. Please log in again.',
+            statusCode: 401,
+          );
+        }
+      }
+
+      return decoded;
     } on FormatException {
       throw ApiException(
         'The server returned data in an unexpected format. Please try again.',
@@ -79,11 +123,17 @@ class ApiResponseHandler {
   }) {
     final message = _messageFromDecoded(decodedBody);
 
-    if (response.statusCode == 401 ||
-        (message != null &&
-            (message.toLowerCase().contains('user not found') ||
-             message.toLowerCase().contains('invalid token') ||
-             message.toLowerCase().contains('not authorized')))) {
+    final isAuthAction = action.toLowerCase().contains('login') ||
+        action.toLowerCase().contains('sign in') ||
+        action.toLowerCase().contains('register') ||
+        action.toLowerCase().contains('sign up');
+
+    if (!isAuthAction &&
+        (response.statusCode == 401 ||
+            (message != null &&
+                (message.toLowerCase().contains('user not found') ||
+                 message.toLowerCase().contains('invalid token') ||
+                 message.toLowerCase().contains('not authorized'))))) {
       // Trigger automatic session cleanup and clean user-facing redirect
       _handleSessionExpiration();
       return ApiException(

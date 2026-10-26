@@ -5,7 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
   static Database? _database;
-  static const int _dbVersion = 5; // Incremented for discount and tax columns
+  static const int _dbVersion = 6; // v6: added tax_rate column to products
 
   static Future<Database> get database async {
     if (_database != null) return _database!;
@@ -82,6 +82,17 @@ class AppDatabase {
         debugPrint('❌ Error updating orders table: $e');
       }
     }
+
+    if (oldVersion < 6) {
+      // Add tax_rate column to products table
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN tax_rate REAL DEFAULT 0.0;');
+        debugPrint('✅ Products table column (tax_rate) added successfully');
+      } catch (e) {
+        debugPrint('❌ Error adding tax_rate to products table: $e');
+        // ignore if column already exists
+      }
+    }
   }
 
   /// Create database tables
@@ -101,6 +112,7 @@ class AppDatabase {
         barcode TEXT,
         image_url TEXT,
         description TEXT,
+        tax_rate REAL DEFAULT 0.0,
         is_active INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,

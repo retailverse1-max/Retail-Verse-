@@ -65,16 +65,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     try {
       final hasSession = await sessionFuture;
       if (hasSession) {
+        // hasSession() already checks expiry internally, but restore might
+        // still have a stale Riverpod state — guard once more.
         await ref.read(authProvider.notifier).restoreFromStorage();
         if (!mounted) return;
-        
+
         final home = initialHomeRouteForUser(ref.read(authProvider).user);
         context.go(home);
       } else {
-        context.go('/onboarding');
+        // No valid / non-expired session found.
+        context.go('/login');
       }
     } catch (e) {
-      if (mounted) context.go('/onboarding');
+      if (mounted) context.go('/login');
     }
   }
 

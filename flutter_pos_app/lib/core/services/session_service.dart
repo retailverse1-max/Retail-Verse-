@@ -15,6 +15,10 @@ class SessionService {
   static const String _subscriptionPlanKey = 'subscription_plan';
   static const String _subscriptionStatusKey = 'subscription_status';
   static const String _subscriptionExpiryKey = 'subscription_expiry';
+  static const String _loginAtKey = 'login_at';
+
+  /// Session validity duration — matches backend JWT expiry (7 days).
+  static const Duration sessionDuration = Duration(days: 7);
 
   /// Keys for [readPersistedAuth] / [restoreFromStorage] consumers.
   static const String persistedTokenKey = 'token';
@@ -43,6 +47,8 @@ class SessionService {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(_tokenKey, token);
+    // Stamp the exact login time so we can enforce 7-day client-side expiry.
+    await prefs.setString(_loginAtKey, DateTime.now().toIso8601String());
 
     // Persist role only when login supplied one — never write a fake "cashier" placeholder.
     final trimmed = userRole?.trim().toLowerCase();
@@ -153,11 +159,37 @@ class SessionService {
     return prefs.getString(_storeIdKey);
   }
 
+  /// Returns true if a stored session exists AND has not yet expired (< 7 days).
   static Future<bool> hasSession() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey)?.trim();
     // Ignore whitespace-only / garbage keys so cold start can reach login.
-    return token != null && token.length >= 8;
+    if (token == null || token.length < 8) return false;
+    // Client-side expiry: if loginAt is missing or older than sessionDuration → treat as expired.
+    if (await isSessionExpired(prefs: prefs)) return false;
+    return true;
+  }
+
+  /// True when the stored login timestamp is missing or older than [sessionDuration].
+  /// Pass an already-loaded [prefs] to avoid a second disk read.
+  static Future<bool> isSessionExpired({SharedPreferences? prefs}) async {
+    final p = prefs ?? await SharedPreferences.getInstance();
+    final loginAtStr = p.getString(_loginAtKey);
+    if (loginAtStr == null || loginAtStr.isEmpty) {
+      // No timestamp recorded — treat as expired so user re-authenticates cleanly.
+      return true;
+    }
+    final loginAt = DateTime.tryParse(loginAtStr);
+    if (loginAt == null) return true;
+    final age = DateTime.now().difference(loginAt);
+    if (age >= sessionDuration) {
+      if (kDebugMode) {
+        debugPrint('SessionService: session expired (age=${age.inHours}h). Clearing.');
+      }
+      await clearSession();
+      return true;
+    }
+    return false;
   }
 
   static Future<void> clearSession() async {
@@ -172,6 +204,7 @@ class SessionService {
     await prefs.remove(_subscriptionPlanKey);
     await prefs.remove(_subscriptionStatusKey);
     await prefs.remove(_subscriptionExpiryKey);
+    await prefs.remove(_loginAtKey);
     currentStoreId = null;
     if (kDebugMode) {
       debugPrint('SessionService: session cleared');

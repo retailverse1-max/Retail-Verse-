@@ -24,6 +24,9 @@ import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
 import 'package:retail_verse_pos/data/local/product_local_service.dart';
 import 'package:retail_verse_pos/data/local/sync_queue_local_service.dart';
 import 'package:retail_verse_pos/core/providers/sync_providers.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class POSScreen extends ConsumerStatefulWidget {
   const POSScreen({super.key});
@@ -45,6 +48,11 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
 
   bool _handleHardwareScanKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
+
+    // Only process scanner keys when POS screen is the active foreground route
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
+      return false;
+    }
 
     // Respect user's Barcode Scanner toggle in Settings
     final posSettings = ref.read(posSettingsProvider);
@@ -76,9 +84,114 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     return false;
   }
 
+  bool _isCameraScanning = false;
+
+  Future<bool> _ensureCameraPermission() async {
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
+    if (status.isGranted) return true;
+    if (!mounted) return false;
+    final blocked = status.isPermanentlyDenied;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          blocked
+              ? 'Camera permission denied permanently. Please enable in Settings.'
+              : 'Camera permission is required to scan product barcodes.',
+        ),
+        backgroundColor: AppColors.error,
+        action: blocked
+            ? SnackBarAction(
+                label: 'Settings',
+                textColor: Colors.white,
+                onPressed: openAppSettings,
+              )
+            : null,
+      ),
+    );
+    return false;
+  }
+
+  Future<void> _scanBarcodeWithCamera() async {
+    if (_isCameraScanning) return;
+    final hasPermission = await _ensureCameraPermission();
+    if (!hasPermission) return;
+
+    setState(() => _isCameraScanning = true);
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 90,
+      );
+
+      if (photo != null) {
+        final inputImage = InputImage.fromFilePath(photo.path);
+        final barcodeScanner = BarcodeScanner();
+        final List<Barcode> barcodes = await barcodeScanner.processImage(inputImage);
+        await barcodeScanner.close();
+
+        if (barcodes.isNotEmpty) {
+          final rawValue = barcodes.first.rawValue;
+          if (rawValue != null && rawValue.trim().isNotEmpty) {
+            final barcode = rawValue.trim();
+            debugPrint('⚡ [POS Camera Scan] Detected barcode: $barcode');
+            await _onHardwareBarcodeScanned(barcode);
+            return;
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              content: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Barcode could not be detected. Please align barcode properly and try again.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Color(0xFFD97706),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error scanning barcode with camera: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            content: Text('Camera scan error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCameraScanning = false);
+      }
+    }
+  }
+
   Future<void> _onHardwareBarcodeScanned(String barcode) async {
     debugPrint('⚡ [POSScreen Hardware Scanner] Scanned barcode: $barcode');
-    if (!mounted || barcode.isEmpty) return;
+    final barcodeTrimmed = barcode.trim();
+    if (!mounted || barcodeTrimmed.isEmpty) return;
 
     final productsAsync = ref.read(productsProvider);
     final products = productsAsync.value ?? [];
@@ -86,7 +199,9 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     Product? matchedProduct;
     try {
       matchedProduct = products.firstWhere(
-        (p) => p.barcode != null && p.barcode!.trim() == barcode,
+        (p) =>
+            (p.barcode != null && p.barcode!.trim() == barcodeTrimmed) ||
+            p.sku.trim().toLowerCase() == barcodeTrimmed.toLowerCase(),
       );
     } catch (_) {
       matchedProduct = null;
@@ -95,21 +210,24 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     if (matchedProduct == null) {
       try {
         final repo = ref.read(productRepositoryProvider);
-        matchedProduct = await repo.getProductByBarcode(barcode);
+        matchedProduct = await repo.getProductByBarcode(barcodeTrimmed);
       } catch (e) {
         debugPrint('⚠️ Barcode API lookup failed: $e');
       }
     }
+
+    if (!mounted) return;
 
     if (matchedProduct != null) {
       ref.read(cartProvider.notifier).addItem(matchedProduct);
       if (ref.read(posSettingsProvider).soundOnBilling) {
         SystemSound.play(SystemSoundType.click);
       }
+      HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          duration: const Duration(milliseconds: 1200),
+          duration: const Duration(milliseconds: 1400),
           behavior: SnackBarBehavior.floating,
           content: Row(
             children: [
@@ -122,21 +240,8 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-          content: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Barcode "$barcode" not found in inventory!')),
-            ],
-          ),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      // Backend / Console log only, suppressed from frontend UI
+      debugPrint('⚡ [POS Hardware Scanner] Barcode "$barcodeTrimmed" not found in inventory');
     }
   }
 
@@ -276,12 +381,6 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
-
-  Future<void> _showHeldCartsSheet(BuildContext context, CartState currentCart) =>
-      _showParkedQueueSheet(context, currentCart, initialTab: 0);
-
-  Future<void> _showWhatsAppPendingSheet(BuildContext context) =>
-      _showParkedQueueSheet(context, ref.read(cartProvider), initialTab: 1);
 
   Future<void> _showParkedQueueSheet(
     BuildContext context,
@@ -1241,6 +1340,9 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                         ),
                       ),
 
+                      // SCAN PRODUCT BARCODE (TAP ON CAMERA TO SCAN PRODUCT BARCODE)
+                      _buildCameraScanBar(),
+
                       // CATEGORIES
                       _buildModernCategoryBar(),
                       const SizedBox(height: 16),
@@ -1259,7 +1361,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                     width: 320,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border(left: BorderSide(color: AppColors.cardBorder.withOpacity(0.5))),
+                      border: Border(left: BorderSide(color: AppColors.cardBorder.withValues(alpha: 0.5))),
                     ),
                     child: _buildCartSidebar(cart, totalValue, count),
                   ),
@@ -1271,7 +1373,85 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
     ));
   }
 
-
+  Widget _buildCameraScanBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.qr_code_scanner_rounded,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: InkWell(
+              onTap: _scanBarcodeWithCamera,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  'Tap on camera to scan product barcode',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Bounceable(
+            onTap: _scanBarcodeWithCamera,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: _isCameraScanning
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildInlineSearchBar() {
     return Container(
@@ -1288,6 +1468,11 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           hintText: 'Search...',
           hintStyle: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
           prefixIcon: const Icon(Icons.search_rounded, size: 20),
+          suffixIcon: IconButton(
+            tooltip: 'Tap on camera to scan product barcode',
+            icon: const Icon(Icons.camera_alt_rounded, size: 20, color: AppColors.primary),
+            onPressed: _scanBarcodeWithCamera,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
@@ -1523,7 +1708,13 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
         
         final filtered = products.where((p) {
           if (!p.isActive) return false;
-          final matchesSearch = p.name.toLowerCase().contains(searchQuery.toLowerCase());
+          final q = searchQuery.toLowerCase();
+          final matchesSearch = q.isEmpty ||
+              p.name.toLowerCase().contains(q) ||
+              p.category.toLowerCase().contains(q) ||
+              p.sku.toLowerCase().contains(q) ||
+              (p.barcode?.toLowerCase().contains(q) ?? false) ||
+              (p.description?.toLowerCase().contains(q) ?? false);
           final matchesCat = selectedCategory == 'All Menu' || selectedCategory == 'All' || p.category == selectedCategory;
           
           bool matchesFilter = true;
@@ -1601,7 +1792,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                 borderRadius: BorderRadius.circular(borderR),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -1659,7 +1850,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                 decoration: BoxDecoration(
                                   color: isOutOfStock ? Colors.grey[400] : Colors.white,
                                   borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6)],
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6)],
                                 ),
                                 child: Text(
                                   AppFormatters.formatCurrency(product.price),
@@ -1692,7 +1883,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                 Text(
                                   product.category.toUpperCase(),
                                   style: TextStyle(
-                                    color: isOutOfStock ? Colors.grey : AppColors.primary.withOpacity(0.8),
+                                    color: isOutOfStock ? Colors.grey : AppColors.primary.withValues(alpha: 0.8),
                                     fontSize: catSize,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.8,
@@ -1766,7 +1957,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                       borderRadius: BorderRadius.circular(isNarrow ? 8.0 : 10.0),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: (isOutOfStock ? Colors.amber : AppColors.primary).withOpacity(0.3),
+                                          color: (isOutOfStock ? Colors.amber : AppColors.primary).withValues(alpha: 0.3),
                                           blurRadius: 6,
                                           offset: const Offset(0, 3),
                                         )
@@ -1839,8 +2030,8 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
           padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
           decoration: BoxDecoration(
             color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
-            border: Border(top: BorderSide(color: AppColors.cardBorder.withOpacity(0.5))),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
+            border: Border(top: BorderSide(color: AppColors.cardBorder.withValues(alpha: 0.5))),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1941,7 +2132,7 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_basket_outlined, size: 48, color: AppColors.textTertiary.withOpacity(0.3)),
+          Icon(Icons.shopping_basket_outlined, size: 48, color: AppColors.textTertiary.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text('Your cart is empty', style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary)),
         ],

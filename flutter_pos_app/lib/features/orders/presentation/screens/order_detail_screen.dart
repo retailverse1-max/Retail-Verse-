@@ -12,6 +12,9 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:retail_verse_pos/core/utils/printer_service.dart';
+import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+import 'package:pdf/pdf.dart';
 
 /// Order detail screen - Invoice style view
 class OrderDetailScreen extends ConsumerWidget {
@@ -38,6 +41,22 @@ class OrderDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.print, color: AppColors.primary),
             onPressed: () async {
               try {
+                final printerService = PrinterService();
+                if (await printerService.isConnected() || await printerService.autoConnect()) {
+                  final authUser = ref.read(authProvider).user;
+                  await printerService.printReceipt(
+                    order,
+                    settings: settings,
+                    authUser: authUser,
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(duration: Duration(seconds: 2), content: Text('Receipt printed on thermal printer!')),
+                    );
+                  }
+                  return;
+                }
+
                 final pdfData = await ReceiptGenerator.generateReceiptPdf(
                   order,
                   settings: settings,
@@ -45,11 +64,12 @@ class OrderDetailScreen extends ConsumerWidget {
                 await Printing.layoutPdf(
                   onLayout: (format) async => pdfData,
                   name: 'Receipt_${order.orderId}.pdf',
+                  format: settings.receiptSize == '58mm' ? PdfPageFormat.roll57 : PdfPageFormat.roll80,
                 );
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(duration: const Duration(seconds: 2),content: Text('Error printing receipt: $e')),
+                    SnackBar(duration: const Duration(seconds: 2), content: Text('Error printing receipt: $e')),
                   );
                 }
               }

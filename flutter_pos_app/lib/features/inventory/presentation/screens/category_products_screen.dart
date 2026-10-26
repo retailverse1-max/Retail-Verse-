@@ -11,6 +11,7 @@ import '../../../../data/models/product_model.dart' as api;
 import '../../../auth/providers/auth_provider.dart';
 import '../../../dashboard/providers/dashboard_providers.dart';
 import '../../../pos/providers/product_providers.dart';
+import '../../providers/category_providers.dart';
 import '../../data/models/category.dart';
 
 /// Category products loaded from GET /products (filtered by category name).
@@ -64,7 +65,7 @@ class _CategoryProductsScreenState
     if (role != 'admin' && role != 'super_admin' && role != 'inventory_manager') {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(duration: const Duration(seconds: 2),
+        const SnackBar(duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text('Only admin can add products.'),
@@ -78,10 +79,13 @@ class _CategoryProductsScreenState
       extra: widget.category,
     );
     if (mounted) {
-      ref.invalidate(categoryProductsProvider(widget.category.name));
+      ref.invalidate(categoryProductsProvider(widget.category.name.trim()));
+      ref.invalidate(productsProvider);
+      ref.invalidate(categoriesProvider);
+      ref.read(categoryProductsProvider(widget.category.name.trim()).future).ignore();
       if (result != null) {
         _showLocalSnackBar(
-          const SnackBar(duration: const Duration(seconds: 2),
+          const SnackBar(duration: Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
             content: Row(
@@ -103,7 +107,7 @@ class _CategoryProductsScreenState
     if (role == 'seo_manager') {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(duration: const Duration(seconds: 2),
+        const SnackBar(duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
           content: Text('SEO Manager cannot delete products.'),
@@ -115,8 +119,10 @@ class _CategoryProductsScreenState
     try {
       await ref.read(productRepositoryProvider).deleteProduct(product.id);
       if (mounted) {
-        ref.invalidate(categoryProductsProvider(widget.category.name));
+        ref.invalidate(categoryProductsProvider(widget.category.name.trim()));
         ref.invalidate(productsProvider);
+        ref.invalidate(categoriesProvider);
+        ref.read(categoryProductsProvider(widget.category.name.trim()).future).ignore();
         invalidateAllDashboardProviders(ref);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(duration: const Duration(seconds: 2),
@@ -147,9 +153,6 @@ class _CategoryProductsScreenState
   }
 
   Future<void> _editProduct(api.Product product) async {
-    final role = effectiveUserRole(ref.read(authProvider).user);
-    final isSeoManager = role == 'seo_manager';
-
     final nameCtrl = TextEditingController(text: product.name);
     final descCtrl = TextEditingController(text: product.description ?? '');
     final priceCtrl = TextEditingController(text: product.price.toString());
@@ -237,59 +240,57 @@ class _CategoryProductsScreenState
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   ),
                 ),
-                if (!isSeoManager) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: priceCtrl,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Price',
-                            prefixText: '\$ ',
-                            labelStyle: const TextStyle(color: AppColors.textSecondary),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: AppColors.cardBorder),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: AppColors.backgroundSecondary,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: priceCtrl,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: 'Price',
+                          prefixText: '₹ ',
+                          labelStyle: const TextStyle(color: AppColors.textSecondary),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: AppColors.cardBorder),
                           ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.backgroundSecondary,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: stockCtrl,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          decoration: InputDecoration(
-                            labelText: 'Stock',
-                            labelStyle: const TextStyle(color: AppColors.textSecondary),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: AppColors.cardBorder),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: AppColors.backgroundSecondary,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: stockCtrl,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
+                          labelText: 'Stock',
+                          labelStyle: const TextStyle(color: AppColors.textSecondary),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: AppColors.cardBorder),
                           ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.backgroundSecondary,
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 32),
                 Row(
                   children: [
@@ -302,7 +303,7 @@ class _CategoryProductsScreenState
                         ),
                         child: Text(
                           'Cancel',
-                          style: AppTypography.titleSmall.copyWith(color: AppColors.textSecondary),
+                          style: AppTypography.titleSmall.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w400),
                         ),
                       ),
                     ),
@@ -332,30 +333,26 @@ class _CategoryProductsScreenState
     if (ok != true || !mounted) return;
 
     try {
-      if (isSeoManager) {
-        await ref.read(productRepositoryProvider).updateProduct(
-              id: product.id,
-              name: nameCtrl.text.trim(),
-              description: descCtrl.text.trim(),
-            );
-      } else {
-        final price = double.tryParse(priceCtrl.text.trim());
-        final stock = int.tryParse(stockCtrl.text.trim());
-        await ref.read(productRepositoryProvider).updateProduct(
-              id: product.id,
-              name: nameCtrl.text.trim(),
-              description: descCtrl.text.trim(),
-              price: price,
-              stock: stock,
-            );
-      }
-      ref.invalidate(categoryProductsProvider(widget.category.name));
+      final price = double.tryParse(priceCtrl.text.trim());
+      final stock = int.tryParse(stockCtrl.text.trim());
+      await ref.read(productRepositoryProvider).updateProduct(
+            id: product.id,
+            name: nameCtrl.text.trim(),
+            description: descCtrl.text.trim(),
+            price: price,
+            stock: stock,
+          );
+      ref.invalidate(categoryProductsProvider(widget.category.name.trim()));
+      ref.invalidate(productsProvider);
+      ref.invalidate(categoriesProvider);
+      ref.read(categoryProductsProvider(widget.category.name.trim()).future).ignore();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(duration: const Duration(seconds: 2),
+        _showLocalSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
-            content: Text('Product updated'),
+            content: Text('Product updated successfully!'),
           ),
         );
       }
@@ -386,8 +383,10 @@ class _CategoryProductsScreenState
             isActive: newStatus,
           );
       if (mounted) {
-        ref.invalidate(categoryProductsProvider(widget.category.name));
+        ref.invalidate(categoryProductsProvider(widget.category.name.trim()));
         ref.invalidate(productsProvider);
+        ref.invalidate(categoriesProvider);
+        ref.read(categoryProductsProvider(widget.category.name.trim()).future).ignore();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
@@ -413,10 +412,44 @@ class _CategoryProductsScreenState
     }
   }
 
+  Future<void> _handleEditProduct(api.Product product) async {
+    final role = effectiveUserRole(ref.read(authProvider).user);
+    final isSeo = role == 'seo_manager' || role == 'seo' || role == 'seo_executive';
+
+    if (isSeo) {
+      await _editProduct(product);
+    } else {
+      final result = await context.push(
+        '/inventory/${widget.category.id}/add-product',
+        extra: {
+          'category': widget.category,
+          'editProduct': product,
+        },
+      );
+      if (mounted) {
+        ref.invalidate(categoryProductsProvider(widget.category.name.trim()));
+        ref.invalidate(productsProvider);
+        ref.invalidate(categoriesProvider);
+        ref.read(categoryProductsProvider(widget.category.name.trim()).future).ignore();
+        if (result != null) {
+          _showLocalSnackBar(
+            const SnackBar(
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(bottom: 120, left: 16, right: 16),
+              content: Text('Product updated successfully!'),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _showProductMenu(BuildContext context, api.Product product) {
     final role = effectiveUserRole(ref.read(authProvider).user);
     final canDelete = role == 'admin' || role == 'super_admin' || role == 'inventory_manager';
-    final isSeoManager = role == 'seo_manager';
+    final isSeo = role == 'seo_manager' || role == 'seo' || role == 'seo_executive';
+    final canEdit = canDelete || isSeo;
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -471,7 +504,7 @@ class _CategoryProductsScreenState
                     },
                   ),
                 ],
-                if (canDelete || isSeoManager) ...[
+                if (canEdit) ...[
                   ListTile(
                     dense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
@@ -486,7 +519,7 @@ class _CategoryProductsScreenState
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
-                      _editProduct(product);
+                      _handleEditProduct(product);
                     },
                   ),
                 ],
@@ -540,7 +573,7 @@ class _CategoryProductsScreenState
                     },
                   ),
                 ],
-                if (!canDelete && !isSeoManager) ...[
+                if (!canDelete && !isSeo) ...[
                   const Padding(
                     padding: EdgeInsets.all(16),
                     child: Text(
@@ -564,7 +597,7 @@ class _CategoryProductsScreenState
     final canAccessInventory = canAccessInventoryManagement(role);
     final canAddProduct = role == 'admin' || role == 'super_admin' || role == 'inventory_manager';
     final canManageProduct = canAddProduct || role == 'seo_manager';
-    final async = ref.watch(categoryProductsProvider(widget.category.name));
+    final async = ref.watch(categoryProductsProvider(widget.category.name.trim()));
 
     if (!canAccessInventory) {
       return RoleAccessDeniedView(onGoHome: () => context.go('/dashboard'));
@@ -717,9 +750,11 @@ class _CategoryProductsScreenState
 
           return RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(categoryProductsProvider(widget.category.name));
+              ref.invalidate(categoryProductsProvider(widget.category.name.trim()));
+              ref.invalidate(productsProvider);
+              ref.invalidate(categoriesProvider);
               await ref.read(
-                categoryProductsProvider(widget.category.name).future,
+                categoryProductsProvider(widget.category.name.trim()).future,
               );
             },
             child: CustomScrollView(

@@ -70,6 +70,7 @@ dependencies:
   razorpay_flutter: ^1.4.5
   pinput: ^6.0.2
   url_launcher: ^6.3.2
+  webview_flutter: ^4.10.0
   zendesk_messaging: ^2.6.3
   fl_chart: ^0.66.0
   country_code_picker: ^3.4.1

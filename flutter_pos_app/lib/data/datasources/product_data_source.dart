@@ -36,6 +36,8 @@ abstract class IProductDataSource {
     String? description,
     bool? isActive,
     double? taxRate,
+    String? dimensions,
+    List<String>? marketplaces,
   });
   Future<Map<String, dynamic>> quickInward({
     String? barcode,

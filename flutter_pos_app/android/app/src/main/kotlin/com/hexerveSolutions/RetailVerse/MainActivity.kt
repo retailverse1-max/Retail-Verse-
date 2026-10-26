@@ -1,8 +1,11 @@
 package com.hexerveSolutions.RetailVerse
 
 import android.content.Context
+import android.content.Intent
 import android.hardware.input.InputManager
+import android.provider.Settings
 import android.view.InputDevice
+import android.view.inputmethod.InputMethodManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -15,10 +18,41 @@ class MainActivity : FlutterActivity(), InputManager.InputDeviceListener {
         super.configureFlutterEngine(flutterEngine)
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
-            if (call.method == "isScannerConnected") {
-                result.success(isHardwareKeyboardConnected())
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "isScannerConnected" -> {
+                    result.success(isHardwareKeyboardConnected())
+                }
+                "forceShowKeyboard" -> {
+                    try {
+                        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                        val view = currentFocus ?: window.decorView
+                        imm?.showSoftInput(view, InputMethodManager.SHOW_FORCED)
+                        imm?.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("ERROR", e.message, null)
+                    }
+                }
+                "openKeyboardSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_HARD_KEYBOARD_SETTINGS)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.error("ERROR", e2.message, null)
+                        }
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
         }
 

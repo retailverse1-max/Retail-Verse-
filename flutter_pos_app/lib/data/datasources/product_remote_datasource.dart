@@ -10,6 +10,7 @@ import '../../core/network/api_exception.dart';
 import '../../core/network/api_response_handler.dart';
 import '../../core/services/session_service.dart';
 import '../models/product_model.dart';
+import '../local/product_local_service.dart';
 import 'product_data_source.dart';
 
 /// Remote product data source for API communication
@@ -63,6 +64,11 @@ class ProductRemoteDataSource implements IProductDataSource {
       }
 
       final list = Product.listFromJson(data);
+      if (list.isNotEmpty) {
+        try {
+          await ProductLocalService().insertProducts(list);
+        } catch (_) {}
+      }
       if (kDebugMode && list.isNotEmpty) {
         final p0 = list.first;
         final resolved = resolveProductImageUrl(p0.imageUrl);
@@ -237,17 +243,21 @@ class ProductRemoteDataSource implements IProductDataSource {
 
   @override
   Future<List<Product>> getProductsByCategory(String category) async {
-    try {
-      final products = await getAllProducts();
-      if (category == 'All') {
-        return products;
-      }
-      return products
-          .where((p) => p.category.toLowerCase() == category.toLowerCase())
-          .toList();
-    } catch (error) {
-      return [];
+    final products = await getAllProducts();
+    final cleanCat = category.trim().toLowerCase();
+    if (cleanCat.isEmpty || cleanCat == 'all') {
+      return products;
     }
+    return products.where((p) {
+      final pCat = p.category.trim().toLowerCase();
+      if (pCat == cleanCat) return true;
+      if (pCat.isNotEmpty && cleanCat.isNotEmpty) {
+        if (pCat.startsWith(cleanCat) || cleanCat.startsWith(pCat)) {
+          return true;
+        }
+      }
+      return false;
+    }).toList();
   }
 
   @override
@@ -396,6 +406,8 @@ class ProductRemoteDataSource implements IProductDataSource {
     String? description,
     bool? isActive,
     double? taxRate,
+    String? dimensions,
+    List<String>? marketplaces,
   }) async {
     final token = await _getToken();
     final body = <String, dynamic>{};
@@ -409,6 +421,8 @@ class ProductRemoteDataSource implements IProductDataSource {
     if (description != null) body['description'] = description;
     if (isActive != null) body['isActive'] = isActive;
     if (taxRate != null) body['taxRate'] = taxRate;
+    if (dimensions != null) body['dimensions'] = dimensions;
+    if (marketplaces != null) body['marketplaces'] = marketplaces;
     if (imageBase64 != null && imageBase64.isNotEmpty) {
       body['imageBase64'] = imageBase64;
     }

@@ -282,7 +282,7 @@ class SettingsPageContent extends ConsumerWidget {
                   title: Text(
                     'Business logo',
                     style: AppTypography.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   subtitle: Text(
@@ -357,16 +357,16 @@ class SettingsPageContent extends ConsumerWidget {
                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                       style: const TextStyle(
                         color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                   title: Text(
                     name,
-                    style: AppTypography.bodyLarge
-                        .copyWith(fontWeight: FontWeight.w700),
+                    style: AppTypography.bodyMedium
+                        .copyWith(fontWeight: FontWeight.w500),
                   ),
-                  subtitle: Text('$email · ${role.toUpperCase()}'),
+                  subtitle: Text('$email · ${role.toUpperCase()}', style: AppTypography.caption),
                 ),
                 const SettingsDividerInset(),
                 SettingsNavTile(
@@ -1151,7 +1151,7 @@ class SettingsPageContent extends ConsumerWidget {
             'Retail Verse POS • v2.4.0',
             style: AppTypography.labelSmall.copyWith(
               color: AppColors.textTertiary,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -1210,8 +1210,8 @@ class _SyncStatusCard extends ConsumerWidget {
               children: [
                 Text(
                   'Last sync status',
-                  style: AppTypography.bodyLarge
-                      .copyWith(fontWeight: FontWeight.w700),
+                  style: AppTypography.bodyMedium
+                      .copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Text(text, style: AppTypography.bodySmall.copyWith(color: muted)),
@@ -1321,7 +1321,7 @@ Future<void> _pickOption(
             child: Text(
               title,
               style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -1374,7 +1374,7 @@ void _legalSheet(BuildContext context, String title, String body) {
         children: [
           Text(
             title,
-            style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
+            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
           Text(body, style: AppTypography.bodyMedium),
@@ -1514,7 +1514,7 @@ Future<void> _aboutDialog(BuildContext context, WidgetRef ref) async {
       const SizedBox(height: 16),
       Text(
         'Retail Verse is a complete POS (Point of Sale) ecosystem built for modern retail businesses.',
-        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.normal),
       ),
       const SizedBox(height: 12),
       const Text(
@@ -1550,10 +1550,10 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
     builder: (c) => StatefulBuilder(builder: (context, setDialogState) {
       return AlertDialog(
         backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Change Password',
-          style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1575,7 +1575,7 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
                     });
                   },
                 ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -1596,7 +1596,7 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
                     });
                   },
                 ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -1610,7 +1610,7 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
           else ...[
             TextButton(
               onPressed: () => Navigator.pop(c),
-              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -1641,7 +1641,7 @@ Future<void> _showChangePasswordDialog(BuildContext context) async {
                   }
                 }
               },
-              child: const Text('Change', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text('Change', style: TextStyle(fontWeight: FontWeight.w500)),
             ),
           ],
         ],

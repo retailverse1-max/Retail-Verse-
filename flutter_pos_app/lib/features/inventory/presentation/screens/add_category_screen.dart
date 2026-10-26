@@ -5,6 +5,7 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/features/inventory/data/models/category_entity.dart';
 import 'package:retail_verse_pos/features/inventory/providers/category_providers.dart';
+import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -65,6 +66,7 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
 
       await ref.read(categoryRepositoryProvider).addCategory(category);
       ref.invalidate(categoriesProvider);
+      ref.invalidate(productsProvider);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -76,7 +78,11 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-        context.pop();
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/inventory');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -118,7 +124,13 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
               child: Row(
                 children: [
                   InkWell(
-                    onTap: () => context.pop(),
+                    onTap: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/inventory');
+                      }
+                    },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.all(8),

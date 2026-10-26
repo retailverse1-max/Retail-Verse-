@@ -35,12 +35,21 @@ class ProductLocalService {
 
     final result = await db.query(
       'products',
-      where: 'is_deleted = ?',
-      whereArgs: [0],
+      where: 'is_deleted = 0 OR is_deleted IS NULL',
       orderBy: 'name ASC',
     );
 
     return result.map((e) => Product.fromMap(e)).toList();
+  }
+
+  /// Delete product by id
+  Future<int> deleteProduct(String id) async {
+    final db = await AppDatabase.database;
+    return await db.delete(
+      'products',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   /// Get product by id
@@ -190,6 +199,20 @@ class ProductLocalService {
     final value = result.first['total'];
     if (value == null) return 0.0;
     return (value as num).toDouble();
+  }
+
+  /// Delete products by category (local SQLite)
+  Future<void> deleteProductsByCategory(String categoryName) async {
+    final db = await AppDatabase.database;
+    await db.update(
+      'products',
+      {
+        'is_deleted': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'LOWER(category) = ?',
+      whereArgs: [categoryName.trim().toLowerCase()],
+    );
   }
 
   /// Clear table (debug only)

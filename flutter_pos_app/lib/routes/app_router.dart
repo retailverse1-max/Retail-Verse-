@@ -227,13 +227,23 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/inventory/:categoryId/add-product',
       pageBuilder: (context, state) {
-        final category = state.extra as Category?;
+        final extra = state.extra;
+        Category? category;
+        Product? editProduct;
+        if (extra is Category) {
+          category = extra;
+        } else if (extra is Product) {
+          editProduct = extra;
+        } else if (extra is Map<String, dynamic>) {
+          category = extra['category'] as Category?;
+          editProduct = extra['editProduct'] as Product?;
+        }
         return _guardedShellPage(
           context: context,
           state: state,
           routePath:
               '/inventory/${state.pathParameters['categoryId'] ?? ''}/add-product',
-          child: AddProductScreen(category: category),
+          child: AddProductScreen(category: category, editProduct: editProduct),
         );
       },
     ),
@@ -755,6 +765,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   void _onItemTapped(int index, List<ShellNavItem> items) {
     if (index < 0 || index >= items.length) return;
+    
+    // Dismiss any active snackbar immediately on navigating away
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     
     final item = items[index];
     // Support screen accessible to all roles

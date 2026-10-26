@@ -6,8 +6,6 @@ import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:retail_verse_pos/features/settings/presentation/widgets/settings_page_content.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
-import 'package:retail_verse_pos/core/widgets/common/modern_search_bar.dart';
-import 'package:retail_verse_pos/routes/app_router.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -32,20 +30,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final userName = user?['name'] ?? 'Admin';
     final userEmail = user?['email'] ?? 'No email linked';
     final userRole = user?['role']?.toString() ?? 'user';
-    final isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ... (Integrated Header)
+          // Integrated Header matching Add Product
           Container(
             width: double.infinity,
-            padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 20, 24, 24),
+            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 14, 20, 18),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 5))],
+              border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,30 +52,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Row(
                       children: [
                         if (context.canPop())
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
-                            onPressed: () => context.pop(),
+                          InkWell(
+                            onTap: () => context.pop(),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundTertiary,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
+                            ),
                           )
                         else
                           const ResponsiveMenuButton(),
                         const SizedBox(width: 12),
-                        Text('Settings', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Settings',
+                              style: AppTypography.titleLarge.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'System Preferences & Configuration',
+                                  style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: const Icon(Icons.settings_suggest_rounded, color: AppColors.primary, size: 22),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Container(
-                  height: 52,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.cardBorder.withOpacity(0.8)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: TextField(
                     controller: _search,
@@ -87,10 +121,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: AppTypography.bodyMedium,
                     decoration: InputDecoration(
                       hintText: 'Search preferences...',
-                      hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                      hintStyle: AppTypography.caption.copyWith(color: AppColors.textTertiary),
                       prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textTertiary, size: 20),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 13),
                       suffixIcon: _query.isNotEmpty 
                         ? IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () { _search.clear(); setState(() => _query = ''); }) 
                         : null,
@@ -103,16 +137,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.paddingOf(context).bottom + 120),
+              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.paddingOf(context).bottom + 120),
               children: [
                 _buildPremiumUserCard(userName, userEmail, userRole),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 if (userRole == 'super_admin') ...[
                   _buildSuperAdminQuickAction(context),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                 ],
                 SettingsPageContent(searchQuery: _query),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
                 _buildLogoutButton(),
               ],
             ),
@@ -129,23 +163,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(colors: [Color(0xFF1E1B4B), Color(0xFF312E81)]),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: const Color(0xFF1E1B4B).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1E1B4B).withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
-              child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 22),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Super Admin Panel', style: AppTypography.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text('Control entire platform & businesses', style: AppTypography.labelSmall.copyWith(color: Colors.white.withOpacity(0.6))),
+                  Text(
+                    'Super Admin Panel',
+                    style: AppTypography.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Control entire platform & businesses',
+                    style: AppTypography.caption.copyWith(color: Colors.white.withValues(alpha: 0.75)),
+                  ),
                 ],
               ),
             ),
@@ -158,50 +205,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildPremiumUserCard(String name, String email, String role) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
-        border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)]),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
+              gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.75)]),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Icon(Icons.person_rounded, color: Colors.white, size: 32),
+            child: const Icon(Icons.person_rounded, color: Colors.white, size: 28),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5)),
-                const SizedBox(height: 4),
-                Text(email, style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
+                Text(
+                  name,
+                  style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  email,
+                  style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: role == 'super_admin' ? AppColors.primary.withOpacity(0.1) : AppColors.success.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10)
+              color: role == 'super_admin' ? AppColors.primary.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               role == 'super_admin' ? 'SUPER ADMIN' : 'ACTIVE',
               style: TextStyle(
                 color: role == 'super_admin' ? AppColors.primary : AppColors.success,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5
-              )
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+              ),
             ),
           ),
         ],
@@ -214,17 +279,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       onTap: () => _showLogoutConfirmation(),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.error, width: 1.5),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.5), width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.logout_rounded, color: AppColors.error, size: 22),
-            const SizedBox(width: 12),
-            const Text('Sign Out From Device', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            const Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+            const SizedBox(width: 10),
+            const Text(
+              'Sign Out From Device',
+              style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500, fontSize: 13.5),
+            ),
           ],
         ),
       ),
@@ -236,12 +304,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Confirm Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Confirm Sign Out', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
         content: const Text('Are you sure you want to sign out? You will need to login again to access your store.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -249,7 +317,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Sign Out'),
+            child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w500)),
           ),
         ],
       ),

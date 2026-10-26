@@ -8,6 +8,7 @@ import 'package:retail_verse_pos/features/inventory/data/models/category_entity.
 import 'package:retail_verse_pos/features/inventory/providers/category_providers.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
+import 'package:retail_verse_pos/features/pos/providers/product_providers.dart';
 
 import 'package:retail_verse_pos/features/inventory/data/models/category.dart' as inv;
 
@@ -675,8 +676,14 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(ctx);
-              await ref.read(categoryRepositoryProvider).deleteCategory(category.id);
+              try {
+                await ref.read(categoryRepositoryProvider).deleteCategory(
+                  category.id,
+                  categoryName: category.name,
+                );
+              } catch (_) {}
               ref.invalidate(categoriesProvider);
+              ref.invalidate(productsProvider);
               if (mounted) {
                 setState(() {});
                 messenger.showSnackBar(

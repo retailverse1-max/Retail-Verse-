@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 
-/// Rounded card shell with optional subtle shadow — matches Account screen polish.
+/// Rounded card shell with subtle shadow — matches Add Product screen polish.
 class SettingsSurfaceCard extends StatelessWidget {
   const SettingsSurfaceCard({
     super.key,
@@ -22,20 +21,20 @@ class SettingsSurfaceCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXL),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? const Color(0xFF2C3540) : AppColors.cardBorder,
+          color: isDark ? const Color(0xFF2C3540) : AppColors.border,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF0F172A).withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXL),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: padding,
           child: child,
@@ -65,15 +64,15 @@ class SettingsSectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 20, color: AppColors.primary),
+            child: Icon(icon, size: 22, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -82,16 +81,15 @@ class SettingsSectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: AppTypography.bodySmall.copyWith(color: muted),
+                    style: AppTypography.caption.copyWith(color: muted),
                   ),
                 ],
               ],
@@ -129,16 +127,16 @@ class SettingsSwitchTile extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary, size: 22),
       title: Text(
         title,
-        style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: AppTypography.bodySmall.copyWith(color: muted),
+        style: AppTypography.caption.copyWith(color: muted),
       ),
       trailing: Switch.adaptive(
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.primary,
+        activeThumbColor: AppColors.primary,
         activeTrackColor: AppColors.primary.withValues(alpha: 0.35),
       ),
     );
@@ -171,11 +169,11 @@ class SettingsNavTile extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary, size: 22),
       title: Text(
         title,
-        style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: AppTypography.bodySmall.copyWith(color: muted),
+        style: AppTypography.caption.copyWith(color: muted),
       ),
       trailing: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 150),
@@ -189,11 +187,14 @@ class SettingsNavTile extends StatelessWidget {
                   trailingLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelMedium.copyWith(color: muted),
+                  style: AppTypography.caption.copyWith(
+                    color: muted,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, color: muted),
+            Icon(Icons.chevron_right_rounded, color: muted, size: 20),
           ],
         ),
       ),
@@ -228,11 +229,11 @@ class SettingsValueTile extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary, size: 22),
       title: Text(
         title,
-        style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: AppTypography.bodySmall.copyWith(color: muted),
+        style: AppTypography.caption.copyWith(color: muted),
       ),
       trailing: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 150),
@@ -246,13 +247,14 @@ class SettingsValueTile extends StatelessWidget {
                 maxLines: 1,
                 softWrap: false,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelLarge.copyWith(
+                style: AppTypography.caption.copyWith(
                   color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: muted),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded, color: muted, size: 20),
           ],
         ),
       ),
