@@ -146,8 +146,37 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
     }
   }
 
-  /// Triggered when user taps the "Print Bill" button - opens modal immediately without blocking
+  /// Triggered when user taps the "Print" button - DIRECTLY prints physical bill to thermal printer!
   Future<void> _onPrintPressed() async {
+    // 1. If already connected, print direct physical hardcopy immediately!
+    final isConn = await _printerService.isConnected();
+    if (isConn) {
+      await _executeThermalPrint();
+      return;
+    }
+
+    // 2. If not connected yet, auto-connect to thermal printer & print immediately
+    setState(() {
+      _isActionRunning = true;
+      _actionMessage = 'Connecting to thermal printer & printing bill...';
+    });
+
+    final connected = await _printerService.autoConnect();
+    if (mounted) setState(() => _isActionRunning = false);
+
+    if (connected) {
+      await _executeThermalPrint();
+      return;
+    }
+
+    // 3. If auto-connect didn't find printer, open connection modal
+    if (mounted) {
+      await _showPrintOptionsSheet();
+    }
+  }
+
+  /// Show sheet with connection options (Bluetooth vs USB Wire)
+  Future<void> _showPrintOptionsSheet() async {
     final posSettings = ref.read(posSettingsProvider);
 
     final selectedMode = await showModalBottomSheet<String>(

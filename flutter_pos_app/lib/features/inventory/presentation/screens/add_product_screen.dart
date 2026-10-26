@@ -1975,6 +1975,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       // Check if thermal printer is already connected
       bool isConn = await printerService.isConnected();
       if (!isConn) {
+        _showSnack('Connecting to thermal printer...');
         isConn = await printerService.autoConnect();
       }
 
@@ -1999,7 +2000,66 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
 
       // If not connected, check paired Bluetooth devices
+      _showSnack('Searching for paired Bluetooth thermal printers...');
       final devices = await printerService.getDevices();
+
+      if (devices.isEmpty && mounted) {
+        showDialog(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.bluetooth_disabled_rounded, color: Colors.orange, size: 26),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Thermal Printer Not Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Koi Bluetooth Thermal Printer connect nahi mila.\n\n'
+              '1. Check karein printer ON hai ya nahi.\n'
+              '2. Phone ka Bluetooth ON karein aur Billplus printer ko pair karein (PIN: 0000 ya 1234).\n'
+              '3. Phir yahan dobara "Print Sticker Now" dabayein.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(dialogCtx);
+                  await openAppSettings();
+                },
+                icon: const Icon(Icons.settings, size: 16),
+                label: const Text('Bluetooth Settings'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(dialogCtx);
+                  await _printBarcodePdf(
+                    storeName: storeName,
+                    productName: productName,
+                    barcode: barcode,
+                    size: size,
+                    copies: copies,
+                    customWidthMm: customWidthMm,
+                    customHeightMm: customHeightMm,
+                  );
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
       if (devices.isNotEmpty && mounted) {
         final chosen = await showModalBottomSheet<dynamic>(
           context: context,
@@ -2061,10 +2121,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ListTile(
                     leading: const CircleAvatar(
                       backgroundColor: Color(0xFFF0FDF4),
-                      child: Icon(Icons.cable_rounded, color: Color(0xFF15803D), size: 20),
+                      child: Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF15803D), size: 20),
                     ),
-                    title: const Text('USB / OTG Wire or System Print', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF15803D))),
-                    subtitle: const Text('Direct print for USB cable, OTG or Android print spooler', style: TextStyle(fontSize: 11)),
+                    title: const Text('System Print Spooler (PDF / Preview)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF15803D))),
+                    subtitle: const Text('Open Android print preview / save as PDF', style: TextStyle(fontSize: 11)),
                     trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF15803D)),
                     tileColor: Colors.green.shade50.withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -2095,16 +2155,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           } else {
             _showSnack('Could not connect to ${chosen.name}. Make sure printer is ON.', isError: true);
           }
-        } else if (chosen != 'system_print') {
-          return; // User cancelled
+          return;
+        } else if (chosen == 'system_print') {
+          // Explicitly user chose System Print Spooler
+          await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => pdfBytes,
+            name: 'Label_${barcode}_$storeName',
+          );
+          return;
         }
+        return; // User cancelled
       }
-
-      // Fallback: System Print Spooler
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdfBytes,
-        name: 'Label_${barcode}_$storeName',
-      );
     } catch (e) {
       _showSnack('Thermal printer error: $e', isError: true);
     }

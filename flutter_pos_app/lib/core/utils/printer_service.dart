@@ -44,11 +44,11 @@ class PrinterService {
   Future<List<BluetoothDevice>> getDevices() async {
     try {
       await requestBluetoothPermissions().timeout(
-        const Duration(seconds: 2),
+        const Duration(seconds: 10),
         onTimeout: () => false,
       );
       final devices = await bluetooth.getBondedDevices().timeout(
-        const Duration(seconds: 2),
+        const Duration(seconds: 6),
         onTimeout: () => [],
       );
       return devices;
@@ -118,7 +118,7 @@ class PrinterService {
         return true;
       }
       await bluetooth.connect(device).timeout(
-        const Duration(seconds: 4),
+        const Duration(seconds: 5),
         onTimeout: () {
           debugPrint('Bluetooth connect timeout for ${device.name}');
           return null;
@@ -136,20 +136,17 @@ class PrinterService {
     }
   }
 
-  /// Auto-connect to saved printer, or the only paired Bluetooth printer
+  /// Auto-connect to saved printer, or any paired thermal printer
   Future<bool> autoConnect() async {
     try {
       if (await isConnected()) {
         return true;
       }
 
-      final devices = await getDevices().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => [],
-      );
+      final devices = await getDevices();
       if (devices.isEmpty) return false;
 
-      // Check saved printer MAC address
+      // 1. Check saved printer MAC address
       final savedAddress = await getSavedPrinterAddress();
       if (savedAddress != null && savedAddress.isNotEmpty) {
         final match = devices.where((d) => d.address == savedAddress).firstOrNull;
@@ -159,7 +156,34 @@ class PrinterService {
         }
       }
 
-      // If only one bonded device exists (common for thermal printers), auto-connect
+      // 2. Smart auto-detect: find any paired device matching known thermal printer keywords
+      const printerKeywords = [
+        'billplus',
+        'printer',
+        'pos',
+        'mpt',
+        'mtp',
+        'rpp',
+        'thermal',
+        '58',
+        '80',
+        'zj',
+        'xp',
+        'innerprinter',
+        'bt-',
+        'bluetooth printer'
+      ];
+      final candidate = devices.where((d) {
+        final name = (d.name ?? '').toLowerCase();
+        return printerKeywords.any((kw) => name.contains(kw));
+      }).firstOrNull;
+
+      if (candidate != null) {
+        final connected = await connect(candidate);
+        if (connected) return true;
+      }
+
+      // 3. If only one bonded device exists (common for thermal printers), auto-connect
       if (devices.length == 1) {
         return await connect(devices.first);
       }
