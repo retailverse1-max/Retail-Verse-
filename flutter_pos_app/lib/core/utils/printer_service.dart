@@ -55,10 +55,13 @@ class PrinterService {
     }
   }
 
-  /// Check if bluetooth is currently connected
+  /// Check if bluetooth is currently connected (with fast timeout so UI never hangs)
   Future<bool> isConnected() async {
     try {
-      final status = await bluetooth.isConnected;
+      final status = await bluetooth.isConnected.timeout(
+        const Duration(milliseconds: 400),
+        onTimeout: () => false,
+      );
       return status == true;
     } catch (_) {
       return false;
@@ -108,7 +111,13 @@ class PrinterService {
         await savePrinter(device);
         return true;
       }
-      await bluetooth.connect(device);
+      await bluetooth.connect(device).timeout(
+        const Duration(seconds: 4),
+        onTimeout: () {
+          debugPrint('Bluetooth connect timeout for ${device.name}');
+          return null;
+        },
+      );
       final connected = await isConnected();
       if (connected) {
         await savePrinter(device);
@@ -123,29 +132,37 @@ class PrinterService {
 
   /// Auto-connect to saved printer, or the only paired Bluetooth printer
   Future<bool> autoConnect() async {
-    if (await isConnected()) {
-      return true;
-    }
-
-    final devices = await getDevices();
-    if (devices.isEmpty) return false;
-
-    // Check saved printer MAC address
-    final savedAddress = await getSavedPrinterAddress();
-    if (savedAddress != null && savedAddress.isNotEmpty) {
-      final match = devices.where((d) => d.address == savedAddress).firstOrNull;
-      if (match != null) {
-        final connected = await connect(match);
-        if (connected) return true;
+    try {
+      if (await isConnected()) {
+        return true;
       }
-    }
 
-    // If only one bonded device exists (common for thermal printers), auto-connect
-    if (devices.length == 1) {
-      return await connect(devices.first);
-    }
+      final devices = await getDevices().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => [],
+      );
+      if (devices.isEmpty) return false;
 
-    return false;
+      // Check saved printer MAC address
+      final savedAddress = await getSavedPrinterAddress();
+      if (savedAddress != null && savedAddress.isNotEmpty) {
+        final match = devices.where((d) => d.address == savedAddress).firstOrNull;
+        if (match != null) {
+          final connected = await connect(match);
+          if (connected) return true;
+        }
+      }
+
+      // If only one bonded device exists (common for thermal printers), auto-connect
+      if (devices.length == 1) {
+        return await connect(devices.first);
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('AutoConnect failed: $e');
+      return false;
+    }
   }
 
   Future<void> disconnect() async {
