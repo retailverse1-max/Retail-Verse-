@@ -1926,7 +1926,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             pw.Page(
               pageFormat: pageFormat,
               build: (pw.Context ctx) {
-                return pw.Center(
+                return pw.Container(
+                  color: PdfColors.white,
+                  width: double.infinity,
+                  height: double.infinity,
+                  alignment: pw.Alignment.center,
                   child: pw.Column(
                     mainAxisAlignment: pw.MainAxisAlignment.center,
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -1934,14 +1938,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     children: [
                       pw.Text(
                         storeName,
-                        style: pw.TextStyle(fontSize: storeNameFontSize, fontWeight: pw.FontWeight.bold),
+                        style: pw.TextStyle(fontSize: storeNameFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
                         textAlign: pw.TextAlign.center,
                       ),
                       pw.SizedBox(height: 1 * PdfPageFormat.mm),
                       pw.Text(
                         productName,
                         maxLines: 1,
-                        style: pw.TextStyle(fontSize: productNameFontSize, fontWeight: pw.FontWeight.bold),
+                        style: pw.TextStyle(fontSize: productNameFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
                         textAlign: pw.TextAlign.center,
                       ),
                       pw.SizedBox(height: 1.2 * PdfPageFormat.mm),
@@ -1950,6 +1954,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         data: barcode,
                         width: barcodeWidth,
                         height: barcodeHeight,
+                        color: PdfColors.black,
+                        backgroundColor: PdfColors.white,
                       ),
                     ],
                   ),
@@ -1963,16 +1969,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       final pdfBytes = await doc.save();
       final printerService = PrinterService();
 
-      // Check if thermal printer is already connected or can auto-connect
+      // For 58mm thermal printers (head width = 384 dots)
+      final rasterDpi = (384 / (rollWidthMm / 25.4)).round().toDouble();
+
+      // Check if thermal printer is already connected
       bool isConn = await printerService.isConnected();
       if (!isConn) {
         isConn = await printerService.autoConnect();
       }
 
       if (isConn) {
-        // Direct print to connected thermal printer!
+        _showSnack('Printing $copies Barcode sticker(s) to thermal printer...');
         try {
-          final rasterPages = Printing.raster(pdfBytes, pages: [0], dpi: 203);
+          final rasterPages = Printing.raster(pdfBytes, pages: [0], dpi: rasterDpi);
           final firstPage = await rasterPages.first;
           final pngBytes = await firstPage.toPng();
 
@@ -2067,10 +2076,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
         );
 
-        if (chosen is BluetoothDevice) {
+        if (chosen is BluetoothDevice && mounted) {
+          _showSnack('Connecting to ${chosen.name}...');
           final connected = await printerService.connect(chosen);
           if (connected) {
-            final rasterPages = Printing.raster(pdfBytes, pages: [0], dpi: 203);
+            final rasterPages = Printing.raster(pdfBytes, pages: [0], dpi: rasterDpi);
             final firstPage = await rasterPages.first;
             final pngBytes = await firstPage.toPng();
 
@@ -2082,6 +2092,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               _showSnack('$copies Barcode sticker(s) printed to ${chosen.name}!');
               return;
             }
+          } else {
+            _showSnack('Could not connect to ${chosen.name}. Make sure printer is ON.', isError: true);
           }
         } else if (chosen != 'system_print') {
           return; // User cancelled
