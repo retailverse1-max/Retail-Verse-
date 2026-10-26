@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
+import 'package:image/image.dart' as img;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -16,9 +19,12 @@ class PrinterService {
   PrinterService._internal();
 
   final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
+  String? _connectedEngine; // 'blue' or 'thermal'
 
   static const String _prefKeyPrinterAddress = 'saved_thermal_printer_address';
   static const String _prefKeyPrinterName = 'saved_thermal_printer_name';
+  static const String defaultBillplusMac = '02:2D:36:C9:4E:A9';
+  static const String defaultBillplusName = 'billplus 617';
 
   /// Request Bluetooth permissions required on Android 12+ (API 31+) & older versions
   Future<bool> requestBluetoothPermissions() async {
@@ -42,36 +48,84 @@ class PrinterService {
 
   /// Get list of paired / bonded Bluetooth devices (requests permissions first)
   Future<List<BluetoothDevice>> getDevices() async {
+    final List<BluetoothDevice> devices = [];
     try {
       await requestBluetoothPermissions().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 4),
         onTimeout: () => false,
       );
-      final devices = await bluetooth.getBondedDevices().timeout(
-        const Duration(seconds: 6),
+    } catch (_) {}
+
+    // 1. Get bonded devices from BlueThermalPrinter
+    try {
+      final bonded = await bluetooth.getBondedDevices().timeout(
+        const Duration(seconds: 4),
         onTimeout: () => [],
       );
-      return devices;
+      for (final d in bonded) {
+        if (d.address != null && !devices.any((x) => x.address?.toLowerCase() == d.address!.toLowerCase())) {
+          devices.add(d);
+        }
+      }
     } on PlatformException catch (e) {
       debugPrint('PlatformException getting bonded devices: $e');
-      return [];
     } catch (e) {
       debugPrint('Error getting bonded devices: $e');
-      return [];
     }
+
+    // 2. Query PrintBluetoothThermal paired list
+    try {
+      final thermalPaired = await PrintBluetoothThermal.pairedBluetooths;
+      for (final p in thermalPaired) {
+        if (!devices.any((x) => x.address?.toLowerCase() == p.macAdress.toLowerCase())) {
+          devices.add(BluetoothDevice(p.name, p.macAdress));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting PrintBluetoothThermal paired devices: $e');
+    }
+
+    // 3. Always include saved printer or Billplus 617 printer in the list
+    final savedAddress = await getSavedPrinterAddress();
+    final savedName = await getSavedPrinterName();
+
+    if (savedAddress != null && savedAddress.isNotEmpty) {
+      if (!devices.any((d) => d.address?.toLowerCase() == savedAddress.toLowerCase())) {
+        devices.insert(0, BluetoothDevice(savedName ?? defaultBillplusName, savedAddress));
+      }
+    }
+
+    // Always ensure Billplus 617 is present
+    if (!devices.any((d) => d.address?.toLowerCase() == defaultBillplusMac.toLowerCase())) {
+      devices.insert(0, BluetoothDevice(defaultBillplusName, defaultBillplusMac));
+    }
+
+    return devices;
   }
 
-  /// Check if bluetooth is currently connected (with fast timeout so UI never hangs)
+  /// Check if bluetooth is currently connected (checks both engines)
   Future<bool> isConnected() async {
     try {
       final status = await bluetooth.isConnected.timeout(
         const Duration(milliseconds: 400),
         onTimeout: () => false,
       );
-      return status == true;
-    } catch (_) {
-      return false;
-    }
+      if (status == true) {
+        _connectedEngine = 'blue';
+        return true;
+      }
+    } catch (_) {}
+
+    try {
+      final thermalStatus = await PrintBluetoothThermal.connectionStatus;
+      if (thermalStatus == true) {
+        _connectedEngine = 'thermal';
+        return true;
+      }
+    } catch (_) {}
+
+    _connectedEngine = null;
+    return false;
   }
 
   /// Get saved printer address from SharedPreferences
@@ -109,31 +163,46 @@ class PrinterService {
     }
   }
 
-  /// Connect to a specific Bluetooth printer and save it as default
+  /// Connect to a specific Bluetooth printer (with dual-engine fallback)
   Future<bool> connect(BluetoothDevice device) async {
+    debugPrint('Connecting to printer: ${device.name} (${device.address})');
+    await disconnect();
+
+    // 1. Try primary blue_thermal_printer engine
     try {
-      final alreadyConnected = await isConnected();
-      if (alreadyConnected) {
-        await savePrinter(device);
-        return true;
-      }
       await bluetooth.connect(device).timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 4),
         onTimeout: () {
           debugPrint('Bluetooth connect timeout for ${device.name}');
           return null;
         },
       );
-      final connected = await isConnected();
-      if (connected) {
+      if (await bluetooth.isConnected == true) {
+        _connectedEngine = 'blue';
         await savePrinter(device);
+        debugPrint('Connected via BlueThermalPrinter!');
         return true;
       }
-      return false;
     } catch (e) {
-      debugPrint('Error connecting to printer ${device.name}: $e');
-      return false;
+      debugPrint('Error connecting via BlueThermalPrinter: $e');
     }
+
+    // 2. Fallback to PrintBluetoothThermal (direct RFCOMM by MAC)
+    if (device.address != null && device.address!.isNotEmpty) {
+      try {
+        final ok = await PrintBluetoothThermal.connect(macPrinterAddress: device.address!);
+        if (ok) {
+          _connectedEngine = 'thermal';
+          await savePrinter(device);
+          debugPrint('Connected via PrintBluetoothThermal!');
+          return true;
+        }
+      } catch (e) {
+        debugPrint('Error connecting via PrintBluetoothThermal: $e');
+      }
+    }
+
+    return false;
   }
 
   /// Auto-connect to saved printer, or any paired thermal printer
@@ -200,6 +269,10 @@ class PrinterService {
     try {
       await bluetooth.disconnect();
     } catch (_) {}
+    try {
+      await PrintBluetoothThermal.disconnect;
+    } catch (_) {}
+    _connectedEngine = null;
   }
 
   /// Print a simple test slip to verify printer connection
@@ -235,6 +308,22 @@ class PrinterService {
       final connected = await autoConnect();
       if (!connected) return false;
     }
+
+    if (_connectedEngine == 'thermal' || await PrintBluetoothThermal.connectionStatus) {
+      try {
+        final decoded = img.decodeImage(bytes);
+        if (decoded != null) {
+          final profile = await CapabilityProfile.load();
+          final generator = Generator(PaperSize.mm58, profile);
+          final escBytes = generator.imageRaster(decoded);
+          await PrintBluetoothThermal.writeBytes(escBytes);
+          return true;
+        }
+      } catch (e) {
+        debugPrint('Thermal printImageBytes error: $e');
+      }
+    }
+
     try {
       await bluetooth.printImageBytes(bytes);
       return true;
@@ -244,7 +333,6 @@ class PrinterService {
     }
   }
 
-  /// Prints barcode sticker directly to the thermal printer
   /// Prints barcode sticker directly to the thermal printer
   Future<bool> printBarcodeStickerDirect({
     required Uint8List pngBytes,
@@ -257,7 +345,7 @@ class PrinterService {
 
     try {
       for (int i = 0; i < count; i++) {
-        await bluetooth.printImageBytes(pngBytes);
+        await printImageBytes(pngBytes);
         await Future.delayed(const Duration(milliseconds: 100));
         await _safePrintNewLine();
         await Future.delayed(const Duration(milliseconds: 100));
@@ -289,13 +377,19 @@ class PrinterService {
       final firstPage = await rasterPages.first;
       final pngBytes = await firstPage.toPng();
 
-      await bluetooth.printImageBytes(pngBytes);
+      await printImageBytes(pngBytes);
       await _safePrintNewLine();
       await _safePrintNewLine();
       await _safePrintNewLine();
       if (settings?.receiptSize == '80mm') {
         try {
-          await bluetooth.paperCut();
+          if (_connectedEngine == 'thermal') {
+            final profile = await CapabilityProfile.load();
+            final generator = Generator(PaperSize.mm80, profile);
+            await PrintBluetoothThermal.writeBytes(generator.cut());
+          } else {
+            await bluetooth.paperCut();
+          }
         } catch (_) {}
       }
       return true;
@@ -306,9 +400,29 @@ class PrinterService {
   }
 
   Future<void> _safePrintCustom(String message, int size, int align) async {
+    final sanitized = message.replaceAll('₹', 'Rs.');
+    if (_connectedEngine == 'thermal' || await PrintBluetoothThermal.connectionStatus) {
+      try {
+        final profile = await CapabilityProfile.load();
+        final generator = Generator(PaperSize.mm58, profile);
+        PosAlign posAlign = PosAlign.left;
+        if (align == 1) posAlign = PosAlign.center;
+        if (align == 2) posAlign = PosAlign.right;
+        PosTextSize textSize = PosTextSize.size1;
+        if (size == 1) textSize = PosTextSize.size2;
+        if (size >= 2) textSize = PosTextSize.size3;
+        final bytes = generator.text(
+          sanitized,
+          styles: PosStyles(align: posAlign, height: textSize, width: textSize),
+        );
+        await PrintBluetoothThermal.writeBytes(bytes);
+        return;
+      } catch (e) {
+        debugPrint('SafePrintCustom thermal error: $e');
+      }
+    }
+
     try {
-      // Replace multi-byte Rupee symbol with clean ASCII 'Rs.' so generic printers do not choke
-      final sanitized = message.replaceAll('₹', 'Rs.');
       await bluetooth.printCustom(sanitized, size, align);
       await Future.delayed(const Duration(milliseconds: 25));
     } catch (e) {
@@ -317,10 +431,25 @@ class PrinterService {
   }
 
   Future<void> _safePrintLeftRight(String left, String right, int size) async {
+    final sanitizedLeft = left.replaceAll('₹', 'Rs.');
+    final sanitizedRight = right.replaceAll('₹', 'Rs.');
+
+    if (_connectedEngine == 'thermal' || await PrintBluetoothThermal.connectionStatus) {
+      try {
+        final profile = await CapabilityProfile.load();
+        final generator = Generator(PaperSize.mm58, profile);
+        final bytes = generator.row([
+          PosColumn(text: sanitizedLeft, width: 7, styles: const PosStyles(align: PosAlign.left)),
+          PosColumn(text: sanitizedRight, width: 5, styles: const PosStyles(align: PosAlign.right)),
+        ]);
+        await PrintBluetoothThermal.writeBytes(bytes);
+        return;
+      } catch (e) {
+        debugPrint('SafePrintLeftRight thermal error: $e');
+      }
+    }
+
     try {
-      final sanitizedLeft = left.replaceAll('₹', 'Rs.');
-      final sanitizedRight = right.replaceAll('₹', 'Rs.');
-      // 58mm printer max chars: 32 chars for size 0, 16 chars for size 1
       final maxChars = size == 1 ? 16 : 32;
       if (sanitizedLeft.length + sanitizedRight.length >= maxChars) {
         final availableForLeft = maxChars - sanitizedRight.length - 1;
@@ -341,6 +470,15 @@ class PrinterService {
   }
 
   Future<void> _safePrintNewLine() async {
+    if (_connectedEngine == 'thermal' || await PrintBluetoothThermal.connectionStatus) {
+      try {
+        final profile = await CapabilityProfile.load();
+        final generator = Generator(PaperSize.mm58, profile);
+        await PrintBluetoothThermal.writeBytes(generator.emptyLines(1));
+        return;
+      } catch (_) {}
+    }
+
     try {
       await bluetooth.printNewLine();
       await Future.delayed(const Duration(milliseconds: 20));
