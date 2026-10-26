@@ -64,10 +64,41 @@ exports.quickConnect = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // Auto-sync all existing active products to this newly connected marketplace
+    let syncedCount = 0;
+    try {
+      const products = await Product.find({
+        $or: [{ clientId }, { client: clientId }, { businessId: clientId }],
+        isActive: { $ne: false },
+      });
+
+      for (const prod of products) {
+        await MarketplaceProductMapping.findOneAndUpdate(
+          { clientId, productId: prod._id, platform: platformKey },
+          {
+            clientId,
+            productId: prod._id,
+            platform: platformKey,
+            platformProductId: `${platformKey.toUpperCase()}_PROD_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            platformSku: prod.sku || `SKU_${prod._id}`,
+            marketplacePrice: prod.salePrice || prod.price,
+            syncStatus: "synced",
+            errorLog: null,
+            lastSyncedAt: new Date(),
+          },
+          { upsert: true, new: true }
+        );
+        syncedCount++;
+      }
+    } catch (syncErr) {
+      console.error(`Error auto-syncing products for ${platformKey}:`, syncErr.message);
+    }
+
     res.json({
       success: true,
-      message: `Successfully connected to ${platform}! 1-Click Sync is active.`,
+      message: `Connected to ${platform}! ${syncedCount > 0 ? `${syncedCount} products synced to ${platform}.` : 'Auto-sync active.'}`,
       data: connection,
+      syncedCount,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -134,7 +165,7 @@ exports.syncProduct = async (req, res) => {
       );
 
       // Upsert product mapping
-      const mapping = await MarketplaceProductMapping.findOneAndUpdate(
+      await MarketplaceProductMapping.findOneAndUpdate(
         { clientId, productId: product._id, platform: plat },
         {
           clientId,
@@ -156,6 +187,69 @@ exports.syncProduct = async (req, res) => {
       success: true,
       message: `Product synced to: ${results.join(", ")}`,
       syncedPlatforms: results,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 5. Sync all products to connected platforms
+exports.syncAllProducts = async (req, res) => {
+  try {
+    const clientId = req.user.clientId || req.user.businessId || req.user._id;
+    const { platform } = req.body;
+
+    let targetPlatforms = [];
+    if (platform) {
+      targetPlatforms = [platform.toLowerCase().trim()];
+    } else {
+      const activeConnections = await MarketplaceConnection.find({
+        clientId,
+        status: "active",
+      }).lean();
+      targetPlatforms = activeConnections.map((c) => c.platform.toLowerCase());
+    }
+
+    if (targetPlatforms.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No connected marketplace channels to sync. Connect a channel first.",
+      });
+    }
+
+    const products = await Product.find({
+      $or: [{ clientId }, { client: clientId }, { businessId: clientId }],
+      isActive: { $ne: false },
+    });
+
+    let totalSynced = 0;
+    for (const plat of targetPlatforms) {
+      for (const prod of products) {
+        await MarketplaceProductMapping.findOneAndUpdate(
+          { clientId, productId: prod._id, platform: plat },
+          {
+            clientId,
+            productId: prod._id,
+            platform: plat,
+            platformProductId: `${plat.toUpperCase()}_PROD_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            platformSku: prod.sku || `SKU_${prod._id}`,
+            marketplacePrice: prod.salePrice || prod.price,
+            syncStatus: "synced",
+            errorLog: null,
+            lastSyncedAt: new Date(),
+          },
+          { upsert: true, new: true }
+        );
+        totalSynced++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully synced ${products.length} products across ${targetPlatforms.join(", ")}!`,
+      syncedCount: totalSynced,
+      productCount: products.length,
+      platforms: targetPlatforms,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

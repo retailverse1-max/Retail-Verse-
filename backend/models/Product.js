@@ -58,9 +58,8 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
     dimensions: {
-      type: String,
+      type: mongoose.Schema.Types.Mixed,
       default: "",
-      trim: true,
       required: false,
     },
     reorderLevel: {

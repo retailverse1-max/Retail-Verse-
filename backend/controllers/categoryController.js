@@ -82,17 +82,40 @@ const updateCategory = async (req, res) => {
   }
 };
 
+const mongoose = require("mongoose");
+const Product = require("../models/Product");
+
 const deleteCategory = async (req, res) => {
   try {
-    // Soft delete
-    const category = await Category.findByIdAndUpdate(
-      req.params.id,
-      { isDeleted: true },
-      { new: true }
-    );
-    
-    if (!category) {
-      return res.status(404).json({ message: "Category not found" });
+    const { id } = req.params;
+    let category = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      category = await Category.findByIdAndUpdate(
+        id,
+        { isDeleted: true },
+        { new: true }
+      );
+    }
+
+    const cleanName = id.replace(/^virtual_/, '').replace(/_/g, ' ').trim();
+    if (!category && cleanName) {
+      category = await Category.findOneAndUpdate(
+        { name: new RegExp(`^${cleanName}$`, 'i'), isDeleted: false },
+        { isDeleted: true },
+        { new: true }
+      );
+    }
+
+    const categoryName = category ? category.name : cleanName;
+    if (categoryName) {
+      const filter = {
+        category: new RegExp(`^${categoryName.trim()}$`, 'i'),
+      };
+      if (req.user && req.user.clientId) {
+        filter.clientId = req.user.clientId;
+      }
+      await Product.deleteMany(filter);
     }
 
     res.status(204).send();

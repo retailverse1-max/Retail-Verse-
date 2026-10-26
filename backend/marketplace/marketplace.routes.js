@@ -15,4 +15,7 @@ router.post("/disconnect", authMiddleware, marketplaceController.disconnectPlatf
 // Universal sync product
 router.post("/sync-product", authMiddleware, marketplaceController.syncProduct);
 
+// Sync all products
+router.post("/sync-all", authMiddleware, marketplaceController.syncAllProducts);
+
 module.exports = router;

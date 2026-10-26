@@ -127,7 +127,7 @@ const createOrder = async (req, res) => {
       const afterStock = beforeStock - item.qty;
 
       product.stock = afterStock;
-      await product.save();
+      await Product.updateOne({ _id: product._id }, { $set: { stock: afterStock } });
 
       await InventoryLog.create({
         productId: product._id,
@@ -272,7 +272,7 @@ const updateOrder = async (req, res) => {
           if (product) {
             const beforeStock = product.stock;
             product.stock += item.qty;
-            await product.save();
+            await Product.updateOne({ _id: product._id }, { $set: { stock: product.stock } });
 
             await InventoryLog.create({
               productId: product._id,
@@ -306,7 +306,7 @@ const updateOrder = async (req, res) => {
           }
           const beforeStock = product.stock;
           product.stock -= diff;
-          await product.save();
+          await Product.updateOne({ _id: product._id }, { $set: { stock: product.stock } });
 
           await InventoryLog.create({
             productId: product._id,
@@ -319,7 +319,7 @@ const updateOrder = async (req, res) => {
         } else if (diff < 0) {
           const beforeStock = product.stock;
           product.stock += Math.abs(diff);
-          await product.save();
+          await Product.updateOne({ _id: product._id }, { $set: { stock: product.stock } });
 
           await InventoryLog.create({
             productId: product._id,

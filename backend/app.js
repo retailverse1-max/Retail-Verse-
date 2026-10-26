@@ -57,9 +57,9 @@ app.use("/api/coupons", couponRoutes);
 app.use("/api/pos/held-carts", heldCartRoutes);
 
 // Marketplace Routes
-app.use("/api/marketplace", marketplaceRoutes);
-app.use("/api/marketplace/flipkart", flipkartRoutes);
-app.use("/api/marketplace/shopify", shopifyRoutes);
-app.use("/api/marketplace/meesho", meeshoRoutes);
+app.use(["/api/marketplace", "/api/api/marketplace"], marketplaceRoutes);
+app.use(["/api/marketplace/flipkart", "/api/api/marketplace/flipkart"], flipkartRoutes);
+app.use(["/api/marketplace/shopify", "/api/api/marketplace/shopify"], shopifyRoutes);
+app.use(["/api/marketplace/meesho", "/api/api/marketplace/meesho"], meeshoRoutes);
 
 module.exports = app;
