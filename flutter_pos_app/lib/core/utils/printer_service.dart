@@ -206,12 +206,10 @@ class PrinterService {
     try {
       for (int i = 0; i < count; i++) {
         await bluetooth.printImageBytes(pngBytes);
-        await Future.delayed(const Duration(milliseconds: 150));
+        await Future.delayed(const Duration(milliseconds: 100));
         await _safePrintNewLine();
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 100));
       }
-      await _safePrintNewLine();
-      await _safePrintNewLine();
       return true;
     } catch (e) {
       debugPrint('Error printing barcode sticker: $e');
@@ -270,7 +268,20 @@ class PrinterService {
     try {
       final sanitizedLeft = left.replaceAll('₹', 'Rs.');
       final sanitizedRight = right.replaceAll('₹', 'Rs.');
-      await bluetooth.printLeftRight(sanitizedLeft, sanitizedRight, size);
+      // 58mm printer max chars: 32 chars for size 0, 16 chars for size 1
+      final maxChars = size == 1 ? 16 : 32;
+      if (sanitizedLeft.length + sanitizedRight.length >= maxChars) {
+        final availableForLeft = maxChars - sanitizedRight.length - 1;
+        if (availableForLeft > 5) {
+          final trimmedLeft = sanitizedLeft.substring(0, availableForLeft);
+          await bluetooth.printLeftRight(trimmedLeft, sanitizedRight, size);
+        } else {
+          await _safePrintCustom(sanitizedLeft, size, 0);
+          await _safePrintCustom(sanitizedRight, size, 2);
+        }
+      } else {
+        await bluetooth.printLeftRight(sanitizedLeft, sanitizedRight, size);
+      }
       await Future.delayed(const Duration(milliseconds: 25));
     } catch (e) {
       debugPrint('SafePrintLeftRight error: $e');
@@ -436,8 +447,7 @@ class PrinterService {
     await _safePrintNewLine();
     await _safePrintCustom(order.orderId, 1, 1);
 
-    // 8. Feed paper safely (safe for all 58mm and 80mm printers)
-    await _safePrintNewLine();
+    // 8. Feed paper safely (exact 2 lines to reach tear-off on 58mm printers, then HARD STOP)
     await _safePrintNewLine();
     await _safePrintNewLine();
     if (settings?.receiptSize == '80mm') {
