@@ -296,11 +296,6 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
 
   /// Handle Bluetooth thermal printer flow with visible progress
   Future<void> _handleBluetoothPrint() async {
-    setState(() {
-      _isActionRunning = true;
-      _actionMessage = 'Connecting to thermal printer...';
-    });
-
     try {
       // 1. If already connected, print immediately
       final isConn = await _printerService.isConnected();
@@ -309,38 +304,18 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
         return;
       }
 
-      // 2. Try fast auto-connect to saved printer
-      final autoConnected = await _printerService.autoConnect();
-      if (autoConnected) {
-        await _executeThermalPrint();
-        return;
-      }
+      // 2. Search for paired devices with fast loader
+      setState(() {
+        _isActionRunning = true;
+        _actionMessage = 'Searching for paired Bluetooth printers...';
+      });
 
-      // 3. Search for paired devices
-      if (mounted) {
-        setState(() => _actionMessage = 'Searching for paired printers...');
-      }
       final devices = await _printerService.getDevices();
       if (mounted) setState(() => _isActionRunning = false);
 
       if (!mounted) return;
 
       if (devices.isNotEmpty) {
-        // If there's only 1 paired printer, try connecting to it directly!
-        if (devices.length == 1) {
-          final target = devices.first;
-          setState(() {
-            _isActionRunning = true;
-            _actionMessage = 'Connecting to ${target.name ?? "Thermal Printer"}...';
-          });
-          final ok = await _printerService.connect(target);
-          if (mounted) setState(() => _isActionRunning = false);
-          if (ok) {
-            await _executeThermalPrint();
-            return;
-          }
-        }
-
         // Show selection modal with devices
         await _showDeviceSelectionModal(devices);
       } else {
@@ -1133,23 +1108,39 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      _actionMessage,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        _actionMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.15),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                      label: const Text('Cancel / Dismiss', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      onPressed: () => setState(() => _isActionRunning = false),
                     ),
                   ],
                 ),

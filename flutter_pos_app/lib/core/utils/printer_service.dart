@@ -42,12 +42,18 @@ class PrinterService {
 
   /// Get list of paired / bonded Bluetooth devices (requests permissions first)
   Future<List<BluetoothDevice>> getDevices() async {
-    await requestBluetoothPermissions();
     try {
-      final devices = await bluetooth.getBondedDevices();
+      await requestBluetoothPermissions().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => false,
+      );
+      final devices = await bluetooth.getBondedDevices().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => [],
+      );
       return devices;
     } on PlatformException catch (e) {
-      debugPrint('Error getting bonded devices: $e');
+      debugPrint('PlatformException getting bonded devices: $e');
       return [];
     } catch (e) {
       debugPrint('Error getting bonded devices: $e');
