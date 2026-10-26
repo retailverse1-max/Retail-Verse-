@@ -135,7 +135,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
-              label: 'System Print',
+              label: 'USB Wire Print',
               textColor: Colors.white,
               onPressed: () {
                 final posSettings = ref.read(posSettingsProvider);
@@ -151,6 +151,186 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
 
   /// Triggered when user taps the "Print Bill" button
   Future<void> _onPrintPressed() async {
+    final posSettings = ref.read(posSettingsProvider);
+    final isBtConnected = await _printerService.isConnected();
+    final savedPrinterName = await _printerService.getSavedPrinterName();
+
+    if (!mounted) return;
+
+    final selectedMode = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.print_rounded, color: AppColors.primary, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Choose Print Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                        Text('Select how your thermal printer is connected', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Option 1: USB / Wire / OTG Print
+              InkWell(
+                onTap: () => Navigator.pop(sheetCtx, 'usb_wire'),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.cable_rounded, color: Color(0xFF15803D), size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'USB / Wire / OTG Print',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF166534)),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF15803D),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text('WIRED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Tap here if printer is connected with USB cable or OTG. Prints instantly via System Spooler.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF15803D)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF15803D)),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 2: Bluetooth Wireless Thermal Printer
+              InkWell(
+                onTap: () => Navigator.pop(sheetCtx, 'bluetooth'),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF93C5FD), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.bluetooth_connected_rounded, color: Color(0xFF1D4ED8), size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Bluetooth Thermal Printer',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E40AF)),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isBtConnected ? const Color(0xFF10B981) : const Color(0xFF3B82F6),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    isBtConnected ? 'CONNECTED' : 'WIRELESS',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isBtConnected
+                                  ? 'Connected to ${savedPrinterName ?? "Thermal Printer"}. Tap to print immediately.'
+                                  : 'Wireless 58mm / 80mm thermal printer (Billplus, MPT, POS-58).',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF1D4ED8)),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (selectedMode == 'usb_wire') {
+      await _printVia80mmThermal(posSettings);
+    } else if (selectedMode == 'bluetooth') {
+      await _handleBluetoothPrint();
+    }
+  }
+
+  /// Handle Bluetooth thermal printer flow
+  Future<void> _handleBluetoothPrint() async {
     // 1. If already connected, print immediately
     if (await _printerService.isConnected()) {
       await _executeThermalPrint();
@@ -173,7 +353,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
     // 3. Get paired Bluetooth devices (triggers Bluetooth permissions on Android 12+)
     setState(() {
       _isActionRunning = true;
-      _actionMessage = 'Searching for thermal printers...';
+      _actionMessage = 'Searching for paired Bluetooth printers...';
     });
     final devices = await _printerService.getDevices();
     if (mounted) setState(() => _isActionRunning = false);
@@ -216,7 +396,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Select Thermal Printer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('Tap your 58mm/80mm printer to connect & print', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text('Tap your paired 58mm/80mm printer to connect & print', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
@@ -246,16 +426,16 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                 ),
               ),
               const SizedBox(height: 10),
-              // Option to use system print
+              // Option to use USB / System print
               ListTile(
                 leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFE0E7FF),
-                  child: Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF4338CA), size: 20),
+                  backgroundColor: Color(0xFFF0FDF4),
+                  child: Icon(Icons.cable_rounded, color: Color(0xFF15803D), size: 20),
                 ),
-                title: const Text('System Print / PDF', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                subtitle: const Text('Wi-Fi, Network, or A4 standard printers', style: TextStyle(fontSize: 11)),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                tileColor: Colors.grey.shade50,
+                title: const Text('USB / OTG Wire or System Print', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF15803D))),
+                subtitle: const Text('Use if printer is connected with a cable', style: TextStyle(fontSize: 11)),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF15803D)),
+                tileColor: Colors.green.shade50.withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 onTap: () => Navigator.pop(sheetCtx, 'system_print'),
               ),
@@ -278,9 +458,17 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            duration: const Duration(seconds: 2),
-            content: Text('Could not connect to ${chosen.name}. Make sure printer is ON.'),
+            duration: const Duration(seconds: 4),
+            content: Text('Could not connect to ${chosen.name}. Make sure printer is ON and Bluetooth paired.'),
             backgroundColor: AppColors.error,
+            action: SnackBarAction(
+              label: 'USB Wire Print',
+              textColor: Colors.white,
+              onPressed: () {
+                final posSettings = ref.read(posSettingsProvider);
+                _printVia80mmThermal(posSettings);
+              },
+            ),
           ),
         );
       }
@@ -292,6 +480,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
 
   /// Dialog when no paired Bluetooth printers are found
   Future<void> _showNoPrinterDialog() async {
+    final posSettings = ref.read(posSettingsProvider);
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -300,38 +489,77 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
           children: [
             Icon(Icons.bluetooth_searching_rounded, color: AppColors.primary),
             SizedBox(width: 10),
-            Text('No Thermal Printer Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Expanded(child: Text('Bluetooth Printer Not Paired', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Please follow these steps:'),
-            SizedBox(height: 8),
-            Text('1. Turn ON your 58mm/80mm thermal printer.'),
-            SizedBox(height: 4),
-            Text('2. Open Bluetooth on your phone and pair with your printer (e.g. Billplus, MPT, etc.). Default PIN is usually 0000 or 1234.'),
-            SizedBox(height: 4),
-            Text('3. Once paired, tap Print again.'),
+            const Text(
+              'Phone ki Bluetooth settings me koi thermal printer paired nahi mila. Kripya niche diye steps follow karein:',
+              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('1. Thermal Printer ON karein.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 4),
+                  Text('2. Phone Settings > Bluetooth me jayein aur "Pair new device" dabayein.', style: TextStyle(fontSize: 12)),
+                  SizedBox(height: 4),
+                  Text('3. Printer ka naam select karein aur PIN dalein (0000 ya 1234).', style: TextStyle(fontSize: 12)),
+                  SizedBox(height: 4),
+                  Text('4. Pair hone ke baad yahan Bluetooth Print dabayein.', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.cable_rounded, color: Color(0xFF15803D), size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Agar printer wire / USB cable se connect hai, toh "Print via USB Wire" dabayein!',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF15803D), fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(
+          OutlinedButton.icon(
+            icon: const Icon(Icons.cable_rounded, size: 16),
+            label: const Text('Print via USB Wire'),
             onPressed: () {
               Navigator.pop(ctx);
-              final posSettings = ref.read(posSettingsProvider);
               _printVia80mmThermal(posSettings);
             },
-            child: const Text('Try System Print'),
           ),
-          ElevatedButton(
+          ElevatedButton.icon(
+            icon: const Icon(Icons.settings_bluetooth_rounded, size: 16),
+            label: const Text('Open Bluetooth Settings'),
             onPressed: () {
               Navigator.pop(ctx);
               _printerService.bluetooth.openSettings;
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Open Bluetooth Settings', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

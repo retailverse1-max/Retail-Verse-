@@ -28,6 +28,7 @@ class PrinterService {
         Permission.bluetoothConnect,
         Permission.bluetoothScan,
         Permission.bluetooth,
+        Permission.locationWhenInUse,
       ].request();
 
       final connectGranted = statuses[Permission.bluetoothConnect]?.isGranted ?? true;
