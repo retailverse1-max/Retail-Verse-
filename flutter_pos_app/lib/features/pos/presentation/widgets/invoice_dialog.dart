@@ -89,20 +89,20 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
     }
 
     try {
-      try {
+      debugPrint('Attempting raster thermal print for 58mm Billplus...');
+      final rasterOk = await _printerService.printReceiptRaster(
+        order: widget.order,
+        settings: posSettings,
+      );
+
+      if (!rasterOk) {
+        debugPrint('Raster print returned false. Trying raw text print...');
         await _printerService.printReceipt(
           widget.order,
           settings: posSettings,
           storeName: _getStoreName(),
           authUser: authUser,
         );
-      } catch (textErr) {
-        debugPrint('Text thermal print failed: $textErr. Trying raster print...');
-        final rasterOk = await _printerService.printReceiptRaster(
-          order: widget.order,
-          settings: posSettings,
-        );
-        if (!rasterOk) rethrow;
       }
 
       if (mounted) {

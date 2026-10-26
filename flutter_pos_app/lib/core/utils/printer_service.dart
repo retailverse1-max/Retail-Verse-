@@ -282,17 +282,18 @@ class PrinterService {
       if (!connected) return false;
     }
     try {
-      await _safePrintCustom('================================', 0, 1);
-      await _safePrintCustom('RETAIL VERSE POS', 2, 1);
-      await _safePrintCustom('PRINTER TEST SUCCESS', 1, 1);
-      await _safePrintCustom('================================', 0, 1);
-      await _safePrintLeftRight('Printer Status:', 'ONLINE', 0);
-      final savedName = await getSavedPrinterName();
-      if (savedName != null) {
-        await _safePrintLeftRight('Device:', savedName, 0);
-      }
-      await _safePrintCustom('Ready for Bills & Stickers', 0, 1);
-      await _safePrintCustom('================================', 0, 1);
+      // 1. Generate a crisp 58mm test bitmap (384 dot width)
+      final testImg = img.Image(width: 384, height: 180);
+      img.fill(testImg, color: img.ColorRgb8(255, 255, 255));
+      img.drawString(testImg, '================================', font: img.arial14, x: 10, y: 10, color: img.ColorRgb8(0, 0, 0));
+      img.drawString(testImg, 'RETAIL VERSE POS', font: img.arial24, x: 75, y: 35, color: img.ColorRgb8(0, 0, 0));
+      final savedName = await getSavedPrinterName() ?? 'billplus 617';
+      img.drawString(testImg, '$savedName: ONLINE', font: img.arial14, x: 90, y: 75, color: img.ColorRgb8(0, 0, 0));
+      img.drawString(testImg, 'PRINTER TEST SUCCESSFUL', font: img.arial14, x: 80, y: 105, color: img.ColorRgb8(0, 0, 0));
+      img.drawString(testImg, '================================', font: img.arial14, x: 10, y: 140, color: img.ColorRgb8(0, 0, 0));
+      final testPng = Uint8List.fromList(img.encodePng(testImg));
+
+      await printImageBytes(testPng);
       await _safePrintNewLine();
       await _safePrintNewLine();
       return true;
@@ -302,30 +303,42 @@ class PrinterService {
     }
   }
 
-  /// Print image bytes directly to thermal printer
+  /// Print image bytes directly to thermal printer (auto-scales to 384 dots for 58mm printers)
   Future<bool> printImageBytes(Uint8List bytes) async {
     if (!await isConnected()) {
       final connected = await autoConnect();
       if (!connected) return false;
     }
 
-    if (_connectedEngine == 'thermal' || await PrintBluetoothThermal.connectionStatus) {
-      try {
-        final decoded = img.decodeImage(bytes);
-        if (decoded != null) {
-          final profile = await CapabilityProfile.load();
-          final generator = Generator(PaperSize.mm58, profile);
-          final escBytes = generator.imageRaster(decoded);
-          await PrintBluetoothThermal.writeBytes(escBytes);
-          return true;
+    Uint8List finalBytes = bytes;
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded != null) {
+        img.Image processed = decoded;
+        // 58mm print head is strictly 384 dots max. Anything larger overflows printer buffer!
+        if (processed.width > 384) {
+          processed = img.copyResize(processed, width: 384);
         }
-      } catch (e) {
-        debugPrint('Thermal printImageBytes error: $e');
+        finalBytes = Uint8List.fromList(img.encodePng(processed));
+
+        if (_connectedEngine == 'thermal' || await PrintBluetoothThermal.connectionStatus) {
+          try {
+            final profile = await CapabilityProfile.load();
+            final generator = Generator(PaperSize.mm58, profile);
+            final escBytes = generator.imageRaster(processed);
+            await PrintBluetoothThermal.writeBytes(escBytes);
+            return true;
+          } catch (e) {
+            debugPrint('Thermal printImageBytes error: $e');
+          }
+        }
       }
+    } catch (e) {
+      debugPrint('Error processing image bytes: $e');
     }
 
     try {
-      await bluetooth.printImageBytes(bytes);
+      await bluetooth.printImageBytes(finalBytes);
       return true;
     } catch (e) {
       debugPrint('Error printing image bytes: $e');
@@ -369,9 +382,12 @@ class PrinterService {
     }
 
     try {
+      // Force 58mm roll (384 dots width) for Billplus & 58mm thermal printers
+      final effectiveSettings = settings?.copyWith(receiptSize: '58mm');
+
       final pdfBytes = await ReceiptGenerator.generateReceiptPdf(
         order,
-        settings: settings,
+        settings: effectiveSettings,
       );
       final rasterPages = Printing.raster(pdfBytes, pages: [0], dpi: 203);
       final firstPage = await rasterPages.first;
@@ -381,17 +397,6 @@ class PrinterService {
       await _safePrintNewLine();
       await _safePrintNewLine();
       await _safePrintNewLine();
-      if (settings?.receiptSize == '80mm') {
-        try {
-          if (_connectedEngine == 'thermal') {
-            final profile = await CapabilityProfile.load();
-            final generator = Generator(PaperSize.mm80, profile);
-            await PrintBluetoothThermal.writeBytes(generator.cut());
-          } else {
-            await bluetooth.paperCut();
-          }
-        } catch (_) {}
-      }
       return true;
     } catch (e) {
       debugPrint('Error printing raster receipt: $e');
