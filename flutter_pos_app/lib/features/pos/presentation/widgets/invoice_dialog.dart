@@ -16,6 +16,7 @@ import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import '../../../orders/utils/receipt_generator.dart';
+import '../../../../core/widgets/printer_manager_sheet.dart';
 
 class InvoiceDialog extends ConsumerStatefulWidget {
   final Order order;
@@ -169,9 +170,9 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
       return;
     }
 
-    // 3. If auto-connect didn't find printer, open connection modal
+    // 3. If auto-connect didn't find printer, open in-app printer connection manager
     if (mounted) {
-      await _showPrintOptionsSheet();
+      await PrinterManagerSheet.show(context);
     }
   }
 

@@ -183,9 +183,10 @@ class PrinterService {
         if (connected) return true;
       }
 
-      // 3. If only one bonded device exists (common for thermal printers), auto-connect
-      if (devices.length == 1) {
-        return await connect(devices.first);
+      // 3. Fallback: Try each paired device (so even unlisted names/MAC addresses connect)
+      for (final dev in devices) {
+        final connected = await connect(dev);
+        if (connected) return true;
       }
 
       return false;
@@ -199,6 +200,33 @@ class PrinterService {
     try {
       await bluetooth.disconnect();
     } catch (_) {}
+  }
+
+  /// Print a simple test slip to verify printer connection
+  Future<bool> printTestReceipt() async {
+    if (!await isConnected()) {
+      final connected = await autoConnect();
+      if (!connected) return false;
+    }
+    try {
+      await _safePrintCustom('================================', 0, 1);
+      await _safePrintCustom('RETAIL VERSE POS', 2, 1);
+      await _safePrintCustom('PRINTER TEST SUCCESS', 1, 1);
+      await _safePrintCustom('================================', 0, 1);
+      await _safePrintLeftRight('Printer Status:', 'ONLINE', 0);
+      final savedName = await getSavedPrinterName();
+      if (savedName != null) {
+        await _safePrintLeftRight('Device:', savedName, 0);
+      }
+      await _safePrintCustom('Ready for Bills & Stickers', 0, 1);
+      await _safePrintCustom('================================', 0, 1);
+      await _safePrintNewLine();
+      await _safePrintNewLine();
+      return true;
+    } catch (e) {
+      debugPrint('Error printing test receipt: $e');
+      return false;
+    }
   }
 
   /// Print image bytes directly to thermal printer

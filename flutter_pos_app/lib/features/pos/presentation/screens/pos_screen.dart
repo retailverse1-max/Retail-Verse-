@@ -27,6 +27,7 @@ import 'package:retail_verse_pos/core/providers/sync_providers.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:retail_verse_pos/core/widgets/printer_manager_sheet.dart';
 
 class POSScreen extends ConsumerStatefulWidget {
   const POSScreen({super.key});
@@ -1285,6 +1286,23 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                                     turns: _rotationController,
                                     child: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.textPrimary),
                                   ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Bounceable(
+                              onTap: () => PrinterManagerSheet.show(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.cardBorder),
+                                ),
+                                child: const Icon(
+                                  Icons.print_rounded,
+                                  size: 20,
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ),

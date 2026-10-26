@@ -18,6 +18,7 @@ import '../../../../core/navigation/role_route_guard.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/ai_service.dart';
+import '../../../../core/widgets/printer_manager_sheet.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../pos/providers/product_providers.dart';
 import '../../../settings/providers/pos_settings_provider.dart';
@@ -32,7 +33,6 @@ import '../../../../core/utils/app_snackbar.dart';
 import '../../../../core/widgets/product_media_image.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import '../../../../core/utils/printer_service.dart';
 
 /// Add Product Screen - Executive Enterprise Grade Product Creation Experience
@@ -1773,6 +1773,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                OutlinedButton.icon(
+                  onPressed: () => PrinterManagerSheet.show(context),
+                  icon: const Icon(Icons.bluetooth_connected_rounded, size: 16),
+                  label: const Text('Connect Printer'),
+                ),
                 ElevatedButton.icon(
                   onPressed: () async {
                     final customW = double.tryParse(customWidthController.text.trim()) ?? 50.0;
@@ -1999,172 +2004,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         }
       }
 
-      // If not connected, check paired Bluetooth devices
-      _showSnack('Searching for paired Bluetooth thermal printers...');
-      final devices = await printerService.getDevices();
-
-      if (devices.isEmpty && mounted) {
-        showDialog(
-          context: context,
-          builder: (dialogCtx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
-              children: [
-                Icon(Icons.bluetooth_disabled_rounded, color: Colors.orange, size: 26),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text('Thermal Printer Not Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            content: const Text(
-              'Koi Bluetooth Thermal Printer connect nahi mila.\n\n'
-              '1. Check karein printer ON hai ya nahi.\n'
-              '2. Phone ka Bluetooth ON karein aur Billplus printer ko pair karein (PIN: 0000 ya 1234).\n'
-              '3. Phir yahan dobara "Print Sticker Now" dabayein.',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx),
-                child: const Text('Cancel'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(dialogCtx);
-                  await openAppSettings();
-                },
-                icon: const Icon(Icons.settings, size: 16),
-                label: const Text('Bluetooth Settings'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(dialogCtx);
-                  await _printBarcodePdf(
-                    storeName: storeName,
-                    productName: productName,
-                    barcode: barcode,
-                    size: size,
-                    copies: copies,
-                    customWidthMm: customWidthMm,
-                    customHeightMm: customHeightMm,
-                  );
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      if (devices.isNotEmpty && mounted) {
-        final chosen = await showModalBottomSheet<dynamic>(
-          context: context,
-          backgroundColor: Colors.white,
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          builder: (sheetCtx) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.print_rounded, color: AppColors.primary, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Select Printer for Sticker', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            Text('Tap your thermal printer to print sticker', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: devices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final dev = devices[index];
-                        return ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Color(0xFFDCFCE7),
-                            child: Icon(Icons.bluetooth_connected_rounded, color: Color(0xFF15803D), size: 20),
-                          ),
-                          title: Text(dev.name ?? 'Thermal Printer', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: Text(dev.address ?? '', style: const TextStyle(fontSize: 11)),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          tileColor: Colors.grey.shade50,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          onTap: () => Navigator.pop(sheetCtx, dev),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFF0FDF4),
-                      child: Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF15803D), size: 20),
-                    ),
-                    title: const Text('System Print Spooler (PDF / Preview)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF15803D))),
-                    subtitle: const Text('Open Android print preview / save as PDF', style: TextStyle(fontSize: 11)),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF15803D)),
-                    tileColor: Colors.green.shade50.withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    onTap: () => Navigator.pop(sheetCtx, 'system_print'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-
-        if (chosen is BluetoothDevice && mounted) {
-          _showSnack('Connecting to ${chosen.name}...');
-          final connected = await printerService.connect(chosen);
-          if (connected) {
-            final rasterPages = Printing.raster(pdfBytes, pages: [0], dpi: rasterDpi);
-            final firstPage = await rasterPages.first;
-            final pngBytes = await firstPage.toPng();
-
-            final success = await printerService.printBarcodeStickerDirect(
-              pngBytes: pngBytes,
-              count: copies,
-            );
-            if (success) {
-              _showSnack('$copies Barcode sticker(s) printed to ${chosen.name}!');
-              return;
-            }
-          } else {
-            _showSnack('Could not connect to ${chosen.name}. Make sure printer is ON.', isError: true);
-          }
-          return;
-        } else if (chosen == 'system_print') {
-          // Explicitly user chose System Print Spooler
-          await Printing.layoutPdf(
-            onLayout: (PdfPageFormat format) async => pdfBytes,
-            name: 'Label_${barcode}_$storeName',
-          );
-          return;
-        }
-        return; // User cancelled
+      // If printer is not connected, open in-app printer manager modal
+      _showSnack('Connect to printer first', isError: true);
+      if (mounted) {
+        await PrinterManagerSheet.show(context);
       }
     } catch (e) {
       _showSnack('Thermal printer error: $e', isError: true);
