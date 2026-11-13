@@ -10,6 +10,7 @@ import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/core/utils/formatters.dart';
 import 'package:retail_verse_pos/features/dashboard/providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
+import 'package:retail_verse_pos/core/branding/app_branding.dart';
 import 'package:retail_verse_pos/routes/app_router.dart';
 import 'package:retail_verse_pos/core/navigation/role_nav.dart';
 
@@ -1100,6 +1101,8 @@ class PremiumAdminSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final brandTitle = ref.watch(appBrandingProvider);
+
     return Container(
       width: 280,
       decoration: BoxDecoration(
@@ -1126,15 +1129,23 @@ class PremiumAdminSidebar extends ConsumerWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    'Retail Verse',
-                    style: AppTypography.titleLarge.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -1,
-                      color: AppColors.secondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: AppBranding.storeNameNotifier,
+                    builder: (context, liveBrand, _) {
+                      final titleToShow = liveBrand.isNotEmpty && liveBrand != 'My Store'
+                          ? liveBrand
+                          : (brandTitle.isNotEmpty ? brandTitle : 'Retail Verse');
+                      return Text(
+                        titleToShow,
+                        style: AppTypography.titleLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -1,
+                          color: AppColors.secondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
                   ),
                 ),
                 if (onToggleCollapse != null)

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/constants/api_endpoints.dart';
+import 'core/branding/app_branding.dart';
 import 'core/services/zendesk_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/error_detector.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
   }
 
   await ApiEndpoints.initialize();
+  await AppBranding.initialize();
   debugPrint('API base URL → ${ApiEndpoints.baseUrl}');
 
   // Initialize Zendesk
@@ -55,6 +57,7 @@ class RetailVerseApp extends ConsumerWidget {
     ref.watch(syncServiceProvider);
     
     final settings = ref.watch(posSettingsProvider);
+    final brandTitle = ref.watch(appBrandingProvider);
 
     return ScreenUtilInit(
       designSize: const Size(375, 812),
@@ -66,7 +69,7 @@ class RetailVerseApp extends ConsumerWidget {
         });
 
         return MaterialApp.router(
-          title: 'Retail Verse',
+          title: brandTitle,
           debugShowCheckedModeBanner: false,
           scaffoldMessengerKey: scaffoldMessengerKey,
           theme: AppTheme.lightTheme,

@@ -4,8 +4,16 @@ const InventoryLog = require("../models/InventoryLog");
 const getInventory = async (req, res) => {
   try {
     const filter = { isActive: true };
-    if (req.user && req.user.role !== "super_admin") {
+    if (req.user && req.user.role === "super_admin") {
+      const bId = req.query.businessId || req.headers["x-client-id"];
+      if (bId) filter.clientId = bId;
+    } else if (req.user && req.user.clientId) {
       filter.clientId = req.user.clientId;
+    } else {
+      return res.json({
+        message: "Inventory fetched successfully",
+        data: [],
+      });
     }
     const products = await Product.find(filter).sort({ createdAt: -1 });
 
@@ -24,8 +32,16 @@ const getLowStockProducts = async (req, res) => {
       isActive: true,
       stock: { $lte: 10 },
     };
-    if (req.user && req.user.role !== "super_admin") {
+    if (req.user && req.user.role === "super_admin") {
+      const bId = req.query.businessId || req.headers["x-client-id"];
+      if (bId) filter.clientId = bId;
+    } else if (req.user && req.user.clientId) {
       filter.clientId = req.user.clientId;
+    } else {
+      return res.json({
+        message: "Low stock products fetched successfully",
+        data: [],
+      });
     }
     const products = await Product.find(filter).sort({ stock: 1 });
 
@@ -84,6 +100,19 @@ const adjustStock = async (req, res) => {
       afterStock,
       referenceId: reason || "manual-adjustment",
     });
+
+    // ── Auto-Trigger Vendor Allocation Notification when stock drops to <= threshold ──
+    if (operation === "reduce") {
+      const { checkAndTriggerVendorAllocation } = require("../services/vendorAllocationService");
+      checkAndTriggerVendorAllocation({
+        clientId: req.user?.clientId || product.clientId,
+        product,
+        currentStock: afterStock,
+        triggeredBy: "auto_low_stock",
+      }).catch((err) => {
+        console.error("Vendor split allocation trigger failed:", err.message);
+      });
+    }
 
     res.json({
       message: "Stock adjusted successfully",

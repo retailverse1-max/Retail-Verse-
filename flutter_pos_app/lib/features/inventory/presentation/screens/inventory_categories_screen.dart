@@ -61,28 +61,8 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundTertiary,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Navigator.of(context).canPop()
-                        ? InkWell(
-                            onTap: () => Navigator.of(context).pop(),
-                            borderRadius: BorderRadius.circular(12),
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Icon(
-                                Icons.arrow_back_rounded,
-                                color: AppColors.textPrimary,
-                                size: 20,
-                              ),
-                            ),
-                          )
-                        : const ResponsiveMenuButton(color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(width: 12),
+                  const ResponsiveMenuButton(color: AppColors.textPrimary),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

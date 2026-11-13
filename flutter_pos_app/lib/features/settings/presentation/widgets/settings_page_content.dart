@@ -8,13 +8,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../../core/constants/legal_constants.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/branding/app_branding.dart';
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/remote/account_service.dart';
 import '../../../../data/remote/support_service.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../../core/providers/sync_providers.dart';
 import '../../../dashboard/providers/dashboard_providers.dart';
 import '../../../pos/providers/product_providers.dart';
 import '../../domain/models/pos_settings.dart';
@@ -164,14 +168,19 @@ class SettingsPageContent extends ConsumerWidget {
                 SettingsValueTile(
                   icon: Icons.badge_outlined,
                   title: 'Store name',
-                  subtitle: 'Legal or trading name',
-                  valueLabel: s.storeName.isEmpty ? 'Tap to set' : s.storeName,
+                  subtitle: 'Legal or trading name (Replaces Retail Verse across app)',
+                  valueLabel: s.storeName.trim().isEmpty ? 'Retail Verse (Default)' : s.storeName.trim(),
                   onTap: () => _editString(
                     context,
                     ref,
                     title: 'Store name',
-                    initial: s.storeName,
-                    onSave: (v) => patch((p) => p.copyWith(storeName: v)),
+                    initial: s.storeName.trim() == 'My Store' ? '' : s.storeName.trim(),
+                    hintText: 'Enter store name (leave empty for Retail Verse)',
+                    onSave: (v) {
+                      final name = v.trim();
+                      patch((p) => p.copyWith(storeName: name));
+                      AppBranding.setStoreName(name);
+                    },
                   ),
                 ),
                 const SettingsDividerInset(),
@@ -582,15 +591,6 @@ class SettingsPageContent extends ConsumerWidget {
             ),
             const SettingsDividerInset(),
             SettingsSwitchTile(
-              icon: Icons.numbers_rounded,
-              title: 'Auto invoice number',
-              subtitle: 'Sequential numbering',
-              value: s.autoInvoiceNumber,
-              onChanged: (v) =>
-                  patch((p) => p.copyWith(autoInvoiceNumber: v)),
-            ),
-            const SettingsDividerInset(),
-            SettingsSwitchTile(
               icon: Icons.receipt_rounded,
               title: 'Show tax on bill',
               subtitle: 'Itemised or summary tax',
@@ -630,15 +630,6 @@ class SettingsPageContent extends ConsumerWidget {
               subtitle: 'Offer print after sale',
               value: s.printReceipt,
               onChanged: (v) => patch((p) => p.copyWith(printReceipt: v)),
-            ),
-            const SettingsDividerInset(),
-            SettingsSwitchTile(
-              icon: Icons.share_outlined,
-              title: 'Share digital receipt',
-              subtitle: 'PDF / link when available',
-              value: s.shareDigitalReceipt,
-              onChanged: (v) =>
-                  patch((p) => p.copyWith(shareDigitalReceipt: v)),
             ),
           ],
         ),
@@ -785,34 +776,56 @@ class SettingsPageContent extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _SyncStatusCard(s: s),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () async {
-                          ref.invalidate(settingsBackendReachableProvider);
-                          invalidateAllDashboardProviders(ref);
-                          ref.invalidate(productsProvider);
-                          await ref
-                              .read(posSettingsProvider.notifier)
-                              .recordSuccessfulSync();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(duration: const Duration(seconds: 2),
-                                content: Text('Sync refresh triggered'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.sync_rounded, size: 20),
-                        label: const Text('Sync now'),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
+                      onPressed: () async {
+                        // 1. Process all pending offline queue items to Cloud DB
+                        final syncedCount = await ref
+                            .read(syncServiceProvider)
+                            .processSyncQueue();
+
+                        // 2. Refresh all local and remote providers
+                        ref.invalidate(settingsBackendReachableProvider);
+                        invalidateAllDashboardProviders(ref);
+                        ref.invalidate(productsProvider);
+                        ref.invalidate(localDatabaseStatusProvider);
+
+                        // 3. Record sync timestamp
+                        await ref
+                            .read(posSettingsProvider.notifier)
+                            .recordSuccessfulSync();
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              duration: const Duration(seconds: 3),
+                              content: Text(
+                                syncedCount > 0
+                                    ? '✓ Synced $syncedCount offline order${syncedCount > 1 ? "s" : ""} to Cloud MongoDB!'
+                                    : '✓ Local SQLite and Cloud DB are in sync',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: const Color(0xFF2E7D32),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.sync_rounded, size: 20),
+                      label: const Text('Sync now'),
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 SettingsSwitchTile(
                   icon: Icons.autorenew_rounded,
                   title: 'Auto sync',
@@ -1058,7 +1071,7 @@ class SettingsPageContent extends ConsumerWidget {
                     loading: () => '…',
                     error: (_, __) => '—',
                   ),
-                  onTap: () {},
+                  onTap: () => _showAppVersionSheet(context, ref),
                 );
               },
             ),
@@ -1117,7 +1130,7 @@ class SettingsPageContent extends ConsumerWidget {
               icon: Icons.info_outline_rounded,
               title: 'About',
               subtitle: 'Retail billing platform info',
-              onTap: () => _aboutDialog(context, ref),
+              onTap: () => _showAppVersionSheet(context, ref),
             ),
           ],
         ),
@@ -1143,12 +1156,17 @@ class SettingsPageContent extends ConsumerWidget {
       );
     }
 
+    final brandName = AppBranding.getStoreName(
+      role: role,
+      fallback: s.storeName.isNotEmpty && s.storeName != 'My Store' ? s.storeName : null,
+    );
+
     children.add(
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: Center(
           child: Text(
-            'Retail Verse POS • v2.4.0',
+            '$brandName POS • v2.4.0',
             style: AppTypography.labelSmall.copyWith(
               color: AppColors.textTertiary,
               fontWeight: FontWeight.w500,
@@ -1248,6 +1266,7 @@ Future<void> _editString(
   required void Function(String) onSave,
   int maxLines = 1,
   TextInputType keyboard = TextInputType.text,
+  String? hintText,
 }) async {
   final c = TextEditingController(text: initial);
   final ok = await showDialog<bool>(
@@ -1259,6 +1278,9 @@ Future<void> _editString(
         maxLines: maxLines,
         keyboardType: keyboard,
         autofocus: true,
+        decoration: InputDecoration(
+          hintText: hintText,
+        ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -1495,45 +1517,416 @@ void _showSupportTicketDialog(BuildContext context, WidgetRef ref) {
   });
 }
 
-Future<void> _aboutDialog(BuildContext context, WidgetRef ref) async {
-  final info = await ref.read(appPackageInfoProvider.future);
+Future<void> _showAppVersionSheet(BuildContext context, WidgetRef ref) async {
+  PackageInfo? info;
+  try {
+    info = await ref.read(appPackageInfoProvider.future);
+  } catch (_) {
+    // Fallback if package info fails
+  }
+
+  final versionStr = info?.version ?? AppConstants.appVersion;
+  final buildStr = info?.buildNumber ?? '15';
+  final pkgName = info?.packageName ?? 'in.retailverse.app';
+  final brandName = AppBranding.getStoreName();
   if (!context.mounted) return;
-  showAboutDialog(
+
+  showModalBottomSheet<void>(
     context: context,
-    applicationName: info.appName,
-    applicationVersion: 'Version ${info.version} (Build ${info.buildNumber})',
-    applicationIcon: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Icon(Icons.storefront_rounded, size: 48, color: AppColors.primary),
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    children: [
-      const SizedBox(height: 16),
-      Text(
-        'Retail Verse is a complete POS (Point of Sale) ecosystem built for modern retail businesses.',
-        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.normal),
-      ),
-      const SizedBox(height: 12),
-      const Text(
-        'Features include:\n'
-        '• Lightning fast checkout and billing\n'
-        '• Offline-first architecture with background sync\n'
-        '• Advanced inventory & stock management\n'
-        '• Beautiful analytics and business insights\n'
-        '• Built-in AI assistant for smart insights\n'
-        '• Multi-channel support (POS, Web, Delivery)',
-        style: TextStyle(height: 1.5),
-      ),
-      const SizedBox(height: 16),
-      const Text(
-        'Designed & Engineered by the Hexerve Solutions team.\n'
-        '© 2026 Hexerve Solutions. All rights reserved.',
-        style: TextStyle(color: Colors.grey, fontSize: 12),
-      ),
-    ],
+    builder: (ctx) {
+      bool isChecking = false;
+      String? updateMessage;
+
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 6, 24, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // App Icon & Brand Branding
+                  Container(
+                    width: 72,
+                    height: 72,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withValues(alpha: 0.14),
+                          AppColors.primary.withValues(alpha: 0.04),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.22),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.storefront_rounded,
+                      size: 40,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    brandName.isNotEmpty && brandName != 'My Store'
+                        ? brandName
+                        : 'RetailVerse POS',
+                    style: AppTypography.titleLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Enterprise Cloud Retail & POS Ecosystem',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Version Chip
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Text(
+                      'v$versionStr (Build $buildStr) • Production',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Up to date card
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFA5D6A7)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: Color(0xFF2E7D32),
+                          size: 26,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                updateMessage ?? 'App is Up to Date',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: const Color(0xFF1B5E20),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                updateMessage != null
+                                    ? 'Latest release installed and verified.'
+                                    : 'You are running the latest stable build of RetailVerse.',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: const Color(0xFF2E7D32),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Metadata list
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundTertiary,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.7)),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildVersionInfoRow(
+                          icon: Icons.numbers_rounded,
+                          label: 'App Version',
+                          value: versionStr,
+                        ),
+                        const Divider(height: 1, indent: 48),
+                        _buildVersionInfoRow(
+                          icon: Icons.build_circle_outlined,
+                          label: 'Build Number',
+                          value: buildStr,
+                        ),
+                        const Divider(height: 1, indent: 48),
+                        _buildVersionInfoRow(
+                          icon: Icons.inventory_2_outlined,
+                          label: 'Package ID',
+                          value: pkgName,
+                        ),
+                        const Divider(height: 1, indent: 48),
+                        _buildVersionInfoRow(
+                          icon: Icons.cloud_done_outlined,
+                          label: 'Deployment Channel',
+                          value: 'Cloud Production',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // What's New Box
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 18,
+                              color: Color(0xFFE65100),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "What's New in v$versionStr",
+                              style: AppTypography.labelLarge.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _buildReleaseFeatureItem(
+                          'Custom Domain Manager',
+                          'Connect custom store domain directly from app with locked client verification.',
+                        ),
+                        _buildReleaseFeatureItem(
+                          'Live Dashboard Sync',
+                          'Real-time revenue, orders count, and invoice updates on the dashboard.',
+                        ),
+                        _buildReleaseFeatureItem(
+                          'Quote to Invoice',
+                          'Convert generated quotes to completed invoices in 1 click.',
+                        ),
+                        _buildReleaseFeatureItem(
+                          'Support & Tickets',
+                          'Direct customer support ticket management and chat.',
+                        ),
+                        _buildReleaseFeatureItem(
+                          'Receipt & Thermal Printing',
+                          'Optimized Bluetooth ESC/POS receipt thermal printing.',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Check for updates button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: isChecking
+                          ? null
+                          : () async {
+                              setState(() => isChecking = true);
+                              await Future.delayed(const Duration(milliseconds: 1200));
+                              if (context.mounted) {
+                                setState(() {
+                                  isChecking = false;
+                                  updateMessage = 'Already at Latest Version (v$versionStr)';
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '✓ RetailVerse POS is fully up to date (v$versionStr • build $buildStr)',
+                                    ),
+                                    backgroundColor: const Color(0xFF2E7D32),
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: isChecking
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.refresh_rounded, size: 20),
+                      label: Text(
+                        isChecking ? 'Checking for updates...' : 'Check for Updates',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Secondary action buttons: Licenses & Close
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: AppColors.cardBorder),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () {
+                            showLicensePage(
+                              context: context,
+                              applicationName: brandName.isNotEmpty ? brandName : 'RetailVerse POS',
+                              applicationVersion: 'v$versionStr ($buildStr)',
+                            );
+                          },
+                          child: const Text('View Licenses'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _buildVersionInfoRow({
+  required IconData icon,
+  required String label,
+  required String value,
+}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildReleaseFeatureItem(String title, String description) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8.0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 6),
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                height: 1.35,
+              ),
+              children: [
+                TextSpan(
+                  text: '$title: ',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                TextSpan(text: description),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 

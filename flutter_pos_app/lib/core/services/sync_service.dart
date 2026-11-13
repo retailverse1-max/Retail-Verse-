@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/api_endpoints.dart';
 import '../../data/local/sync_queue_local_service.dart';
@@ -36,29 +37,31 @@ class SyncService {
     await processSyncQueue();
   }
 
-  /// Process all pending items in sync queue
-  Future<void> processSyncQueue() async {
+  /// Process all pending items in sync queue. Returns count of successfully synced items.
+  Future<int> processSyncQueue() async {
     try {
       final pendingItems = await _syncQueueService.getPendingItems();
 
       if (pendingItems.isEmpty) {
         debugPrint('No pending items to sync');
-        return;
+        return 0;
       }
 
       debugPrint('Processing ${pendingItems.length} sync queue items');
-      bool anySynced = false;
+      int syncedCount = 0;
 
       for (final item in pendingItems) {
         final success = await _processSingleItem(item);
-        if (success) anySynced = true;
+        if (success) syncedCount++;
       }
       
-      if (anySynced) {
+      if (syncedCount > 0) {
         onSyncComplete?.call();
       }
+      return syncedCount;
     } catch (e) {
       debugPrint('Error processing sync queue: $e');
+      return 0;
     }
   }
 
@@ -115,6 +118,15 @@ class SyncService {
   /// );
   /// return response.statusCode == 201;
   /// ```
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final t = prefs.getString('auth_token') ??
+        prefs.getString('token') ??
+        prefs.getString('jwt_token');
+    if (t != null && t.isNotEmpty) return t;
+    return await SessionService.getToken();
+  }
+
   Future<bool> _syncOrder(SyncQueueEntity item) async {
     debugPrint('Syncing order: ${item.entityId}');
 
@@ -129,11 +141,13 @@ class SyncService {
       final m = e as Map<String, dynamic>;
       return {
         'productId': m['productId'],
+        'name': m['productName'] ?? m['name'],
         'qty': m['quantity'] ?? m['qty'] ?? 1,
+        'price': m['price'],
       };
     }).toList();
 
-    final token = await SessionService.getToken();
+    final token = await _getToken();
     final rawPm = orderData['paymentMethod']?.toString() ?? 'cash';
     final pm = _normalizePayment(rawPm);
     final totalVal = orderData['totalAmount'] ?? orderData['total'];
@@ -146,20 +160,35 @@ class SyncService {
     final tax = taxVal is num ? taxVal.toDouble() : double.tryParse('$taxVal') ?? 0.0;
 
     try {
-      final response = await _httpClient
+      final payload = jsonEncode({
+        'items': items,
+        'paymentMethod': pm,
+        'total': total,
+        'customerName': customerName,
+        'discount': discount,
+        'tax': tax,
+        'status': 'completed',
+        'paymentStatus': 'paid',
+      });
+
+      var response = await _httpClient
           .post(
-            Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.createOrder}'),
+            Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.orders}'),
             headers: ApiResponseHandler.jsonHeaders(token: token),
-            body: jsonEncode({
-              'items': items,
-              'paymentMethod': pm,
-              'total': total,
-              'customerName': customerName,
-              'discount': discount,
-              'tax': tax,
-            }),
+            body: payload,
           )
           .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 404) {
+        // Fallback for backends that expose /orders/create
+        response = await _httpClient
+            .post(
+              Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.createOrder}'),
+              headers: ApiResponseHandler.jsonHeaders(token: token),
+              body: payload,
+            )
+            .timeout(const Duration(seconds: 20));
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         await _orderLocalService.markOrderAsSynced(item.entityId);

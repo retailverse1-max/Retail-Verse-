@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration — Retail Verse
+  ────────────────────────────────────────────────────────────────────────
+  Policy:
+    • ALL production traffic MUST use HTTPS (TLS). No cleartext allowed.
+    • Cleartext HTTP is permitted ONLY for localhost and 10.0.2.2 (Android
+      emulator host) so developers can test against a local dev server.
+
+  Google Play requirement: apps must NOT allow cleartext traffic to
+  arbitrary production hosts. Setting android:usesCleartextTraffic="true"
+  in the <application> tag fails the Data Safety review.
+  ────────────────────────────────────────────────────────────────────────
+-->
+<network-security-config>
+
+    <!-- Global default: enforce HTTPS everywhere -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust CAs installed in the system certificate store -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Allow HTTP only for local dev endpoints (emulator host + localhost) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android emulator loopback (maps to host machine's 127.0.0.1) -->
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <!-- Standard localhost for device USB/Wi-Fi forwarding -->
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- Common LAN dev addresses (remove in production if not needed) -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+
+</network-security-config>

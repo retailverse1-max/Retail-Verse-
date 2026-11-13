@@ -26,6 +26,10 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
   bool _isConnected = false;
   String? _connectedDeviceName;
   String? _connectedDeviceAddress;
+  String? _receiptPrinterName;
+  String? _receiptPrinterAddress;
+  String? _labelPrinterName;
+  String? _labelPrinterAddress;
   List<BluetoothDevice> _devices = [];
   String? _connectingAddress;
 
@@ -35,30 +39,101 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
     _loadPrinterStatus();
   }
 
+  bool _isPrinterDevice(String? name) {
+    if (name == null) return false;
+    if (PrinterService.isAudioOrPhoneDevice(name)) return false;
+    final lower = name.toLowerCase();
+    return lower.contains('billplus') ||
+        lower.contains('printer') ||
+        lower.contains('pos') ||
+        lower.contains('mpt') ||
+        lower.contains('mtp') ||
+        lower.contains('rpp') ||
+        lower.contains('thermal') ||
+        lower.contains('58') ||
+        lower.contains('80') ||
+        lower.contains('innerprinter');
+  }
+
   Future<void> _loadPrinterStatus() async {
     setState(() => _isLoading = true);
     try {
       final isConn = await _printerService.isConnected();
       final savedName = await _printerService.getSavedPrinterName();
       final savedAddress = await _printerService.getSavedPrinterAddress();
+      String? receiptName = await _printerService.getReceiptPrinterName();
+      String? receiptAddress = await _printerService.getReceiptPrinterAddress();
+      String? labelName = await _printerService.getLabelPrinterName();
+      String? labelAddress = await _printerService.getLabelPrinterAddress();
       final devices = await _printerService.getDevices();
 
-      // Ensure billplus 617 is always in the list even if Bluetooth discovery returned empty
-      if (devices.isEmpty) {
-        devices.add(BluetoothDevice(PrinterService.defaultBillplusName, PrinterService.defaultBillplusMac));
+      // Guard: if audio or phone device was previously saved as receipt printer, reset to billplus default
+      if (receiptName != null && PrinterService.isAudioOrPhoneDevice(receiptName)) {
+        receiptName = PrinterService.defaultBillplusName;
+        receiptAddress = PrinterService.defaultBillplusMac;
       }
+      if (labelName != null && PrinterService.isAudioOrPhoneDevice(labelName)) {
+        labelName = null;
+        labelAddress = null;
+      }
+
+      // Ensure billplus 617 is always in the list
+      if (!devices.any((d) => d.address?.toLowerCase() == PrinterService.defaultBillplusMac.toLowerCase())) {
+        devices.insert(0, BluetoothDevice(PrinterService.defaultBillplusName, PrinterService.defaultBillplusMac));
+      }
+
+      // Sort devices: printers first, then other bluetooth devices
+      devices.sort((a, b) {
+        final aIsPrinter = _isPrinterDevice(a.name);
+        final bIsPrinter = _isPrinterDevice(b.name);
+        if (aIsPrinter && !bIsPrinter) return -1;
+        if (!aIsPrinter && bIsPrinter) return 1;
+        return (a.name ?? '').compareTo(b.name ?? '');
+      });
 
       if (mounted) {
         setState(() {
           _isConnected = isConn;
           _connectedDeviceName = savedName ?? (_isConnected ? PrinterService.defaultBillplusName : null);
           _connectedDeviceAddress = savedAddress ?? PrinterService.defaultBillplusMac;
+          _receiptPrinterName = receiptName ?? PrinterService.defaultBillplusName;
+          _receiptPrinterAddress = receiptAddress ?? PrinterService.defaultBillplusMac;
+          _labelPrinterName = labelName;
+          _labelPrinterAddress = labelAddress;
           _devices = devices;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _setAsReceiptPrinter(BluetoothDevice device) async {
+    await _printerService.saveReceiptPrinter(device);
+    await _loadPrinterStatus();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Set ${device.name ?? 'Printer'} as Bill / Receipt Printer'),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _setAsLabelPrinter(BluetoothDevice device) async {
+    await _printerService.saveLabelPrinter(device);
+    await _loadPrinterStatus();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Set ${device.name ?? 'Printer'} as Barcode Label Printer'),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -99,7 +174,7 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                   Expanded(
                     child: Text(
                       'Connection Failed',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -109,18 +184,13 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${device.name ?? 'Printer'} (${device.address}) se connect nahi ho paya.\n\nKripya ye 3 cheezein check karein:',
+                    '${device.name ?? 'Printer'} (${device.address}) is not responding.\n\nPlease check:',
                     style: const TextStyle(fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    '1. "Billplus" label app ko Recent Apps se SWIPE-AWAY / CLOSE karein.\n   (Bluetooth printer ek samay me sirf EK app se connect hota hai! Agar Billplus app me connected hai to yahan connect nahi hoga.)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '2. Printer ka Switch ON hai ya nahi.\n3. Phone ka Bluetooth ON hai.',
-                    style: TextStyle(fontSize: 12),
+                    '1. Close "Billplus" official app from recent apps.\n2. Ensure thermal printer power switch is ON.\n3. Bluetooth of phone is turned ON.',
+                    style: TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF475569)),
                   ),
                 ],
               ),
@@ -212,7 +282,7 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Connect by MAC Address', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: const Text('Connect by MAC Address', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -250,6 +320,56 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
     );
   }
 
+  Widget _buildDeviceIcon(String name, bool isConnected, bool isProbablePrinter) {
+    final lower = name.toLowerCase();
+    IconData icon = Icons.bluetooth_rounded;
+    if (isProbablePrinter) {
+      icon = Icons.print_rounded;
+    } else if (lower.contains('buds') ||
+        lower.contains('airbass') ||
+        lower.contains('earphone') ||
+        lower.contains('headphone') ||
+        lower.contains('headset') ||
+        lower.contains('audio') ||
+        lower.contains('wave') ||
+        lower.contains('boat') ||
+        lower.contains('boult')) {
+      icon = Icons.headphones_rounded;
+    } else if (lower.contains('redmi') ||
+        lower.contains('realme') ||
+        lower.contains('vivo') ||
+        lower.contains('oppo') ||
+        lower.contains('samsung') ||
+        lower.contains('phone')) {
+      icon = Icons.smartphone_rounded;
+    } else if (lower.contains('kia') || lower.contains('car') || lower.contains('hyundai')) {
+      icon = Icons.directions_car_rounded;
+    }
+
+    Color bg;
+    Color iconColor;
+    if (isConnected) {
+      bg = const Color(0xFFDCFCE7);
+      iconColor = const Color(0xFF15803D);
+    } else if (isProbablePrinter) {
+      bg = const Color(0xFFEFF6FF);
+      iconColor = const Color(0xFF2563EB);
+    } else {
+      bg = const Color(0xFFF1F5F9);
+      iconColor = const Color(0xFF64748B);
+    }
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: iconColor, size: 18),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -267,10 +387,10 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag handle
+              // Top drag handle
               Center(
                 child: Container(
-                  width: 40,
+                  width: 36,
                   height: 4,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade300,
@@ -278,185 +398,77 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // Header
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
+                      color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.print_rounded, color: AppColors.primary, size: 24),
+                    child: const Icon(Icons.print_rounded, color: AppColors.primary, size: 22),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Thermal Printer Connection',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF0F172A)),
                         ),
+                        SizedBox(height: 1),
                         Text(
                           'Billplus / 58mm / 80mm Bluetooth Printers',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w400),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF475569)),
                     tooltip: 'Refresh devices',
                     onPressed: _loadPrinterStatus,
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
-              // Active Connection Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _isConnected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _isConnected ? const Color(0xFF86EFAC) : Colors.grey.shade200,
-                    width: 1.5,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _isConnected ? const Color(0xFF16A34A) : Colors.grey.shade400,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _isConnected
-                                    ? 'Connected: ${_connectedDeviceName ?? 'Printer'}'
-                                    : 'No Printer Connected',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: _isConnected ? const Color(0xFF15803D) : Colors.grey.shade800,
-                                ),
-                              ),
-                              if (_connectedDeviceAddress != null)
-                                Text(
-                                  _connectedDeviceAddress!,
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (_isConnected)
-                          OutlinedButton(
-                            onPressed: _disconnect,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red.shade700,
-                              side: BorderSide(color: Colors.red.shade200),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Disconnect', style: TextStyle(fontSize: 12)),
-                          )
-                        else if (_connectedDeviceAddress != null)
-                          ElevatedButton.icon(
-                            onPressed: _connectingAddress != null
-                                ? null
-                                : () => _connectToDevice(
-                                      BluetoothDevice(
-                                        _connectedDeviceName ?? PrinterService.defaultBillplusName,
-                                        _connectedDeviceAddress!,
-                                      ),
-                                    ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: _connectingAddress == _connectedDeviceAddress
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  )
-                                : const Icon(Icons.bolt_rounded, size: 16),
-                            label: const Text('Connect Now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                      ],
+              // Available Bluetooth Devices Header
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Bluetooth Devices',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E293B)),
                     ),
-                    if (_isConnected) ...[
-                      const SizedBox(height: 12),
-                      const Divider(height: 1),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                  ),
+                  InkWell(
+                    onTap: _showManualConnectDialog,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: _testPrint,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF16A34A),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                            label: const Text('Print Test Slip', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                          ),
+                          Icon(Icons.add_link_rounded, size: 13, color: Color(0xFF475569)),
+                          SizedBox(width: 4),
+                          Text('Manual MAC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF334155))),
                         ],
                       ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Paired Devices Title
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Available Bluetooth Devices',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  Row(
-                    children: [
-                      TextButton.icon(
-                        onPressed: _showManualConnectDialog,
-                        icon: const Icon(Icons.add_link_rounded, size: 16),
-                        label: const Text('Manual MAC', style: TextStyle(fontSize: 12)),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _printerService.bluetooth.openSettings,
-                        icon: const Icon(Icons.settings_bluetooth_rounded, size: 16),
-                        label: const Text('Settings', style: TextStyle(fontSize: 12)),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
               // Devices List
               Flexible(
@@ -464,30 +476,30 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                     ? const Center(
                         child: Padding(
                           padding: EdgeInsets.all(24.0),
-                          child: CircularProgressIndicator(),
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
                         ),
                       )
                     : _devices.isEmpty
                         ? Container(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEFF6FF),
+                              color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.print_rounded, color: AppColors.primary, size: 36),
-                                const SizedBox(height: 10),
+                                const Icon(Icons.print_rounded, color: AppColors.primary, size: 32),
+                                const SizedBox(height: 8),
                                 const Text(
                                   'Billplus Printer Ready to Connect',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Color(0xFF0F172A)),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 4),
                                 const Text(
                                   'billplus 617 (02:2D:36:C9:4E:A9)',
-                                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                 ),
                                 const SizedBox(height: 12),
                                 ElevatedButton.icon(
@@ -497,11 +509,12 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                                       PrinterService.defaultBillplusMac,
                                     ),
                                   ),
-                                  icon: const Icon(Icons.link_rounded, size: 16),
-                                  label: const Text('Connect Billplus Printer'),
+                                  icon: const Icon(Icons.link_rounded, size: 15),
+                                  label: const Text('Connect Billplus Printer', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
+                                    elevation: 0,
                                   ),
                                 ),
                               ],
@@ -510,49 +523,32 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                         : ListView.separated(
                             shrinkWrap: true,
                             itemCount: _devices.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, __) => const SizedBox(height: 6),
                             itemBuilder: (context, index) {
                               final dev = _devices[index];
                               final isThisConnecting = _connectingAddress == dev.address;
                               final isThisConnected = _isConnected && _connectedDeviceAddress == dev.address;
                               final name = dev.name ?? 'Bluetooth Device';
-                              final isProbablePrinter = name.toLowerCase().contains('billplus') ||
-                                  name.toLowerCase().contains('printer') ||
-                                  name.toLowerCase().contains('pos') ||
-                                  name.toLowerCase().contains('mpt') ||
-                                  name.toLowerCase().contains('rpp') ||
-                                  name.toLowerCase().contains('thermal');
+                              final isProbablePrinter = _isPrinterDevice(name);
 
                               return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: isThisConnected
                                       ? const Color(0xFFF0FDF4)
-                                      : (isProbablePrinter ? const Color(0xFFEFF6FF) : Colors.grey.shade50),
-                                  borderRadius: BorderRadius.circular(14),
+                                      : (isProbablePrinter ? const Color(0xFFF8FAFC) : Colors.white),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isThisConnected
                                         ? const Color(0xFF86EFAC)
-                                        : (isProbablePrinter ? const Color(0xFFBFDBFE) : Colors.grey.shade200),
-                                    width: isProbablePrinter || isThisConnected ? 1.5 : 1,
+                                        : (isProbablePrinter ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0)),
+                                    width: isThisConnected || isProbablePrinter ? 1.2 : 1,
                                   ),
                                 ),
                                 child: Row(
                                   children: [
-                                    CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: isThisConnected
-                                          ? const Color(0xFFDCFCE7)
-                                          : (isProbablePrinter ? const Color(0xFFDBEAFE) : Colors.grey.shade200),
-                                      child: Icon(
-                                        Icons.print_rounded,
-                                        color: isThisConnected
-                                            ? const Color(0xFF15803D)
-                                            : (isProbablePrinter ? const Color(0xFF1D4ED8) : Colors.grey.shade700),
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
+                                    _buildDeviceIcon(name, isThisConnected, isProbablePrinter),
+                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,24 +558,29 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                                               Flexible(
                                                 child: Text(
                                                   name,
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                                  style: TextStyle(
+                                                    fontWeight: isProbablePrinter ? FontWeight.w500 : FontWeight.w400,
+                                                    fontSize: 13,
+                                                    color: const Color(0xFF0F172A),
+                                                  ),
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
                                               if (isProbablePrinter) ...[
                                                 const SizedBox(width: 6),
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                                   decoration: BoxDecoration(
                                                     color: const Color(0xFFDBEAFE),
-                                                    borderRadius: BorderRadius.circular(6),
+                                                    borderRadius: BorderRadius.circular(4),
                                                   ),
                                                   child: const Text(
                                                     'PRINTER',
                                                     style: TextStyle(
-                                                      fontSize: 9,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 8.5,
+                                                      fontWeight: FontWeight.w500,
                                                       color: Color(0xFF1D4ED8),
+                                                      letterSpacing: 0.5,
                                                     ),
                                                   ),
                                                 ),
@@ -587,9 +588,12 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                                             ],
                                           ),
                                           if (dev.address != null)
-                                            Text(
-                                              dev.address!,
-                                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 2),
+                                              child: Text(
+                                                dev.address!,
+                                                style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w400),
+                                              ),
                                             ),
                                         ],
                                       ),
@@ -597,27 +601,27 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                                     const SizedBox(width: 8),
                                     if (isThisConnecting)
                                       const SizedBox(
-                                        width: 24,
-                                        height: 24,
+                                        width: 20,
+                                        height: 20,
                                         child: CircularProgressIndicator(strokeWidth: 2),
                                       )
                                     else if (isThisConnected)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFDCFCE7),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: const Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.check_rounded, color: Color(0xFF15803D), size: 16),
-                                            SizedBox(width: 4),
+                                            Icon(Icons.check_rounded, color: Color(0xFF15803D), size: 14),
+                                            SizedBox(width: 3),
                                             Text(
                                               'Connected',
                                               style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
                                                 color: Color(0xFF15803D),
                                               ),
                                             ),
@@ -628,15 +632,50 @@ class _PrinterManagerSheetState extends State<PrinterManagerSheet> {
                                       ElevatedButton(
                                         onPressed: () => _connectToDevice(dev),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: isProbablePrinter ? AppColors.primary : Colors.grey.shade800,
+                                          backgroundColor: isProbablePrinter ? AppColors.primary : const Color(0xFF475569),
                                           foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                           minimumSize: Size.zero,
                                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                          elevation: 0,
                                         ),
-                                        child: const Text('Connect', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                        child: const Text('Connect', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
                                       ),
+                                    PopupMenuButton<String>(
+                                      icon: const Icon(Icons.more_vert_rounded, size: 18, color: Color(0xFF64748B)),
+                                      padding: EdgeInsets.zero,
+                                      tooltip: 'Printer Roles',
+                                      onSelected: (val) {
+                                        if (val == 'receipt') {
+                                          _setAsReceiptPrinter(dev);
+                                        } else if (val == 'label') {
+                                          _setAsLabelPrinter(dev);
+                                        }
+                                      },
+                                      itemBuilder: (ctx) => [
+                                        const PopupMenuItem(
+                                          value: 'receipt',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.receipt_long_rounded, color: Color(0xFF15803D), size: 16),
+                                              SizedBox(width: 8),
+                                              Text('Set as Bill / Receipt Printer', style: TextStyle(fontSize: 12)),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'label',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.qr_code_2_rounded, color: Color(0xFFB45309), size: 16),
+                                              SizedBox(width: 8),
+                                              Text('Set as Barcode Sticker Printer', style: TextStyle(fontSize: 12)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               );

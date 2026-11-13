@@ -128,7 +128,17 @@ const getNotifications = async (req, res) => {
       targetRoles: userRole,
     };
 
-    if (clientId) {
+    if (userRole === "vendor") {
+      const vName = (req.user.vendorName || req.user.name || "").trim();
+      const vEmail = (req.user.email || "").trim();
+      const orConditions = [
+        { clientId: null },
+        { clientId: { $exists: true } },
+      ];
+      if (vName) orConditions.push({ "data.vendorName": new RegExp(`^${vName}$`, "i") });
+      if (vEmail) orConditions.push({ "data.vendorEmail": new RegExp(`^${vEmail}$`, "i") });
+      query.$or = orConditions;
+    } else if (clientId) {
       query.$or = [{ clientId }, { clientId: null }];
     } else {
       query.clientId = null;

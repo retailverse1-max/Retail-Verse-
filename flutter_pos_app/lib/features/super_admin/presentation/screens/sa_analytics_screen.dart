@@ -129,7 +129,7 @@ class _SaAnalyticsScreenState extends State<SaAnalyticsScreen> with SingleTicker
                       color: Colors.white.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                    child: const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
                   ),
                 ),
               ),

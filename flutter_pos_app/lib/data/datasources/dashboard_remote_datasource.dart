@@ -11,66 +11,95 @@ import '../models/recent_activity_model.dart';
 import '../models/customer_model.dart';
 import '../../core/services/session_service.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class DashboardRemoteDataSource {
   final http.Client client;
   final String baseUrl;
 
   DashboardRemoteDataSource({required this.client, required this.baseUrl});
 
-  /// Never throws — returns [DashboardStatsModel.empty] on any failure so the UI never
-  /// shows "Access denied" / load-failed from Riverpod [AsyncError].
+  static const String _cachedStatsKey = 'cached_dashboard_stats_data';
+
+  /// Retrieve locally cached dashboard stats for sub-second instant display
+  Future<DashboardStatsModel?> getCachedDashboardStats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(_cachedStatsKey);
+      if (str != null && str.isNotEmpty) {
+        final decoded = jsonDecode(str);
+        if (decoded is Map<String, dynamic>) {
+          return DashboardStatsModel.fromJson(decoded);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Save fresh dashboard stats to local cache
+  Future<void> saveCachedDashboardStats(DashboardStatsModel model) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cachedStatsKey, jsonEncode(model.toJson()));
+    } catch (_) {}
+  }
+
+  /// Never throws — returns cached data or fresh data, or [DashboardStatsModel.empty]
   Future<DashboardStatsModel> getDashboardStats({String? token}) async {
+    // 1. Resolve token: use provided token or fallback to persisted SessionService token
+    final effectiveToken = (token != null && token.isNotEmpty)
+        ? token
+        : await SessionService.getToken();
+
+    final cached = await getCachedDashboardStats();
+
     try {
       final response = await client
           .get(
             Uri.parse('$baseUrl${ApiEndpoints.dashboardStats}'),
-            // ✅ FIX: Send token so backend doesn't return 401
-            headers: token != null && token.isNotEmpty
-                ? ApiResponseHandler.jsonHeaders(token: token)
+            headers: effectiveToken != null && effectiveToken.isNotEmpty
+                ? ApiResponseHandler.jsonHeaders(token: effectiveToken)
                 : ApiResponseHandler.publicJsonHeaders(),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(const Duration(seconds: 15));
 
       ApiResponseHandler.logResponse('DASHBOARD_STATS', response);
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 200) {
+        final decoded = ApiResponseHandler.decodeJsonResponse(
+          response,
+          action: 'load dashboard stats',
+        );
+
+        if (decoded is Map<String, dynamic>) {
+          final data = decoded['data'] ?? decoded;
+          if (data is Map<String, dynamic>) {
+            final model = DashboardStatsModel.fromJson(data);
+            await saveCachedDashboardStats(model);
+            if (kDebugMode) {
+              debugPrint(
+                'Dashboard stats parsed & cached → totalSales=${model.totalSales}, '
+                'totalOrders=${model.totalOrders}, customers=${model.totalCustomers}',
+              );
+            }
+            return model;
+          }
+        }
+      } else {
         if (kDebugMode) {
           debugPrint(
-            'DASHBOARD_STATS: HTTP ${response.statusCode} → zeros '
-            '(body: ${response.body.length > 120 ? "${response.body.substring(0, 120)}…" : response.body})',
+            'DASHBOARD_STATS: HTTP ${response.statusCode} (body: ${response.body.length > 120 ? "${response.body.substring(0, 120)}…" : response.body})',
           );
         }
-        return DashboardStatsModel.empty;
       }
-
-      final decoded = ApiResponseHandler.decodeJsonResponse(
-        response,
-        action: 'load dashboard stats',
-      );
-
-      if (decoded is! Map<String, dynamic>) {
-        return DashboardStatsModel.empty;
-      }
-
-      final data = decoded['data'] ?? decoded;
-      if (data is! Map<String, dynamic>) {
-        return DashboardStatsModel.empty;
-      }
-
-      final model = DashboardStatsModel.fromJson(data);
-      if (kDebugMode) {
-        debugPrint(
-          'Dashboard stats parsed → totalSales=${model.totalSales}, '
-          'totalOrders=${model.totalOrders}, customers=${model.totalCustomers}',
-        );
-      }
-      return model;
     } catch (e, st) {
       if (kDebugMode) {
-        debugPrint('DASHBOARD_STATS: non-fatal $e\n$st');
+        debugPrint('DASHBOARD_STATS error: $e\n$st');
       }
-      return DashboardStatsModel.empty;
     }
+
+    // Return cached stats if available so user never sees 0 on app start
+    return cached ?? DashboardStatsModel.empty;
   }
 
   /// Never throws — returns an empty list on failure (same rationale as [getDashboardStats]).

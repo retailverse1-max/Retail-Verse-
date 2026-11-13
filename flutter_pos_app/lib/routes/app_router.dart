@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
+import '../core/branding/app_branding.dart';
 import 'package:retail_verse_pos/features/subscription/presentation/screens/subscription_plans_screen.dart';
 import '../core/navigation/role_nav.dart';
 import '../core/navigation/role_route_guard.dart';
@@ -33,6 +34,8 @@ import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/account/presentation/screens/account_screen.dart';
 import '../features/customers/presentation/screens/customers_screen.dart';
 import '../features/admin/presentation/admin_staff_screen.dart';
+import '../features/admin/presentation/admin_vendors_screen.dart';
+import '../features/vendor/presentation/vendor_portal_screen.dart';
 import '../features/super_admin/presentation/screens/sa_shell.dart';
 import '../features/support/presentation/widgets/support_fab.dart';
 import '../features/super_admin/presentation/widgets/support_dialog.dart';
@@ -526,6 +529,45 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/admin/vendors',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            child: const AdminVendorsScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+          ),
+        ),
+        GoRoute(
+          path: '/vendor/dashboard',
+          pageBuilder: (context, state) {
+            final vendor = state.uri.queryParameters['vendor'];
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: VendorPortalScreen(initialVendorName: vendor),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            );
+          },
+        ),
+        GoRoute(
+          path: '/vendor',
+          pageBuilder: (context, state) {
+            final vendor = state.uri.queryParameters['vendor'];
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: VendorPortalScreen(initialVendorName: vendor),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            );
+          },
+        ),
+        GoRoute(
           path: '/admin/custom-domain',
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
@@ -694,10 +736,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Do you want to leave Retail Verse?',
+            Text(
+              'Do you want to leave ${AppBranding.currentStoreName}?',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 8),
           ],
@@ -778,6 +820,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(appBrandingProvider);
     final role = effectiveUserRole(ref.watch(authProvider).user);
     if (fdn.kDebugMode) {
       final path = GoRouterState.of(context).uri.path;
@@ -905,7 +948,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                         Text('Trial Expired', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                         const SizedBox(height: 12),
                         Text(
-                          'Your 14-day free trial has expired. To continue using Retail Verse, please upgrade your subscription.',
+                          'Your 14-day free trial has expired. To continue using ${AppBranding.currentStoreName}, please upgrade your subscription.',
                           style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
                           textAlign: TextAlign.center,
                         ),

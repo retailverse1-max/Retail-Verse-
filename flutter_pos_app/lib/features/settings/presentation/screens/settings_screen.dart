@@ -51,23 +51,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     Row(
                       children: [
-                        if (context.canPop())
-                          InkWell(
-                            onTap: () => context.pop(),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundTertiary,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
-                            ),
-                          )
-                        else
-                          const ResponsiveMenuButton(),
-                        const SizedBox(width: 12),
+                        const ResponsiveMenuButton(),
+                        const SizedBox(width: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

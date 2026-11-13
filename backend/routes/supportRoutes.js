@@ -4,10 +4,10 @@ const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.post("/ticket", protect, createTicket);
-router.get("/stats", protect, getSupportStats);
+router.post(["/tickets", "/ticket"], protect, createTicket);
+router.get(["/tickets/stats", "/stats"], protect, getSupportStats);
 router.get("/tickets", protect, getRecentTickets);
-router.put("/ticket/:id", protect, updateTicketStatus);
-router.delete("/ticket/:id", protect, deleteTicket);
+router.put(["/tickets/:id", "/ticket/:id"], protect, updateTicketStatus);
+router.delete(["/tickets/:id", "/ticket/:id"], protect, deleteTicket);
 
 module.exports = router;

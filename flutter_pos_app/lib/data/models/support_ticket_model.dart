@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 class SupportTicket {
   final int id;
+  final String? ticketRef;
   final String subject;
   final String status;
   final String priority;
@@ -9,9 +10,12 @@ class SupportTicket {
   final String? requesterName;
   final String? requesterEmail;
   final String? orderId;
+  final String? issueType;
+  final String? description;
 
   SupportTicket({
     required this.id,
+    this.ticketRef,
     required this.subject,
     required this.status,
     required this.priority,
@@ -19,25 +23,53 @@ class SupportTicket {
     this.requesterName,
     this.requesterEmail,
     this.orderId,
+    this.issueType,
+    this.description,
   });
 
   factory SupportTicket.fromJson(Map<String, dynamic> json) {
-    // Extract Order ID if present in subject or tags (Zendesk specific)
+    // Extract Order ID if present in json or subject
     String? orderId;
-    if (json['subject'] != null && json['subject'].toString().contains('ORD-')) {
-      final match = RegExp(r'ORD-\d+').firstMatch(json['subject']);
+    if (json['orderRef'] != null && json['orderRef'].toString().isNotEmpty) {
+      orderId = json['orderRef'].toString();
+    } else if (json['subject'] != null && json['subject'].toString().contains('ORD-')) {
+      final match = RegExp(r'ORD-\d+').firstMatch(json['subject'].toString());
       orderId = match?.group(0);
     }
 
+    final rawId = json['id'] ?? json['zendeskTicketId'] ?? json['ticketId'];
+    int parsedId;
+    if (rawId is int) {
+      parsedId = rawId;
+    } else if (rawId != null && int.tryParse(rawId.toString()) != null) {
+      parsedId = int.parse(rawId.toString());
+    } else {
+      final mongoId = (json['_id'] ?? '').toString();
+      parsedId = mongoId.isNotEmpty
+          ? (mongoId.hashCode.abs() % 100000)
+          : (DateTime.now().millisecondsSinceEpoch % 100000);
+    }
+
+    DateTime parsedDate;
+    try {
+      final dateStr = (json['created_at'] ?? json['createdAt'] ?? '').toString();
+      parsedDate = dateStr.isNotEmpty ? DateTime.parse(dateStr) : DateTime.now();
+    } catch (_) {
+      parsedDate = DateTime.now();
+    }
+
     return SupportTicket(
-      id: json['id'],
-      subject: json['subject'] ?? 'No Subject',
-      status: json['status'] ?? 'open',
-      priority: json['priority'] ?? 'normal',
-      createdAt: DateTime.parse(json['created_at']),
-      requesterName: json['requester_name'] ?? 'User',
-      requesterEmail: json['requester_email'] ?? '',
+      id: parsedId,
+      ticketRef: (json['zendeskTicketId'] ?? json['ticketId'] ?? json['_id'] ?? parsedId).toString(),
+      subject: json['subject']?.toString() ?? 'No Subject',
+      status: json['status']?.toString() ?? 'open',
+      priority: json['priority']?.toString() ?? 'normal',
+      createdAt: parsedDate,
+      requesterName: json['requester_name']?.toString() ?? json['userName']?.toString() ?? 'User',
+      requesterEmail: json['requester_email']?.toString() ?? json['userEmail']?.toString() ?? json['customerEmail']?.toString() ?? '',
       orderId: orderId,
+      issueType: json['issueType']?.toString() ?? 'other',
+      description: json['description']?.toString() ?? json['message']?.toString() ?? '',
     );
   }
 

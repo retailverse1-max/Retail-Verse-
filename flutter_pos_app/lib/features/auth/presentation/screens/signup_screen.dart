@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,7 +9,10 @@ import '../../providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/branding/app_branding.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import '../../../../routes/app_router.dart';
+import '../../../../core/navigation/role_nav.dart';
 import '../widgets/privacy_policy_disclaimer.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -70,23 +72,23 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       if (!mounted) return;
 
       if (success) {
-        authNotifier.logout();
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(duration: const Duration(seconds: 2),
-            content: const Text('Account created successfully. Please sign in.'),
+        scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+        scaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            content: const Text('Account created successfully! Welcome.'),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-        context.push('/login');
+        final home = initialHomeRouteForUser(ref.read(authProvider).user);
+        if (mounted) context.go(home);
       } else {
         final error = ref.read(authProvider).error;
         _showErrorSnackBar(error ?? 'Signup failed');
       }
     } on Exception catch (e) {
-      if (!mounted) return;
       _showErrorSnackBar(e.toString());
     } finally {
       if (mounted) setState(() => _isLocalLoading = false);
@@ -94,9 +96,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(duration: const Duration(seconds: 2),content: Text(message), backgroundColor: Colors.red),
+    scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 
@@ -105,22 +111,53 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       _showErrorSnackBar('Please agree to the Terms of Service and Privacy Policy');
       return;
     }
+    setState(() => _isLocalLoading = true);
     try {
       final googleSignIn = GoogleSignIn();
       await googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return;
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      if (googleUser == null) {
+        if (mounted) setState(() => _isLocalLoading = false);
+        return;
+      }
+
+      // Try Firebase credential exchange gracefully
+      try {
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        if (googleAuth.accessToken != null || googleAuth.idToken != null) {
+          final OAuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          await FirebaseAuth.instance.signInWithCredential(credential).timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => throw TimeoutException('Firebase credential exchange timed out'),
+          );
+        }
+      } catch (authError) {
+        debugPrint('[GoogleSignUp] Firebase Auth fallback: $authError');
+      }
+
+      // Backend authentication and token storage
+      final authNotifier = ref.read(authProvider.notifier);
+      final bool success = await authNotifier.signInWithGoogleAccount(
+        email: googleUser.email,
+        displayName: googleUser.displayName,
+        uid: googleUser.id,
       );
-      final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-      if (userCred.user != null) {
-        _showSuccessAndNavigate('Google Sign-Up successful');
+
+      if (success) {
+        _showSuccessAndNavigate('Google Sign-In successful');
+      } else {
+        final err = ref.read(authProvider).error ?? 'Google sign-up failed';
+        _showErrorSnackBar(err);
       }
     } catch (e) {
       final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('deactivated widget')) {
+        // Ancestor deactivation during navigation can be ignored
+        return;
+      }
       if (errorMsg.contains('not found') || 
           errorMsg.contains('invalid') || 
           errorMsg.contains('user not exist') || 
@@ -129,13 +166,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       } else {
         _showErrorSnackBar('Google Sign-Up failed: $e');
       }
+    } finally {
+      if (mounted) setState(() => _isLocalLoading = false);
     }
   }
 
   void _showSuccessAndNavigate(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(msg), backgroundColor: Colors.green));
-    context.push('/dashboard');
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(msg),
+        backgroundColor: Colors.green,
+      ),
+    );
+    if (mounted) {
+      context.push('/dashboard');
+    }
   }
 
   @override
@@ -203,7 +249,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Join Retail Verse',
+                      'Join ${AppConstants.defaultAppName}',
                       style: AppTypography.displaySmall.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,

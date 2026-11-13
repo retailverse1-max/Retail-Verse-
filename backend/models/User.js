@@ -26,8 +26,17 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "client", "cashier", "inventory", "seo_manager", "user", "super_admin"],
+      enum: ["admin", "client", "cashier", "inventory", "seo_manager", "user", "super_admin", "vendor"],
       default: "cashier",
+    },
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vendor",
+      required: false,
+    },
+    vendorName: {
+      type: String,
+      trim: true,
     },
     storeId: {
       type: String,

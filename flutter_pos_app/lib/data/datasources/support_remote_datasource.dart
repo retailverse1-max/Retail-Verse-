@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_response_handler.dart';
 import '../models/support_ticket_model.dart';
 import '../../../core/services/session_service.dart';
@@ -13,18 +12,28 @@ class SupportRemoteDataSource {
 
   Future<SupportStats> getSupportStats(String token) async {
     try {
-      String url = '$baseUrl/support/stats';
+      String query = '';
       if (SessionService.currentStoreId != null) {
-        url += '?businessId=${SessionService.currentStoreId}';
+        query = '?businessId=${SessionService.currentStoreId}';
       }
-      final response = await client.get(
-        Uri.parse(url),
+      // Production backend uses /support/tickets/stats; fallback to /support/stats
+      var response = await client.get(
+        Uri.parse('$baseUrl/support/tickets/stats$query'),
         headers: ApiResponseHandler.jsonHeaders(token: token),
       );
 
+      if (response.statusCode == 404) {
+        response = await client.get(
+          Uri.parse('$baseUrl/support/stats$query'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+        );
+      }
+
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        return SupportStats.fromJson(decoded['data']);
+        if (decoded['data'] != null) {
+          return SupportStats.fromJson(decoded['data']);
+        }
       }
       return SupportStats.empty();
     } catch (e) {
@@ -34,18 +43,34 @@ class SupportRemoteDataSource {
 
   Future<List<SupportTicket>> getRecentTickets(String token) async {
     try {
-      String url = '$baseUrl/support/tickets';
+      String query = '';
       if (SessionService.currentStoreId != null) {
-        url += '?businessId=${SessionService.currentStoreId}';
+        query = '?businessId=${SessionService.currentStoreId}';
       }
-      final response = await client.get(
-        Uri.parse(url),
+
+      // Production endpoint for logged-in user tickets is /support/tickets/my
+      var response = await client.get(
+        Uri.parse('$baseUrl/support/tickets/my$query'),
         headers: ApiResponseHandler.jsonHeaders(token: token),
       );
 
+      if (response.statusCode == 404) {
+        response = await client.get(
+          Uri.parse('$baseUrl/support/tickets$query'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+        );
+      }
+
+      if (response.statusCode == 404) {
+        response = await client.get(
+          Uri.parse('$baseUrl/support/ticket$query'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+        );
+      }
+
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        final List tickets = decoded['tickets'] ?? [];
+        final List tickets = decoded['data'] ?? decoded['tickets'] ?? [];
         return tickets.map((t) => SupportTicket.fromJson(t)).toList();
       }
       return [];
@@ -60,19 +85,41 @@ class SupportRemoteDataSource {
     required String message,
     String? userName,
     String? email,
+    String? issueType,
   }) async {
     try {
-      final response = await client.post(
-        Uri.parse('$baseUrl/support/ticket'),
-        headers: ApiResponseHandler.jsonHeaders(token: token),
-        body: jsonEncode({
-          'subject': subject,
-          'message': message,
-          'userName': userName,
+      final body = jsonEncode({
+        'subject': subject,
+        'description': message,
+        'message': message,
+        'issueType': issueType ?? 'other',
+        if (userName != null && userName.isNotEmpty) 'userName': userName,
+        if (email != null && email.isNotEmpty) ...{
           'email': email,
-        }),
+          'userEmail': email,
+          'customerEmail': email,
+        },
+        if (SessionService.currentStoreId != null)
+          'storeId': SessionService.currentStoreId,
+        'priority': 'normal',
+      });
+
+      // Production backend mounts POST /support/tickets; fallback to /support/ticket
+      var response = await client.post(
+        Uri.parse('$baseUrl/support/tickets'),
+        headers: ApiResponseHandler.jsonHeaders(token: token),
+        body: body,
       );
-      return response.statusCode == 200;
+
+      if (response.statusCode == 404) {
+        response = await client.post(
+          Uri.parse('$baseUrl/support/ticket'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+          body: body,
+        );
+      }
+
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }
@@ -84,11 +131,21 @@ class SupportRemoteDataSource {
     required String status,
   }) async {
     try {
-      final response = await client.put(
-        Uri.parse('$baseUrl/support/ticket/$ticketId'),
+      final body = jsonEncode({'status': status});
+      var response = await client.put(
+        Uri.parse('$baseUrl/support/tickets/$ticketId'),
         headers: ApiResponseHandler.jsonHeaders(token: token),
-        body: jsonEncode({'status': status}),
+        body: body,
       );
+
+      if (response.statusCode == 404) {
+        response = await client.put(
+          Uri.parse('$baseUrl/support/ticket/$ticketId'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+          body: body,
+        );
+      }
+
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -100,10 +157,18 @@ class SupportRemoteDataSource {
     required String ticketId,
   }) async {
     try {
-      final response = await client.delete(
-        Uri.parse('$baseUrl/support/ticket/$ticketId'),
+      var response = await client.delete(
+        Uri.parse('$baseUrl/support/tickets/$ticketId'),
         headers: ApiResponseHandler.jsonHeaders(token: token),
       );
+
+      if (response.statusCode == 404) {
+        response = await client.delete(
+          Uri.parse('$baseUrl/support/ticket/$ticketId'),
+          headers: ApiResponseHandler.jsonHeaders(token: token),
+        );
+      }
+
       return response.statusCode == 200;
     } catch (e) {
       return false;

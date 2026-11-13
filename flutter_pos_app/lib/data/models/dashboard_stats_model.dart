@@ -38,4 +38,36 @@ class DashboardStatsModel {
       lowStockItems: (json['lowStockItems'] as num?)?.toInt()    ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'totalSales': totalSales,
+      'todaySales': todaySales,
+      'monthlySales': monthlySales,
+      'avgSale': avgSale,
+      'totalOrders': totalOrders,
+      'totalCustomers': totalCustomers,
+      'lowStockItems': lowStockItems,
+    };
+  }
+
+  DashboardStatsModel copyWith({
+    double? totalSales,
+    double? todaySales,
+    double? monthlySales,
+    double? avgSale,
+    int? totalOrders,
+    int? totalCustomers,
+    int? lowStockItems,
+  }) {
+    return DashboardStatsModel(
+      totalSales: totalSales ?? this.totalSales,
+      todaySales: todaySales ?? this.todaySales,
+      monthlySales: monthlySales ?? this.monthlySales,
+      avgSale: avgSale ?? this.avgSale,
+      totalOrders: totalOrders ?? this.totalOrders,
+      totalCustomers: totalCustomers ?? this.totalCustomers,
+      lowStockItems: lowStockItems ?? this.lowStockItems,
+    );
+  }
 }

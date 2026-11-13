@@ -4,7 +4,6 @@ import '../../../../core/theme/app_colors.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_typography.dart';
-import 'package:retail_verse_pos/routes/app_router.dart';
 // ZendeskService import removed; using Super Admin chat screen navigation
 import '../../../../core/widgets/common/bounceable.dart';
 import 'ticket_detail_screen.dart';
@@ -22,10 +21,20 @@ class SupportScreen extends ConsumerWidget {
   }
 
   void _showRaiseTicketDialog(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authProvider).user;
     final subjectController = TextEditingController();
     final messageController = TextEditingController();
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
+    final nameController = TextEditingController(text: user?['name']?.toString() ?? '');
+    final emailController = TextEditingController(text: user?['email']?.toString() ?? '');
+    String selectedCategory = 'General Inquiry';
+
+    final categories = [
+      'General Inquiry',
+      'Technical / App Issue',
+      'Billing / Payment',
+      'Order / Inventory',
+      'Account / Access',
+    ];
 
     showDialog(
       context: context,
@@ -34,33 +43,80 @@ class SupportScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Raise Ticket'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.confirmation_number_outlined, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text('Raise Support Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                ],
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCategory,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Issue Category',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      items: categories
+                          .map((c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(c, overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: isSubmitting
+                          ? null
+                          : (val) {
+                              if (val != null) setState(() => selectedCategory = val);
+                            },
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: subjectController,
-                      decoration: const InputDecoration(labelText: 'Subject'),
+                      decoration: InputDecoration(
+                        labelText: 'Subject *',
+                        hintText: 'e.g., Billing discrepancy in invoice',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
                       enabled: !isSubmitting,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: messageController,
-                      decoration: const InputDecoration(labelText: 'Message'),
+                      decoration: InputDecoration(
+                        labelText: 'Description / Message *',
+                        hintText: 'Describe the issue or assistance required in detail...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
                       maxLines: 4,
                       enabled: !isSubmitting,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Your Name (optional)'),
+                      decoration: InputDecoration(
+                        labelText: 'Your Name (optional)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
                       enabled: !isSubmitting,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: emailController,
-                      decoration: const InputDecoration(labelText: 'Email (optional)'),
+                      decoration: InputDecoration(
+                        labelText: 'Email (optional)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
                       enabled: !isSubmitting,
                     ),
                   ],
@@ -69,20 +125,26 @@ class SupportScreen extends ConsumerWidget {
               actions: [
                 TextButton(
                   onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
                 ),
                 Consumer(
                   builder: (context, ref, _) {
-                    return TextButton(
+                    return ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      ),
                       onPressed: isSubmitting ? null : () async {
-                        final subject = subjectController.text.trim();
+                        final rawSubject = subjectController.text.trim();
                         final message = messageController.text.trim();
                         final messenger = ScaffoldMessenger.of(context);
                         
-                        if (subject.isEmpty || message.isEmpty) {
+                        if (rawSubject.isEmpty || message.isEmpty) {
                           messenger.showSnackBar(
-                            const SnackBar(duration: const Duration(seconds: 2),
-                              content: Text('Subject and message are required'),
+                            const SnackBar(
+                              duration: Duration(seconds: 2),
+                              content: Text('Subject and description are required'),
                               backgroundColor: AppColors.secondary,
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -92,7 +154,8 @@ class SupportScreen extends ConsumerWidget {
                         final token = ref.read(authProvider).token;
                         if (token == null) {
                           messenger.showSnackBar(
-                            const SnackBar(duration: const Duration(seconds: 2),
+                            const SnackBar(
+                              duration: Duration(seconds: 2),
                               content: Text('User not authenticated'),
                               backgroundColor: AppColors.secondary,
                               behavior: SnackBarBehavior.floating,
@@ -102,30 +165,41 @@ class SupportScreen extends ConsumerWidget {
                         }
 
                         setState(() => isSubmitting = true);
+
+                        final finalSubject = selectedCategory != 'General Inquiry'
+                            ? '[$selectedCategory] $rawSubject'
+                            : rawSubject;
                         
                         final success = await ref.read(supportRepositoryProvider).createTicket(
                           token: token,
-                          subject: subject,
+                          subject: finalSubject,
                           message: message,
                           userName: nameController.text.trim().isEmpty ? null : nameController.text.trim(),
                           email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                          issueType: 'other',
                         );
                         
                         if (dialogContext.mounted) {
                           Navigator.of(dialogContext).pop();
                         }
                         
+                        if (success) {
+                          ref.invalidate(supportStatsProvider);
+                          ref.invalidate(recentTicketsProvider);
+                        }
+
                         messenger.showSnackBar(
-                          SnackBar(duration: const Duration(seconds: 2),
+                          SnackBar(
+                            duration: const Duration(seconds: 3),
                             content: Text(success ? 'Support ticket raised successfully!' : 'Failed to create support ticket.'),
-                            backgroundColor: success ? AppColors.success : AppColors.error,
+                            backgroundColor: success ? const Color(0xFF16A34A) : AppColors.secondary,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
                       },
                       child: isSubmitting 
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Submit'),
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Submit Ticket', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     );
                   },
                 ),
@@ -222,14 +296,8 @@ class SupportScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-                if (context.canPop())
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
-                    onPressed: () => context.pop(),
-                  )
-                else
-                  ResponsiveMenuButton(isSuperAdmin: isSuperAdmin),
-                const SizedBox(width: 8),
+              ResponsiveMenuButton(isSuperAdmin: isSuperAdmin),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,13 +615,32 @@ class SupportScreen extends ConsumerWidget {
 
   Widget _buildTicketsList(AsyncValue<List<SupportTicket>> ticketsAsync) {
     return ticketsAsync.when(
-      data: (tickets) => SliverList(
-        key: _ticketsKey,
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildTicketCard(tickets[index]),
-          childCount: tickets.length,
-        ),
-      ),
+      data: (tickets) {
+        if (tickets.isEmpty) {
+          return SliverToBoxAdapter(
+            key: _ticketsKey,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Center(
+                child: Text('No support tickets raised yet.', style: TextStyle(color: Colors.grey)),
+              ),
+            ),
+          );
+        }
+        return SliverList(
+          key: _ticketsKey,
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => _buildTicketCard(tickets[index]),
+            childCount: tickets.length,
+          ),
+        );
+      },
       loading: () => const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
       error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
     );

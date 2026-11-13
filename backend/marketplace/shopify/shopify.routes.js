@@ -36,7 +36,7 @@ router.get('/category-mappings', authMiddleware, shopifyController.getCategoryMa
 // 3. Webhooks (Shopify Server calls these automatically)
 //
 // Register this URL in Shopify Partner Dashboard:
-// https://YOUR_BACKEND.onrender.com/api/marketplace/shopify/webhook/orders
+// https://api.retailverse.in/api/marketplace/shopify/webhook/orders
 //
 // Events to subscribe: orders/create, orders/paid
 // ==========================================

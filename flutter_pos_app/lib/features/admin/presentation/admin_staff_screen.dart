@@ -3,7 +3,6 @@ import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
 import 'package:retail_verse_pos/data/remote/admin_users_service.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
-import 'package:retail_verse_pos/routes/app_router.dart';
 
 class AdminStaffScreen extends StatefulWidget {
   const AdminStaffScreen({super.key});
@@ -18,7 +17,26 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
   String _searchQ = '';
   final _searchC = TextEditingController();
 
-  static const _assignableRoles = ['super_admin', 'admin', 'client', 'cashier', 'inventory', 'seo_manager', 'user'];
+  static const _assignableRoles = ['cashier', 'admin', 'inventory', 'vendor', 'seo_manager', 'user'];
+
+  static String _roleLabel(String r) {
+    switch (r.toLowerCase()) {
+      case 'cashier':
+        return 'Cashier (POS & Billing)';
+      case 'admin':
+        return 'Store Admin (Management)';
+      case 'inventory':
+        return 'Inventory (Stock & Barcode)';
+      case 'vendor':
+        return 'Vendor (Supplier Portal)';
+      case 'seo_manager':
+        return 'SEO & Catalog Manager';
+      case 'user':
+        return 'Staff Member';
+      default:
+        return r.toUpperCase();
+    }
+  }
 
   @override
   void initState() {
@@ -117,9 +135,16 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                 }
                 if (snap.hasError) {
                   final errStr = snap.error.toString();
-                  final cleanErr = errStr.contains('SocketException') || errStr.contains('Connection')
-                      ? 'You are offline or the server is unreachable. Please check your internet connection.'
-                      : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+                  String cleanErr;
+                  if (errStr.contains('SocketException') || errStr.contains('Connection') || errStr.contains('Failed host lookup')) {
+                    cleanErr = 'You are offline or the server is unreachable. Please check your internet connection.';
+                  } else if (errStr.contains('404') || errStr.contains('Not Found')) {
+                    cleanErr = 'No staff found or server is updating. Tap retry or add your first member.';
+                  } else if (errStr.contains('ApiException:')) {
+                    cleanErr = errStr.split('ApiException:').last.trim();
+                  } else {
+                    cleanErr = errStr;
+                  }
                   return _buildErrorState(cleanErr);
                 }
 
@@ -205,7 +230,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          _buildRoleBadge(role),
+                          _buildRoleBadge(role, vendorName: u['vendorName']?.toString()),
                           _buildStatusIndicator(active),
                         ],
                       ),
@@ -221,16 +246,24 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
     );
   }
 
-  Widget _buildRoleBadge(String role) {
+  Widget _buildRoleBadge(String role, {String? vendorName}) {
+    final isVendor = role.toLowerCase() == 'vendor';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.08),
+        color: isVendor ? const Color(0xFFFEF3C7) : AppColors.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
+        border: isVendor ? Border.all(color: const Color(0xFFFDE68A)) : null,
       ),
       child: Text(
-        role.toUpperCase(),
-        style: AppTypography.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 10),
+        isVendor && vendorName != null && vendorName.isNotEmpty
+            ? 'VENDOR ($vendorName)'
+            : role.toUpperCase(),
+        style: TextStyle(
+          color: isVendor ? const Color(0xFFB45309) : AppColors.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 10,
+        ),
       ),
     );
   }
@@ -279,7 +312,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
         const PopupMenuDivider(),
         ..._assignableRoles.map((r) => PopupMenuItem(
           value: 'role:$r', 
-          child: Text('Assign ${r.toUpperCase()}'),
+          child: Text('Assign ${_roleLabel(r)}'),
         )),
         const PopupMenuDivider(),
         PopupMenuItem(
@@ -313,16 +346,31 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
       if (mounted) {
         setState(() { _f = _svc.listUsers(); });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(duration: const Duration(seconds: 2),
+          SnackBar(
+            duration: const Duration(seconds: 2),
             content: const Text('Team updated successfully'),
-            backgroundColor: AppColors.secondary,
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e'), backgroundColor: AppColors.secondary));
+      if (mounted) {
+        final errStr = e.toString();
+        final clean = errStr.contains('SocketException') || errStr.contains('Failed host lookup')
+            ? 'Network error. Please check your internet connection.'
+            : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            content: Text(clean),
+            backgroundColor: AppColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        );
+      }
     }
   }
 
@@ -349,79 +397,293 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
     final nameC = TextEditingController();
     final emailC = TextEditingController();
     final passC = TextEditingController();
+    final vendorNameC = TextEditingController();
     var role = _assignableRoles.first;
     final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+    String? dialogError;
 
-    final ok = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
+      barrierDismissible: !isSubmitting,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          title: Text('Add Member', style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildModernField(nameC, 'Full Name', Icons.person_rounded),
-                  const SizedBox(height: 16),
-                  _buildModernField(emailC, 'Work Email', Icons.email_rounded),
-                  const SizedBox(height: 16),
-                  _buildModernField(passC, 'Initial Password', Icons.lock_rounded, obscure: true),
-                  const SizedBox(height: 24),
-                  DropdownButtonFormField<String>(
-                    value: role,
-                    items: _assignableRoles.map((r) => DropdownMenuItem(value: r, child: Text(r.toUpperCase()))).toList(),
-                    onChanged: (v) => setLocal(() => role = v!),
-                    decoration: InputDecoration(
-                      labelText: 'Assigned Role',
-                      prefixIcon: const Icon(Icons.shield_rounded, color: AppColors.primary),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                      filled: true,
-                      fillColor: AppColors.backgroundSecondary.withOpacity(0.5),
+        builder: (ctx, setLocal) {
+          Future<void> submit() async {
+            if (!formKey.currentState!.validate()) return;
+            setLocal(() {
+              isSubmitting = true;
+              dialogError = null;
+            });
+
+            final name = nameC.text.trim();
+            final email = emailC.text.trim().toLowerCase();
+            final password = passC.text;
+            final vendorName = role == 'vendor' ? vendorNameC.text.trim() : null;
+
+            try {
+              await _svc.createStaff(
+                name: name,
+                email: email,
+                password: password,
+                role: role,
+                vendorName: vendorName,
+              );
+              if (ctx.mounted) {
+                Navigator.pop(ctx, true);
+              }
+              if (mounted) {
+                setState(() {
+                  _f = _svc.listUsers();
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 3),
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Member "$name" added successfully!',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
+                    backgroundColor: const Color(0xFF16A34A),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                ],
+                );
+              }
+            } catch (e) {
+              final errStr = e.toString();
+              String cleanErr;
+              if (errStr.contains('11000') || errStr.toLowerCase().contains('duplicate') || errStr.contains('email_1')) {
+                cleanErr = 'A member with this email already exists. Please use a different email.';
+              } else if (errStr.toLowerCase().contains('limit reach') || errStr.toLowerCase().contains('upgrade')) {
+                cleanErr = 'Member limit reached for current plan. Please upgrade to add more staff.';
+              } else if (errStr.contains('SocketException') || errStr.contains('Failed host lookup') || errStr.contains('Connection')) {
+                cleanErr = 'Network error. Please check your internet connection.';
+              } else if (errStr.contains('ApiException:')) {
+                cleanErr = errStr.split('ApiException:').last.trim();
+              } else {
+                cleanErr = errStr;
+              }
+
+              setLocal(() {
+                isSubmitting = false;
+                dialogError = cleanErr;
+              });
+            }
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_add_rounded, color: AppColors.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Add Team Member',
+                  style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, fontSize: 18),
+                ),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (dialogError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                dialogError!,
+                                style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    _buildModernField(
+                      nameC,
+                      'Full Name',
+                      Icons.person_rounded,
+                      enabled: !isSubmitting,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter member name' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernField(
+                      emailC,
+                      'Work Email',
+                      Icons.email_rounded,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Please enter work email';
+                        if (!v.contains('@') || !v.contains('.')) return 'Please enter a valid email address';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernField(
+                      passC,
+                      'Initial Password',
+                      Icons.lock_rounded,
+                      obscure: true,
+                      enabled: !isSubmitting,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Please enter initial password';
+                        if (v.trim().length < 6) return 'Password must be at least 6 characters';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      value: role,
+                      isExpanded: true,
+                      selectedItemBuilder: (ctx) => _assignableRoles
+                          .map((r) => Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _roleLabel(r),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ))
+                          .toList(),
+                      items: _assignableRoles
+                          .map((r) => DropdownMenuItem(
+                                value: r,
+                                child: Text(
+                                  _roleLabel(r),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: isSubmitting
+                          ? null
+                          : (v) {
+                              if (v != null) {
+                                setLocal(() => role = v);
+                              }
+                            },
+                      decoration: InputDecoration(
+                        labelText: 'Assigned Role',
+                        prefixIcon: const Icon(Icons.shield_rounded, color: AppColors.primary),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        filled: true,
+                        fillColor: AppColors.backgroundSecondary.withOpacity(0.5),
+                      ),
+                    ),
+                    if (role == 'vendor') ...[
+                      const SizedBox(height: 16),
+                      _buildModernField(
+                        vendorNameC,
+                        'Vendor Business Name',
+                        Icons.storefront_rounded,
+                        hintText: 'e.g. Acme Supplies',
+                        enabled: !isSubmitting,
+                        validator: (v) {
+                          if (role == 'vendor' && (v == null || v.trim().isEmpty)) {
+                            return 'Please enter vendor business name';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'This vendor will access supplier portal to view assigned units and purchase orders.',
+                        style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: const Text('Save'),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: isSubmitting ? null : submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Add Member', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
       ),
     );
-
-    if (ok == true) {
-      try {
-        await _svc.createStaff(name: nameC.text, email: emailC.text, password: passC.text, role: role);
-        if (mounted) setState(() { _f = _svc.listUsers(); });
-      } catch (e) {
-        if (mounted) {
-          final errStr = e.toString();
-          final cleanErr = errStr.contains('SocketException') || errStr.contains('Failed host lookup')
-              ? 'You are offline. Please check your internet connection.'
-              : (errStr.contains('ApiException:') ? errStr.split('ApiException:').last.trim() : errStr);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(cleanErr)));
-        }
-      }
-    }
   }
 
-  Widget _buildModernField(TextEditingController ctrl, String label, IconData icon, {bool obscure = false}) {
+  Widget _buildModernField(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    bool obscure = false,
+    bool enabled = true,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    String? hintText,
+  }) {
     return TextFormField(
       controller: ctrl,
       obscureText: obscure,
+      enabled: enabled,
+      keyboardType: keyboardType,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hintText,
         prefixIcon: Icon(icon, color: AppColors.primary),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.cardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
         filled: true,
         fillColor: AppColors.backgroundSecondary.withOpacity(0.5),
       ),
@@ -430,36 +692,111 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.05), shape: BoxShape.circle),
-            child: Icon(Icons.group_add_rounded, size: 80, color: AppColors.primary.withOpacity(0.2)),
-          ),
-          const SizedBox(height: 24),
-          Text('Your team is empty', style: AppTypography.headlineSmall.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-          Text('Add members to manage the store.', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.06), shape: BoxShape.circle),
+              child: Icon(Icons.group_add_rounded, size: 64, color: AppColors.primary),
+            ),
+            const SizedBox(height: 20),
+            Text('No Team Members Yet', style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 300),
+              child: Text(
+                'Add cashiers, managers, and vendors to streamline store operations and assign portal permissions.',
+                textAlign: TextAlign.center,
+                style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _openCreateUserDialog,
+              icon: const Icon(Icons.person_add_rounded, size: 18),
+              label: const Text('Add First Member'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorState(String error) {
+    final isNetwork = error.toLowerCase().contains('offline') ||
+        error.toLowerCase().contains('internet') ||
+        error.toLowerCase().contains('connection');
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.error),
-            const SizedBox(height: 16),
-            Text('Oops! Something went wrong', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isNetwork ? Icons.wifi_off_rounded : Icons.people_outline_rounded,
+                size: 56,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isNetwork ? 'Connection Lost' : 'Unable to Load Team',
+              style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
             const SizedBox(height: 8),
-            Text(error, textAlign: TextAlign.center, style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: Text(
+                isNetwork
+                    ? 'Please check your internet connection and try refreshing.'
+                    : 'We could not sync your staff list. You can retry or add a new member directly.',
+                textAlign: TextAlign.center,
+                style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary, height: 1.4),
+              ),
+            ),
             const SizedBox(height: 24),
-            FilledButton(onPressed: () => setState(() => _f = _svc.listUsers()), child: const Text('Try Again')),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _f = _svc.listUsers()),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Try Again'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: BorderSide(color: AppColors.cardBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: _openCreateUserDialog,
+                  icon: const Icon(Icons.person_add_rounded, size: 18),
+                  label: const Text('Add Member'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

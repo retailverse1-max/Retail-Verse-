@@ -72,7 +72,7 @@ class OrderLocalService {
     return result.map((e) => OrderItemEntity.fromMap(e)).toList();
   }
 
-  /// Get today's sales summary
+  /// Get today's sales summary (excluding cancelled & quotes)
   Future<Map<String, dynamic>> getTodaySales() async {
     final db = await AppDatabase.database;
 
@@ -88,9 +88,54 @@ class OrderLocalService {
         COUNT(*) as orderCount,
         COALESCE(SUM(total_amount), 0) as totalSales
       FROM orders
-      WHERE created_at >= ?
+      WHERE created_at >= ? AND LOWER(status) NOT IN ('cancelled', 'pending')
     ''',
       [startOfDayStr],
+    );
+
+    final orderCount = Sqflite.firstIntValue(result) ?? 0;
+    final totalSales = (result.first['totalSales'] as num?)?.toDouble() ?? 0.0;
+
+    return {'orderCount': orderCount, 'totalSales': totalSales};
+  }
+
+  /// Get total all-time sales summary (excluding cancelled & quotes)
+  Future<Map<String, dynamic>> getTotalSalesSummary() async {
+    final db = await AppDatabase.database;
+
+    final result = await db.rawQuery(
+      '''
+      SELECT 
+        COUNT(*) as orderCount,
+        COALESCE(SUM(total_amount), 0) as totalSales
+      FROM orders
+      WHERE LOWER(status) NOT IN ('cancelled', 'pending')
+    ''',
+    );
+
+    final orderCount = Sqflite.firstIntValue(result) ?? 0;
+    final totalSales = (result.first['totalSales'] as num?)?.toDouble() ?? 0.0;
+
+    return {'orderCount': orderCount, 'totalSales': totalSales};
+  }
+
+  /// Get this month's sales summary (excluding cancelled & quotes)
+  Future<Map<String, dynamic>> getMonthSales() async {
+    final db = await AppDatabase.database;
+
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final startOfMonthStr = startOfMonth.toIso8601String();
+
+    final result = await db.rawQuery(
+      '''
+      SELECT 
+        COUNT(*) as orderCount,
+        COALESCE(SUM(total_amount), 0) as totalSales
+      FROM orders
+      WHERE created_at >= ? AND LOWER(status) NOT IN ('cancelled', 'pending')
+    ''',
+      [startOfMonthStr],
     );
 
     final orderCount = Sqflite.firstIntValue(result) ?? 0;
@@ -111,7 +156,7 @@ class OrderLocalService {
       '''
       SELECT COUNT(*) as count
       FROM orders
-      WHERE created_at >= ?
+      WHERE created_at >= ? AND LOWER(status) NOT IN ('cancelled', 'pending')
     ''',
       [startOfDayStr],
     );

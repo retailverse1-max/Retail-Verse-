@@ -24,6 +24,7 @@ import 'package:retail_verse_pos/features/dashboard/providers/dashboard_provider
 import 'package:retail_verse_pos/data/models/customer_model.dart';
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
 import 'package:retail_verse_pos/core/services/push_notification_service.dart';
+import 'package:retail_verse_pos/features/admin/data/vendor_service.dart';
 import 'package:retail_verse_pos/data/models/coupon_model.dart';
 import 'package:retail_verse_pos/data/remote/coupon_service.dart';
 import 'package:retail_verse_pos/features/pos/providers/whatsapp_pending_orders_provider.dart';
@@ -671,6 +672,19 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
 
       final createdOrder = ref.read(orderCreationProvider).createdOrder;
       if (createdOrder != null) {
+        // Auto-check if any item dropped to low stock limit <= 5 and trigger vendor allocation + notification
+        for (final item in createdOrder.items) {
+          final remaining = item.product.stock - item.quantity;
+          if (remaining <= 5) {
+            VendorService().checkAndTriggerLowStockAllocation(
+              productId: item.product.id,
+              productName: item.product.name,
+              productSku: item.product.sku,
+              currentStock: remaining < 0 ? 0 : remaining,
+            );
+          }
+        }
+
         if (createdOrder.customerPhone != null && createdOrder.customerPhone!.isNotEmpty) {
           // Auto-send SMS invoice after order is placed
           try {
@@ -1941,14 +1955,17 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        _appliedCouponCode!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          letterSpacing: 1.2,
-                          color: Color(0xFF15803D),
-                          fontFamily: 'monospace',
+                      Flexible(
+                        child: Text(
+                          _appliedCouponCode!,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            letterSpacing: 1.2,
+                            color: Color(0xFF15803D),
+                            fontFamily: 'monospace',
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1967,13 +1984,16 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
                           ),
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        '-₹${cart.discount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF15803D),
+                      const SizedBox(width: 8),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '-₹${cart.discount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF15803D),
+                          ),
                         ),
                       ),
                     ],
@@ -2402,27 +2422,34 @@ class _PosCartScreenState extends ConsumerState<PosCartScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: emphasize
-                ? AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                  )
-                : AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+          Expanded(
+            child: Text(
+              label,
+              style: emphasize
+                  ? AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                    )
+                  : AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          Text(
-            value,
-            style: emphasize
-                ? AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  )
-                : AppTypography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+          const SizedBox(width: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: emphasize
+                  ? AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    )
+                  : AppTypography.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+            ),
           ),
         ],
       ),
@@ -2449,25 +2476,35 @@ class _CheckoutHero extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.shopping_bag_outlined, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Grand Total:',
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.shopping_bag_outlined, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Grand Total:',
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          Text(
-            totalLabel,
-            style: AppTypography.titleLarge.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.error,
-              fontSize: 18,
+          const SizedBox(width: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              totalLabel,
+              style: AppTypography.titleLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.error,
+                fontSize: 18,
+              ),
             ),
           ),
         ],

@@ -15,6 +15,7 @@ const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const couponRoutes = require("./routes/couponRoutes");
 const heldCartRoutes = require("./routes/heldCartRoutes");
+const vendorRoutes = require("./routes/vendorRoutes");
 const flipkartRoutes = require("./marketplace/flipkart/flipkart.routes");
 const shopifyRoutes = require("./marketplace/shopify/shopify.routes");
 const meeshoRoutes = require("./marketplace/meesho/meesho.routes");
@@ -55,6 +56,7 @@ app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/pos/held-carts", heldCartRoutes);
+app.use("/api/vendors", vendorRoutes);
 
 // Marketplace Routes
 app.use(["/api/marketplace", "/api/api/marketplace"], marketplaceRoutes);

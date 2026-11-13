@@ -70,6 +70,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         await ref.read(authProvider.notifier).restoreFromStorage();
         if (!mounted) return;
 
+        // Pre-warm dashboard data in parallel so the admin panel has all data ready instantaneously (< 1 sec)!
+        ref.read(dashboardStatsProvider);
+        ref.read(dashboardProductsProvider);
+        ref.read(dashboardOrdersProvider);
+
         final home = initialHomeRouteForUser(ref.read(authProvider).user);
         context.go(home);
       } else {
@@ -140,7 +145,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               ),
               const SizedBox(height: 48),
               Text(
-                AppConstants.appName.toUpperCase(),
+                AppConstants.defaultAppName.toUpperCase(),
                 style: AppTypography.headlineMedium.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/local/app_database.dart';
 
 /// Persists auth after login: [token], [userId], [userName], [userEmail], [userRole] (+ optional [storeId]).
 class SessionService {
@@ -15,7 +16,10 @@ class SessionService {
   static const String _subscriptionPlanKey = 'subscription_plan';
   static const String _subscriptionStatusKey = 'subscription_status';
   static const String _subscriptionExpiryKey = 'subscription_expiry';
+  static const String _vendorNameKey = 'vendor_name';
+  static const String _vendorIdKey = 'vendor_id';
   static const String _loginAtKey = 'login_at';
+  static const String _lastActiveAccountEmailKey = 'last_active_account_email';
 
   /// Session validity duration — matches backend JWT expiry (7 days).
   static const Duration sessionDuration = Duration(days: 7);
@@ -31,6 +35,8 @@ class SessionService {
   static const String persistedSubscriptionPlanKey = 'subscriptionPlan';
   static const String persistedSubscriptionStatusKey = 'subscriptionStatus';
   static const String persistedSubscriptionExpiryKey = 'subscriptionExpiry';
+  static const String persistedVendorNameKey = 'vendorName';
+  static const String persistedVendorIdKey = 'vendorId';
 
   static Future<void> saveSession({
     required String token,
@@ -39,6 +45,8 @@ class SessionService {
     String? userEmail,
     String? userPhone,
     String? userRole,
+    String? vendorName,
+    String? vendorId,
     String? storeId,
     String? subscriptionPlan,
     String? subscriptionStatus,
@@ -65,7 +73,9 @@ class SessionService {
       await prefs.setString(_userNameKey, userName);
     }
     if (userEmail != null) {
+      final emailLower = userEmail.trim().toLowerCase();
       await prefs.setString(_userEmailKey, userEmail);
+      await prefs.setString(_lastActiveAccountEmailKey, emailLower);
     }
     if (userPhone != null) {
       final t = userPhone.trim();
@@ -89,9 +99,16 @@ class SessionService {
       await prefs.setString(_subscriptionExpiryKey, subscriptionExpiry);
     }
 
+    if (vendorName != null) {
+      await prefs.setString(_vendorNameKey, vendorName);
+    }
+    if (vendorId != null) {
+      await prefs.setString(_vendorIdKey, vendorId);
+    }
+
     if (kDebugMode) {
       debugPrint(
-        'SessionService: session saved (token length ${token.length}, role: ${trimmed ?? "(cleared)"})',
+        'SessionService: session saved (token length ${token.length}, role: ${trimmed ?? "(cleared)"}, vendor: $vendorName)',
       );
     }
   }
@@ -107,6 +124,8 @@ class SessionService {
       persistedUserEmailKey: prefs.getString(_userEmailKey),
       persistedUserPhoneKey: prefs.getString(_userPhoneKey),
       persistedUserRoleKey: prefs.getString(_userRoleKey),
+      persistedVendorNameKey: prefs.getString(_vendorNameKey),
+      persistedVendorIdKey: prefs.getString(_vendorIdKey),
       persistedStoreIdKey: currentStoreId,
       persistedSubscriptionPlanKey: prefs.getString(_subscriptionPlanKey),
       persistedSubscriptionStatusKey: prefs.getString(_subscriptionStatusKey),
@@ -192,6 +211,16 @@ class SessionService {
     return false;
   }
 
+  static Future<String?> getLastActiveAccountEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_lastActiveAccountEmailKey)?.trim().toLowerCase();
+  }
+
+  static Future<void> setLastActiveAccountEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastActiveAccountEmailKey, email.trim().toLowerCase());
+  }
+
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
@@ -206,8 +235,14 @@ class SessionService {
     await prefs.remove(_subscriptionExpiryKey);
     await prefs.remove(_loginAtKey);
     currentStoreId = null;
+
+    // Immediately purge all SQLite cache so no previous user data persists
+    try {
+      await AppDatabase.clearAllUserData();
+    } catch (_) {}
+
     if (kDebugMode) {
-      debugPrint('SessionService: session cleared');
+      debugPrint('SessionService: session cleared & SQLite user cache purged');
     }
   }
 }

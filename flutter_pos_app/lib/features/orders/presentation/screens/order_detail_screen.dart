@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:retail_verse_pos/features/settings/domain/models/pos_settings.dart';
 import 'package:retail_verse_pos/core/utils/printer_service.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -103,7 +104,7 @@ class OrderDetailScreen extends ConsumerWidget {
             const SizedBox(height: 16),
 
             // Totals Section
-            _buildTotalsSection(),
+            _buildTotalsSection(settings),
 
             const SizedBox(height: 24),
 
@@ -342,7 +343,7 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTotalsSection() {
+  Widget _buildTotalsSection(PosSettings settings) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -362,8 +363,10 @@ class OrderDetailScreen extends ConsumerWidget {
             'Subtotal',
             AppFormatters.formatCurrency(order.subtotal),
           ),
-          const SizedBox(height: 8),
-          _buildTotalRow('Tax (18%)', AppFormatters.formatCurrency(order.tax)),
+          if (settings.showTaxOnBill && order.tax > 0) ...[
+            const SizedBox(height: 8),
+            _buildTotalRow('GST / Tax', AppFormatters.formatCurrency(order.tax)),
+          ],
           if (order.extraCharges > 0) ...[
             const SizedBox(height: 8),
             _buildTotalRow(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,6 +18,7 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import '../../../orders/utils/receipt_generator.dart';
 import '../../../../core/widgets/printer_manager_sheet.dart';
+import '../../../../core/branding/app_branding.dart';
 
 class InvoiceDialog extends ConsumerStatefulWidget {
   final Order order;
@@ -39,6 +41,12 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
   final NotificationService _notificationService = NotificationService();
   final PrinterService _printerService = PrinterService();
 
+  bool _isPrinterConnecting = false;
+  bool _isPrinterConnected = false;
+  bool _showConnectedToast = false;
+  bool _printerAutoConnectFailed = false;
+  String? _printerName;
+
   @override
   void initState() {
     super.initState();
@@ -47,23 +55,102 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
     });
   }
 
-  /// Automatically attempt to print bill to thermal printer on dialog open (only if already connected)
+  /// Automatically attempt to print bill to thermal printer on dialog open
+  /// If not connected, scans & automatically connects to the printer (if ON) and prints immediately!
+  /// If connection fails, shows top-right "Not connected to printer" with instant connect option.
   Future<void> _autoPrintThermalReceipt() async {
     final posSettings = ref.read(posSettingsProvider);
     if (!posSettings.printReceipt) return;
 
     try {
       final isConn = await _printerService.isConnected();
-      if (isConn && mounted) {
+      if (isConn) {
+        final pName = await _printerService.getReceiptPrinterName();
+        if (mounted) {
+          setState(() {
+            _isPrinterConnected = true;
+            _showConnectedToast = true;
+            _isPrinterConnecting = false;
+            _printerAutoConnectFailed = false;
+            _printerName = pName;
+          });
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) setState(() => _showConnectedToast = false);
+          });
+          await _executeThermalPrint();
+        }
+        return;
+      }
+
+      // Not connected - scan & attempt auto-connection
+      if (mounted) {
+        setState(() {
+          _isPrinterConnecting = true;
+          _isPrinterConnected = false;
+          _showConnectedToast = false;
+          _printerAutoConnectFailed = false;
+        });
+      }
+
+      final connected = await _printerService.autoConnectForReceipt();
+      if (connected && mounted) {
+        final pName = await _printerService.getReceiptPrinterName();
+        setState(() {
+          _isPrinterConnected = true;
+          _showConnectedToast = true;
+          _isPrinterConnecting = false;
+          _printerAutoConnectFailed = false;
+          _printerName = pName;
+        });
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _showConnectedToast = false);
+        });
+        await _executeThermalPrint();
+      } else if (mounted) {
+        setState(() {
+          _isPrinterConnected = false;
+          _showConnectedToast = false;
+          _isPrinterConnecting = false;
+          _printerAutoConnectFailed = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Auto print thermal receipt error: $e');
+      if (mounted) {
+        setState(() {
+          _isPrinterConnected = false;
+          _isPrinterConnecting = false;
+          _printerAutoConnectFailed = true;
+        });
+      }
+    }
+  }
+
+  /// Open printer manager sheet and auto-print upon successful connection
+  Future<void> _connectPrinterAndPrint() async {
+    await PrinterManagerSheet.show(context);
+    final isConn = await _printerService.isConnected();
+    final pName = await _printerService.getReceiptPrinterName();
+    if (mounted) {
+      setState(() {
+        _isPrinterConnected = isConn;
+        _showConnectedToast = isConn;
+        _printerAutoConnectFailed = !isConn;
+        _printerName = pName;
+      });
+      if (isConn) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _showConnectedToast = false);
+        });
         await _executeThermalPrint();
       }
-    } catch (_) {}
+    }
   }
 
   String _getStoreName() {
     try {
       final posSettings = ref.read(posSettingsProvider);
-      if (posSettings.storeName.trim().isNotEmpty) {
+      if (posSettings.storeName.trim().isNotEmpty && posSettings.storeName.trim() != 'My Store') {
         return posSettings.storeName.trim();
       }
       final authUser = ref.read(authProvider).user;
@@ -74,7 +161,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
         return busName.trim();
       }
     } catch (_) {}
-    return 'My Store';
+    return AppBranding.getStoreName();
   }
 
   /// Execute thermal print via Bluetooth
@@ -89,21 +176,13 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
     }
 
     try {
-      debugPrint('Attempting raster thermal print for 58mm Billplus...');
-      final rasterOk = await _printerService.printReceiptRaster(
-        order: widget.order,
+      debugPrint('Printing receipt via direct thermal ESC/POS...');
+      await _printerService.printReceipt(
+        widget.order,
         settings: posSettings,
+        storeName: _getStoreName(),
+        authUser: authUser,
       );
-
-      if (!rasterOk) {
-        debugPrint('Raster print returned false. Trying raw text print...');
-        await _printerService.printReceipt(
-          widget.order,
-          settings: posSettings,
-          storeName: _getStoreName(),
-          authUser: authUser,
-        );
-      }
 
       if (mounted) {
         setState(() => _isActionRunning = false);
@@ -124,6 +203,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
       }
       return true;
     } catch (e) {
+      debugPrint('Direct thermal print error: $e');
       if (mounted) {
         setState(() => _isActionRunning = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -132,14 +212,6 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
             content: Text('Printer: $e'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'USB Wire Print',
-              textColor: Colors.white,
-              onPressed: () {
-                final posSettings = ref.read(posSettingsProvider);
-                _printVia80mmThermal(posSettings);
-              },
-            ),
           ),
         );
       }
@@ -162,17 +234,25 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
       _actionMessage = 'Connecting to thermal printer & printing bill...';
     });
 
-    final connected = await _printerService.autoConnect();
+    final connected = await _printerService.autoConnectForReceipt();
     if (mounted) setState(() => _isActionRunning = false);
 
     if (connected) {
+      final pName = await _printerService.getReceiptPrinterName();
+      if (mounted) {
+        setState(() {
+          _isPrinterConnected = true;
+          _printerAutoConnectFailed = false;
+          _printerName = pName;
+        });
+      }
       await _executeThermalPrint();
       return;
     }
 
     // 3. If auto-connect didn't find printer, open in-app printer connection manager
     if (mounted) {
-      await PrinterManagerSheet.show(context);
+      await _connectPrinterAndPrint();
     }
   }
 
@@ -614,10 +694,11 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
         ? order.rewardCouponCode!
         : 'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}';
 
+    final posSettings = ref.read(posSettingsProvider);
     final storeName = _getStoreName();
     final buffer = StringBuffer();
     buffer.writeln('🏬 *${storeName.toUpperCase()}*');
-    buffer.writeln('🧾 *TAX INVOICE / CASH BILL*');
+    buffer.writeln(posSettings.showTaxOnBill ? '🧾 *TAX INVOICE / CASH BILL*' : '🧾 *RETAIL INVOICE / CASH BILL*');
     buffer.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     buffer.writeln('*Order ID:* #${order.orderId}');
     buffer.writeln('*Date:* ${DateFormat('dd MMM yyyy, hh:mm a').format(order.dateTime)}');
@@ -631,7 +712,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
     if (order.discount > 0) {
       buffer.writeln('*Discount:* -₹${order.discount.toStringAsFixed(2)}');
     }
-    if (order.tax > 0) {
+    if (posSettings.showTaxOnBill && order.tax > 0) {
       buffer.writeln('*GST / Tax:* ₹${order.tax.toStringAsFixed(2)}');
     }
     buffer.writeln('*GRAND TOTAL:* ₹${order.total.toStringAsFixed(2)}');
@@ -769,24 +850,27 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final posSettings = ref.watch(posSettingsProvider);
     final order = widget.order;
     final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(order.dateTime);
 
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            constraints: const BoxConstraints(maxWidth: 450),
-            padding: const EdgeInsets.all(20),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Top Success Header
-                  const SizedBox(height: 8),
+    return Stack(
+      children: [
+        Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                constraints: const BoxConstraints(maxWidth: 450),
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Top Success Header
+                      const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -824,6 +908,31 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                            // Store Logo if enabled
+                            if (posSettings.showShopLogoOnInvoice &&
+                                posSettings.businessLogoPath.isNotEmpty) ...[
+                              Builder(
+                                builder: (ctx) {
+                                  try {
+                                    final file = File(posSettings.businessLogoPath);
+                                    if (file.existsSync()) {
+                                      return Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(bottom: 8),
+                                          child: Image.file(
+                                            file,
+                                            height: 48,
+                                            width: 48,
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (_) {}
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+                            ],
                             // Store & Receipt Header Info
                             Text(
                               _getStoreName().toUpperCase(),
@@ -837,7 +946,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Receipt / Tax Invoice',
+                              posSettings.showTaxOnBill ? 'Receipt / Tax Invoice' : 'Receipt / Cash Memo',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 11,
@@ -990,7 +1099,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                             _buildAmountRow('Subtotal', order.subtotal),
                             if (order.discount > 0)
                               _buildAmountRow('Discount', -order.discount, isDiscount: true),
-                            if (order.tax > 0)
+                            if (posSettings.showTaxOnBill && order.tax > 0)
                               _buildAmountRow('GST / Tax', order.tax),
                             if (order.extraCharges > 0)
                               _buildAmountRow('Extra Charges', order.extraCharges),
@@ -1049,6 +1158,43 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
                                     const Text(
                                       'Flat ₹300 OFF on your next order of ₹3,000+',
                                       style: TextStyle(fontSize: 10, color: Color(0xFF78350F), fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    InkWell(
+                                      onTap: () async {
+                                        final couponCode = order.rewardCouponCode ??
+                                            'SAVE300-${order.orderId.replaceAll(RegExp(r"[^A-Za-z0-9]"), "").substring(0, 4).toUpperCase()}';
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Printing Reward Coupon Slip..."),
+                                            duration: Duration(seconds: 1),
+                                          ),
+                                        );
+                                        await _printerService.printCouponSlip(
+                                          couponCode: couponCode,
+                                          storeName: _getStoreName(),
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF59E0B).withOpacity(0.18),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.print_rounded, size: 12, color: Color(0xFF92400E)),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              "Print Coupon Slip",
+                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1133,6 +1279,7 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
           ),
         ),
 
+
           // Loading/Action Overlay during print, SMS, email sending simulation
           if (_isActionRunning)
             Positioned.fill(
@@ -1178,7 +1325,157 @@ class _InvoiceDialogState extends ConsumerState<InvoiceDialog> {
             ),
         ],
       ),
-    );
+    ),
+
+    // ── TOP-RIGHT FLOATING SNACKBAR / TOAST NOTIFICATION ──
+    _buildTopFloatingToast(),
+    ],
+  );
+  }
+
+  Widget _buildTopFloatingToast() {
+    if (_isPrinterConnecting) {
+      return Positioned(
+        top: 24,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF60A5FA)),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Connecting to printer...',
+                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_isPrinterConnected && _showConnectedToast) {
+      return Positioned(
+        top: 24,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF14532D),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF86EFAC), size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Connected to ${_printerName ?? "billplus 617"}',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_printerAutoConnectFailed) {
+      return Positioned(
+        top: 24,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.only(left: 12, top: 5, bottom: 5, right: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7F1D1D),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.print_disabled_rounded, size: 15, color: Color(0xFFFCA5A5)),
+                const SizedBox(width: 6),
+                const Text(
+                  'Not connected to printer',
+                  style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: _connectPrinterAndPrint,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bluetooth_rounded, size: 12, color: Color(0xFF991B1B)),
+                        SizedBox(width: 3),
+                        Text(
+                          'Connect',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF991B1B), fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => setState(() => _printerAutoConnectFailed = false),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Icon(Icons.close_rounded, size: 14, color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   Widget _buildInfoRow(String label, String value) {

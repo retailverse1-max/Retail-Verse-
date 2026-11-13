@@ -1,11 +1,14 @@
+import '../branding/app_branding.dart';
+
 /// Application-wide constants for Retail Verse
 class AppConstants {
   AppConstants._();
 
   // App Information
-  static const String appName = 'Retail Verse';
-  static const String appVersion = '1.0.0';
-  static const String appSubtitle = 'Retail Verse - Professional Billing';
+  static const String defaultAppName = 'Retail Verse';
+  static String get appName => AppBranding.currentStoreName;
+  static const String appVersion = '1.0.13';
+  static String get appSubtitle => '${AppBranding.currentStoreName} - Professional Billing';
 
   /// Primary brand logo (see `pubspec.yaml` assets)
   static const String logoAsset = 'assets/images/logopos.png';

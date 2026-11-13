@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:retail_verse_pos/core/utils/formatters.dart';
+import 'package:retail_verse_pos/core/branding/app_branding.dart';
 
 enum _UpiState { waiting, expired, success }
 
@@ -13,7 +14,7 @@ class UpiPaymentSimulationDialog extends StatefulWidget {
   const UpiPaymentSimulationDialog({
     super.key,
     required this.amount,
-    this.storeName = 'RetailVerse POS',
+    this.storeName = '',
     this.upiVpa = 'wehexerve@icici',
   });
 
@@ -51,8 +52,11 @@ class _UpiPaymentSimulationDialogState extends State<UpiPaymentSimulationDialog>
     _countdownTimer?.cancel();
     _txId = 'TXN${DateTime.now().millisecondsSinceEpoch.remainder(1000000)}';
     final amt = widget.amount.toStringAsFixed(2);
+    final effectiveName = widget.storeName.trim().isNotEmpty && widget.storeName != 'RetailVerse POS'
+        ? widget.storeName.trim()
+        : '${AppBranding.currentStoreName} POS';
     // Real UPI deep link format readable by PhonePe, GPay, Paytm, BHIM
-    _upiQrData = 'upi://pay?pa=${widget.upiVpa}&pn=${Uri.encodeComponent(widget.storeName)}&am=$amt&cu=INR&tn=$_txId';
+    _upiQrData = 'upi://pay?pa=${widget.upiVpa}&pn=${Uri.encodeComponent(effectiveName)}&am=$amt&cu=INR&tn=$_txId';
 
     setState(() {
       _state = _UpiState.waiting;

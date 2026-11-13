@@ -1,0 +1,11 @@
+Module_ID,Retail_Module,Feature_Description,Backend_Integration,Flutter_UI_Screen,Status
+101,POS Checkout,Quick Billing & Barcode Scanning,/api/v1/orders,CheckoutScreen / BillingScreen,Operational
+102,Inventory Management,Product Stock & Variant Management,/api/v1/products,InventoryListScreen / AddProductScreen,Operational
+103,Category Management,Category Hierarchy & Mapping,/api/v1/categories,CategoryMappingScreen / AddCategoryScreen,Operational
+104,Marketplace Sync,Shopify Integration & Order Pulling,/api/v1/marketplace/shopify,ShopifySettingsScreen,Operational
+105,Marketplace Sync,Flipkart Channel & Stock Mapper,/api/v1/marketplace/flipkart,FlipkartSettingsScreen,Operational
+106,Customer CRM,Customer Billing History & Profiles,/api/v1/customers,CustomerListScreen,Operational
+107,Subscriptions,Multi-tier Retail Subscription Plans,/api/v1/subscriptions,SubscriptionPlansScreen,Operational
+108,Authentication,Phone OTP & Password Login,/api/v1/auth,LoginScreen / OnboardingScreen,Operational
+109,Thermal Printing,Bluetooth & Wireless Receipt Printing,Local Native Plugin,ReceiptPrintService,Operational
+110,Push Notifications,Firebase Order & Alert Notifications,Firebase FCM /api/v1/notifications,NotificationsScreen,Operational

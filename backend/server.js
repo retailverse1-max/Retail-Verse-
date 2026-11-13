@@ -17,6 +17,24 @@ connectDB().then(async () => {
       }
       console.log("Auto-Repair: All businesses fixed.");
     }
+
+    // Auto-seed default Shreya vendor login user if not present
+    const User = require("./models/User");
+    const bcrypt = require("bcryptjs");
+    const vendorUser = await User.findOne({ email: "shreya@gmail.com" });
+    if (!vendorUser) {
+      const hashedPassword = await bcrypt.hash("password123", 10);
+      await User.create({
+        name: "shreya Supplies",
+        email: "shreya@gmail.com",
+        password: hashedPassword,
+        phone: "6205650658",
+        role: "vendor",
+        vendorName: "shreya",
+        isActive: true,
+      });
+      console.log("Auto-Seed: Created default vendor user shreya@gmail.com / password123");
+    }
   } catch (err) {
     console.error("Auto-Repair Failed:", err.message);
   }

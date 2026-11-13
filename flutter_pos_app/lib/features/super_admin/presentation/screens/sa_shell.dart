@@ -179,7 +179,10 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
   }
 
   PreferredSizeWidget _buildModernAppBar() {
-    final canPop = context.canPop();
+    final location = GoRouterState.of(context).matchedLocation;
+    final isRootShellRoute = _kPrimaryShellRoutes.any((r) => r.path == location) ||
+                             _kSecondaryShellRoutes.any((r) => r.path == location);
+    final canPop = !isRootShellRoute && context.canPop();
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.white,
@@ -193,7 +196,7 @@ class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
-            canPop ? Icons.arrow_back_ios_new_rounded : Icons.more_vert_rounded, 
+            canPop ? Icons.arrow_back_ios_new_rounded : Icons.menu_rounded, 
             color: AppColors.primary, 
             size: 18
           ),

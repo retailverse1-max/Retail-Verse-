@@ -12,6 +12,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:retail_verse_pos/features/settings/providers/pos_settings_provider.dart';
+import 'package:retail_verse_pos/features/settings/domain/models/pos_settings.dart';
+import 'package:retail_verse_pos/core/branding/app_branding.dart';
 
 
 class InvoiceDetailsModal extends ConsumerWidget {
@@ -27,6 +29,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final title = isQuote ? 'Quote Details' : 'Invoice Details';
+    final settings = ref.watch(posSettingsProvider);
     
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -42,11 +45,11 @@ class InvoiceDetailsModal extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildHeader(),
+                _buildHeader(settings),
                 const SizedBox(height: 24),
                 _buildBilledToAndReference(),
                 const SizedBox(height: 24),
-                _buildItemsList(),
+                _buildItemsList(settings),
                 const SizedBox(height: 24),
                 _buildPaymentMethod(),
                 const SizedBox(height: 16),
@@ -72,18 +75,35 @@ class InvoiceDetailsModal extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(PosSettings settings) {
+    final hasLogo = settings.showShopLogoOnInvoice &&
+        settings.businessLogoPath.isNotEmpty &&
+        File(settings.businessLogoPath).existsSync();
+
     return Row(
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+        if (hasLogo) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(
+              File(settings.businessLogoPath),
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
+            ),
           ),
-          child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary),
-        ),
-        const SizedBox(width: 16),
+          const SizedBox(width: 12),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary),
+          ),
+          const SizedBox(width: 16),
+        ],
         Expanded(
           child: Text(
             isQuote ? 'Quote Details' : 'Invoice Details',
@@ -170,7 +190,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
     );
   }
 
-  Widget _buildItemsList() {
+  Widget _buildItemsList(PosSettings settings) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF8F9FA),
@@ -293,19 +313,20 @@ class InvoiceDetailsModal extends ConsumerWidget {
                 ],
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Tax', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
-                Text(
-                  AppFormatters.formatCurrency(order.tax),
-                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ],
+          if (settings.showTaxOnBill && order.tax > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Tax', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                  Text(
+                    AppFormatters.formatCurrency(order.tax),
+                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
-          ),
           if (order.extraCharges > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -438,7 +459,9 @@ class InvoiceDetailsModal extends ConsumerWidget {
       } catch (_) {}
     }
 
-    final storeTitle = settings.storeName.isNotEmpty ? settings.storeName : 'Retail Verse';
+    final storeTitle = settings.storeName.trim().isNotEmpty && settings.storeName.trim() != 'My Store'
+        ? settings.storeName.trim()
+        : AppBranding.getStoreName();
     final footerNote = settings.invoiceFooterNote.isNotEmpty ? settings.invoiceFooterNote : 'Thank you for your business!';
 
     final pdf = pw.Document(
@@ -464,7 +487,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
                   children: [
                     pw.Text(storeTitle, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
                     if (settings.storeAddress.isNotEmpty) pw.Text(settings.storeAddress, style: const pw.TextStyle(fontSize: 10)),
-                    if (settings.gstTaxId.isNotEmpty) pw.Text('GSTIN: ${settings.gstTaxId}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    if (settings.showTaxOnBill && settings.gstTaxId.isNotEmpty) pw.Text('GSTIN: ${settings.gstTaxId}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
                 if (logoImage != null)
@@ -503,7 +526,7 @@ class InvoiceDetailsModal extends ConsumerWidget {
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
                     pw.Text('Subtotal: ${AppFormatters.formatCurrency(order.subtotal).replaceAll('₹', 'Rs.')}'),
-                    pw.Text('Tax: ${AppFormatters.formatCurrency(order.tax).replaceAll('₹', 'Rs.')}'),
+                    if (settings.showTaxOnBill && order.tax > 0) pw.Text('Tax: ${AppFormatters.formatCurrency(order.tax).replaceAll('₹', 'Rs.')}'),
                     if (order.discount > 0) pw.Text('Discount: -${AppFormatters.formatCurrency(order.discount).replaceAll('₹', 'Rs.')}'),
                     if (order.extraCharges > 0) pw.Text('Extra Charges: +${AppFormatters.formatCurrency(order.extraCharges).replaceAll('₹', 'Rs.')}'),
                     pw.Divider(),

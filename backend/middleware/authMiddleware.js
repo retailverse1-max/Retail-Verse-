@@ -19,6 +19,21 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    if (!user.clientId && user.role !== 'super_admin') {
+      const Business = require("../models/Business");
+      let biz = await Business.findOne({ ownerEmail: user.email });
+      if (!biz) {
+        biz = await Business.create({
+          businessName: `${user.name || 'My'}'s Store`,
+          ownerName: user.name || 'Store Owner',
+          ownerEmail: user.email,
+          status: 'active',
+          subscriptionPlan: 'trial',
+        });
+      }
+      user.clientId = biz._id;
+      await user.save().catch(() => {});
+    }
     // Attach clientId from JWT payload (or fallback to DB) for all users
     req.user.clientId = decoded.clientId || user.clientId;
     if (req.user.role === 'super_admin' && req.headers['x-client-id']) {

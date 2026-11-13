@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
@@ -25,9 +28,10 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // ── Hardware Barcode Scanner Engine (Shipment Inwarding) ──
+  // ── Hardware Barcode Scanner Engine (Automatic Product Lookup) ──
   final StringBuffer _scannerBuffer = StringBuffer();
   DateTime _lastKeystrokeTime = DateTime.now();
+  bool _isCameraScanning = false;
 
   @override
   void initState() {
@@ -45,11 +49,17 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
   bool _handleHardwareScanKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
 
+    // Only process scanner keys when this screen is the active foreground route
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
+      return false;
+    }
+
     final now = DateTime.now();
     final delta = now.difference(_lastKeystrokeTime).inMilliseconds;
     _lastKeystrokeTime = now;
 
-    if (delta > 60) {
+    // Fast keystrokes typical of barcode scanners (inter-character delay < 80ms)
+    if (delta > 80) {
       _scannerBuffer.clear();
     }
 
@@ -57,7 +67,7 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
       if (_scannerBuffer.length >= 3) {
         final scannedBarcode = _scannerBuffer.toString().trim();
         _scannerBuffer.clear();
-        _onInventoryBarcodeScanned(scannedBarcode);
+        _handleBarcodeSearch(scannedBarcode);
         return true;
       }
       _scannerBuffer.clear();
@@ -70,385 +80,202 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
     return false;
   }
 
-  Future<void> _onInventoryBarcodeScanned(String barcode) async {
-    debugPrint('📦 [Inventory Scanner] Inward barcode: $barcode');
-    if (!mounted || barcode.isEmpty) return;
+  Future<bool> _ensureCameraPermission() async {
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
+    if (status.isGranted) return true;
+    if (!mounted) return false;
+    final blocked = status.isPermanentlyDenied;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          blocked
+              ? 'Camera permission denied permanently. Please enable in Settings.'
+              : 'Camera permission is required to scan product barcodes.',
+        ),
+        backgroundColor: AppColors.error,
+        action: blocked
+            ? SnackBarAction(
+                label: 'Settings',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              )
+            : null,
+      ),
+    );
+    return false;
+  }
 
-    final productsAsync = ref.read(productsProvider);
-    final products = productsAsync.value ?? [];
+  Future<void> _scanBarcodeWithCamera() async {
+    if (_isCameraScanning) return;
+    final hasPermission = await _ensureCameraPermission();
+    if (!hasPermission) return;
 
-    Product? matchedProduct;
+    setState(() => _isCameraScanning = true);
+
     try {
-      matchedProduct = products.firstWhere(
-        (p) => p.barcode != null && p.barcode!.trim() == barcode,
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 90,
       );
-    } catch (_) {
-      matchedProduct = null;
-    }
 
-    if (matchedProduct == null) {
-      try {
-        final repo = ref.read(productRepositoryProvider);
-        matchedProduct = await repo.getProductByBarcode(barcode);
-      } catch (_) {}
-    }
+      if (photo != null) {
+        final inputImage = InputImage.fromFilePath(photo.path);
+        final barcodeScanner = BarcodeScanner();
+        final List<Barcode> barcodes = await barcodeScanner.processImage(inputImage);
+        await barcodeScanner.close();
 
-    if (matchedProduct != null) {
-      SystemSound.play(SystemSoundType.click);
-      _showQuickInwardDialog(matchedProduct);
-    } else {
-      _showUnregisteredBarcodeDialog(barcode);
+        if (barcodes.isNotEmpty) {
+          final rawValue = barcodes.first.rawValue;
+          if (rawValue != null && rawValue.trim().isNotEmpty) {
+            final barcode = rawValue.trim();
+            debugPrint('⚡ [Products Camera Scan] Detected barcode: $barcode');
+            await _handleBarcodeSearch(barcode);
+            return;
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              content: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Barcode could not be detected. Please align barcode properly and try again.'),
+                  ),
+                ],
+              ),
+              backgroundColor: Color(0xFFD97706),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error scanning barcode with camera: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            content: Text('Camera scan error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCameraScanning = false);
+      }
     }
   }
 
-  void _showQuickInwardDialog(Product product) {
-    final qtyController = TextEditingController(text: '10');
-    final costController = TextEditingController(
-      text: product.cost > 0 ? product.cost.toStringAsFixed(2) : '',
-    );
-    final batchController = TextEditingController();
-    bool isInwarding = false;
+  Future<void> _handleBarcodeSearch(String barcode) async {
+    final cleanBarcode = barcode.trim();
+    if (cleanBarcode.isEmpty) return;
 
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          backgroundColor: Colors.white,
-          title: Row(
+    debugPrint('🔍 [Product Scanner] Searching barcode: $cleanBarcode');
+
+    setState(() {
+      _searchController.text = cleanBarcode;
+      _searchQuery = cleanBarcode;
+    });
+
+    HapticFeedback.lightImpact();
+    SystemSound.play(SystemSoundType.click);
+
+    final products = ref.read(productsProvider).value ?? [];
+    Product? matched;
+    try {
+      matched = products.firstWhere(
+        (p) =>
+            (p.barcode != null &&
+                p.barcode!.trim().toLowerCase() == cleanBarcode.toLowerCase()) ||
+            p.sku.trim().toLowerCase() == cleanBarcode.toLowerCase(),
+      );
+    } catch (_) {
+      matched = null;
+    }
+
+    if (matched == null) {
+      try {
+        final repo = ref.read(productRepositoryProvider);
+        matched = await repo.getProductByBarcode(cleanBarcode);
+        if (matched != null) {
+          ref.invalidate(productsProvider);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Remote barcode lookup failed: $e');
+      }
+    }
+
+    if (!mounted) return;
+
+    if (matched != null) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.archive_outlined, color: AppColors.primary, size: 24),
-              ),
-              const SizedBox(width: 12),
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Stock Inward',
-                      style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      product.barcode != null && product.barcode!.isNotEmpty
-                          ? 'Barcode: ${product.barcode}'
-                          : 'SKU: ${product.sku}',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
-                    ),
-                  ],
+                child: Text(
+                  'Found: ${matched.name} (Qty: ${matched.stock})',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: ProductMediaImage(imageUrl: product.imageUrl, fit: BoxFit.cover),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              product.name,
-                              style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Text('Current Stock: ', style: AppTypography.bodySmall),
-                                Text(
-                                  '${product.stock} pcs',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    color: product.stock <= 10 ? AppColors.error : AppColors.success,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Inward Quantity *',
-                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: qtyController,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'Enter quantity received',
-                    prefixIcon: const Icon(Icons.add_shopping_cart_rounded, color: AppColors.primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Cost Price per Unit (Optional)',
-                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: costController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. 12.50',
-                    prefixIcon: const Icon(Icons.currency_rupee_rounded, color: AppColors.primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Batch No / Invoice Ref (Optional)',
-                  style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: batchController,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. BATCH-2026-X',
-                    prefixIcon: const Icon(Icons.tag_rounded, color: AppColors.primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isInwarding ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-            ),
-            ElevatedButton(
-              onPressed: isInwarding
-                  ? null
-                  : () async {
-                      final qty = int.tryParse(qtyController.text.trim()) ?? 0;
-                      if (qty <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            duration: const Duration(seconds: 2),
-                            content: const Text('Please enter a valid inward quantity'),
-                            backgroundColor: AppColors.error,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                        return;
-                      }
-
-                      setModalState(() => isInwarding = true);
-
-                      try {
-                        final repo = ref.read(productRepositoryProvider);
-                        final newStock = product.stock + qty;
-                        final cost = double.tryParse(costController.text.trim());
-
-                        await repo.updateProduct(
-                          id: product.id,
-                          stock: newStock,
-                          cost: cost != null && cost > 0 ? cost : product.cost,
-                        );
-
-                        ref.invalidate(productsProvider);
-                        if (context.mounted) {
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              duration: const Duration(seconds: 2),
-                              content: Row(
-                                children: [
-                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text('Inwarded +$qty pcs for ${product.name}! Stock is now $newStock pcs.'),
-                                ],
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        setModalState(() => isInwarding = false);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              duration: const Duration(seconds: 2),
-                              content: Text('Failed to update stock: $e'),
-                              backgroundColor: AppColors.error,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        }
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFD97706),
+          content: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('No product found for barcode: $cleanBarcode'),
               ),
-              child: isInwarding
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Confirm Inward', style: TextStyle(fontWeight: FontWeight.w500)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showUnregisteredBarcodeDialog(String barcode) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.help_outline_rounded, color: Color(0xFFD97706), size: 24),
-            ),
-            const SizedBox(width: 12),
-            Text('Barcode Not Found', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Scanned Barcode: $barcode', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('This product does not exist in your inventory database yet. Would you like to register it as a new product?'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+            ],
           ),
-          ElevatedButton.icon(
+          action: SnackBarAction(
+            label: 'Add Product',
+            textColor: Colors.white,
             onPressed: () {
-              Navigator.pop(ctx);
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => AddProductScreen(initialBarcode: barcode),
+                  builder: (_) => AddProductScreen(initialBarcode: cleanBarcode),
                 ),
-              );
+              ).then((_) => ref.invalidate(productsProvider));
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Register New Product', style: TextStyle(fontWeight: FontWeight.w500)),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showManualInwardBarcodeDialog() {
-    final bcController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        title: Text(
-          'Quick Inward Scanner',
-          style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w600),
         ),
-        content: TextField(
-          controller: bcController,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Scan or type barcode...',
-            prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-          ),
-          onSubmitted: (v) {
-            Navigator.pop(ctx);
-            if (v.trim().isNotEmpty) {
-              _onInventoryBarcodeScanned(v.trim());
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (bcController.text.trim().isNotEmpty) {
-                _onInventoryBarcodeScanned(bcController.text.trim());
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Lookup', style: TextStyle(fontWeight: FontWeight.w500)),
-          ),
-        ],
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -476,28 +303,8 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundTertiary,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Navigator.of(context).canPop()
-                        ? InkWell(
-                            onTap: () => Navigator.of(context).pop(),
-                            borderRadius: BorderRadius.circular(12),
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Icon(
-                                Icons.arrow_back_rounded,
-                                color: AppColors.textPrimary,
-                                size: 20,
-                              ),
-                            ),
-                          )
-                        : const ResponsiveMenuButton(color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(width: 12),
+                  const ResponsiveMenuButton(color: AppColors.textPrimary),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,8 +349,8 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                   ),
                   if (canAddProduct) ...[
                     IconButton(
-                      tooltip: 'Quick Inward Scanner',
-                      onPressed: _showManualInwardBarcodeDialog,
+                      tooltip: 'Scan Barcode with Camera',
+                      onPressed: _scanBarcodeWithCamera,
                       icon: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -551,11 +358,17 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child: const Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
+                        child: _isCameraScanning
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -607,6 +420,11 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (v) => setState(() => _searchQuery = v),
+                onSubmitted: (v) {
+                  if (v.trim().isNotEmpty) {
+                    _handleBarcodeSearch(v.trim());
+                  }
+                },
                 style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search by name, SKU or barcode...',
@@ -615,15 +433,30 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
                     fontWeight: FontWeight.w400,
                   ),
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_searchQuery.isNotEmpty)
+                        IconButton(
                           icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textSecondary),
                           onPressed: () {
                             _searchController.clear();
                             setState(() => _searchQuery = '');
                           },
-                        )
-                      : null,
+                        ),
+                      IconButton(
+                        tooltip: 'Scan Barcode',
+                        icon: _isCameraScanning
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 20),
+                        onPressed: _scanBarcodeWithCamera,
+                      ),
+                    ],
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -656,10 +489,13 @@ class _AllProductsScreenState extends ConsumerState<AllProductsScreen> {
               data: (products) {
                 final filtered = products.where((p) {
                   final query = _searchQuery.toLowerCase().trim();
-                  return query.isEmpty ||
-                      p.name.toLowerCase().contains(query) ||
-                      p.sku.toLowerCase().contains(query) ||
-                      (p.barcode != null && p.barcode!.toLowerCase().contains(query));
+                  if (query.isEmpty) return true;
+                  final nameMatch = p.name.toLowerCase().contains(query);
+                  final skuMatch = p.sku.toLowerCase().contains(query);
+                  final barcodeMatch = p.barcode != null &&
+                      (p.barcode!.toLowerCase().trim().contains(query) ||
+                          query.contains(p.barcode!.toLowerCase().trim()));
+                  return nameMatch || skuMatch || barcodeMatch;
                 }).toList();
 
                 final totalCount = products.length;

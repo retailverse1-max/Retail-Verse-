@@ -1,0 +1,6 @@
+framework module blue_thermal_printer {
+  umbrella header "blue_thermal_printer-umbrella.h"
+
+  export *
+  module * { export * }
+}

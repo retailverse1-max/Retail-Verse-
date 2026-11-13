@@ -63,15 +63,29 @@ const createOrder = async (req, res) => {
     let finalItems = [];
     let computedTotal = 0;
 
+    const mongoose = require("mongoose");
     for (const item of items) {
-      const product = await Product.findById(item.productId);
-
-      if (!product) {
-        return res.status(404).json({ message: `Product not found: ${item.productId}` });
+      let product = null;
+      if (item.productId && mongoose.Types.ObjectId.isValid(item.productId)) {
+        product = await Product.findById(item.productId);
+      }
+      if (!product && item.productId) {
+        product = await Product.findOne({
+          $or: [
+            { id: item.productId },
+            { sku: item.productId },
+            { barcode: item.productId },
+          ]
+        });
+      }
+      if (!product && (item.name || item.productName)) {
+        product = await Product.findOne({
+          name: new RegExp(`^${item.name || item.productName}$`, "i")
+        });
       }
 
-      if (product.stock < item.qty) {
-        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+      if (!product) {
+        return res.status(404).json({ message: `Product not found: ${item.productId || item.name}` });
       }
 
       const itemTotal = product.price * item.qty;
@@ -120,40 +134,54 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // Update stock and logs
-    for (const item of finalItems) {
-      const product = await Product.findById(item.productId);
-      const beforeStock = product.stock;
-      const afterStock = beforeStock - item.qty;
+    // Update stock and logs (only for completed/confirmed sales, not pending quotations)
+    if (order.status !== "pending") {
+      for (const item of finalItems) {
+        const product = await Product.findById(item.productId);
+        if (!product) continue;
+        const beforeStock = product.stock;
+        const afterStock = Math.max(0, beforeStock - item.qty);
 
-      product.stock = afterStock;
-      await Product.updateOne({ _id: product._id }, { $set: { stock: afterStock } });
+        product.stock = afterStock;
+        await Product.updateOne({ _id: product._id }, { $set: { stock: afterStock } });
 
-      await InventoryLog.create({
-        productId: product._id,
-        type: "sale",
-        quantity: item.qty,
-        beforeStock,
-        afterStock,
-        referenceId: order._id.toString(),
-      });
-
-      // ── Auto-Sync stock to connected marketplaces (Flipkart, Meesho, Shopify, Amazon) ──
-      const { syncProductStockToAllMarketplaces } = require("../marketplace/marketplaceInventorySync");
-      syncProductStockToAllMarketplaces(clientId, product._id, afterStock).catch((err) => {
-        console.error("Marketplace inventory sync failed:", err.message);
-      });
-
-      // Push notification for out of stock
-      if (afterStock === 0 && beforeStock > 0) {
-        await createAndSendNotification({
-          title: "Product Out of Stock 🚨",
-          message: `${product.name} has run out of stock! Please restock soon.`,
-          type: "low_stock",
-          targetRoles: ["inventory", "admin"],
-          clientId: clientId,
-          data: { productId: product._id.toString() },
+        await InventoryLog.create({
+          productId: product._id,
+          type: "sale",
+          quantity: item.qty,
+          beforeStock,
+          afterStock,
+          referenceId: order._id.toString(),
         });
+
+        // ── Auto-Sync stock to connected marketplaces (Flipkart, Meesho, Shopify, Amazon) ──
+        const { syncProductStockToAllMarketplaces } = require("../marketplace/marketplaceInventorySync");
+        syncProductStockToAllMarketplaces(clientId, product._id, afterStock).catch((err) => {
+          console.error("Marketplace inventory sync failed:", err.message);
+        });
+
+        // ── Auto-Trigger Multi-Vendor Split Allocation & Notification when stock drops to <= threshold ──
+        const { checkAndTriggerVendorAllocation } = require("../services/vendorAllocationService");
+        checkAndTriggerVendorAllocation({
+          clientId,
+          product,
+          currentStock: afterStock,
+          triggeredBy: "auto_low_stock",
+        }).catch((err) => {
+          console.error("Vendor split allocation trigger failed:", err.message);
+        });
+
+        // Push notification for out of stock
+        if (afterStock === 0 && beforeStock > 0) {
+          await createAndSendNotification({
+            title: "Product Out of Stock 🚨",
+            message: `${product.name} has run out of stock! Please restock soon.`,
+            type: "low_stock",
+            targetRoles: ["inventory", "admin"],
+            clientId: clientId,
+            data: { productId: product._id.toString() },
+          });
+        }
       }
     }
 
@@ -206,7 +234,15 @@ const getOrders = async (req, res) => {
   try {
     const filter = {};
     if (req.user && req.user.role !== "super_admin") {
-      filter.clientId = req.user.clientId;
+      const candidates = [
+        req.user.clientId?.toString(),
+        req.user._id?.toString(),
+      ].filter(Boolean);
+
+      filter.$or = [
+        { clientId: { $in: candidates } },
+        { createdBy: req.user._id },
+      ];
     }
 
     const orders = await Order.find(filter)

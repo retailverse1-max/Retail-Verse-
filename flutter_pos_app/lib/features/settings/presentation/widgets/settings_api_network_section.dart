@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -64,6 +65,7 @@ class _SettingsApiNetworkSectionState
       final ok = response.statusCode == 200 &&
           (b.contains('POS Backend running') ||
               b.contains('POS backend is running') ||
+              b.contains('API is running') ||
               b.contains('"ok":true'));
       setState(() {
         _testMessage = ok
@@ -118,7 +120,7 @@ class _SettingsApiNetworkSectionState
           controller: _urlController,
           decoration: const InputDecoration(
             labelText: 'API base URL',
-            hintText: 'https://app-backend-je91.onrender.com/api',
+            hintText: 'https://api.retailverse.in/api',
             isDense: true,
           ),
           keyboardType: TextInputType.url,
@@ -153,15 +155,15 @@ class _SettingsApiNetworkSectionState
                 ref.invalidate(productRepositoryProvider);
                 ref.invalidate(orderRemoteDataSourceProvider);
                 invalidateAllDashboardProviders(ref);
-                if (mounted) {
-                  _urlController.text = ApiEndpoints.baseUrl;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(duration: const Duration(seconds: 2),
-                      content: Text('Reset to automatic URL'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
+                if (!context.mounted) return;
+                _urlController.text = ApiEndpoints.baseUrl;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    duration: Duration(seconds: 2),
+                    content: Text('Reset to automatic URL'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
                 ref.invalidate(settingsBackendReachableProvider);
               },
               child: const Text('Reset default'),

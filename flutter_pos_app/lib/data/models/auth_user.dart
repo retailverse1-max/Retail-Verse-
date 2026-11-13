@@ -12,6 +12,8 @@ class AuthUser {
   final bool emailVerified;
   final bool phoneVerified;
   final String role;
+  final String? vendorName;
+  final String? vendorId;
   final String? storeId;
   final String? subscriptionPlan;
   final String? subscriptionStatus;
@@ -25,6 +27,8 @@ class AuthUser {
     this.emailVerified = false,
     this.phoneVerified = false,
     required this.role,
+    this.vendorName,
+    this.vendorId,
     this.storeId,
     this.subscriptionPlan,
     this.subscriptionStatus,
@@ -32,7 +36,8 @@ class AuthUser {
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
-    final sid = json['storeId']?.toString().trim();
+    final rawSid = json['storeId'] ?? json['clientId'] ?? json['businessId'] ?? json['business_id'];
+    final sid = rawSid?.toString().trim();
     final roleParsed = parseRoleFromUserLikeMap(json)?.trim();
     final role = canonicalUiRole(roleParsed) ?? '';
     if (role.isEmpty && kDebugMode) {
@@ -41,7 +46,7 @@ class AuthUser {
       );
     }
     return AuthUser(
-      id: json['id']?.toString() ?? '',
+      id: (json['id'] ?? json['_id'])?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       phone: (json['phone']?.toString().trim().isNotEmpty ?? false)
@@ -50,6 +55,8 @@ class AuthUser {
       emailVerified: json['emailVerified'] == true,
       phoneVerified: json['phoneVerified'] == true,
       role: role,
+      vendorName: json['vendorName']?.toString(),
+      vendorId: json['vendorId']?.toString(),
       storeId: (sid != null && sid.isNotEmpty && sid != 'null') ? sid : null,
       subscriptionPlan: json['subscriptionPlan']?.toString(),
       subscriptionStatus: json['subscriptionStatus']?.toString(),
@@ -66,6 +73,8 @@ class AuthUser {
         'emailVerified': emailVerified,
         'phoneVerified': phoneVerified,
         'role': role,
+        if (vendorName != null) 'vendorName': vendorName,
+        if (vendorId != null) 'vendorId': vendorId,
         if (storeId != null) 'storeId': storeId,
         if (subscriptionPlan != null) 'subscriptionPlan': subscriptionPlan,
         if (subscriptionStatus != null) 'subscriptionStatus': subscriptionStatus,
@@ -87,17 +96,21 @@ class AuthLoginResponse {
       );
     }
 
-    final token = json['token']?.toString();
+    final dataMap = json['data'] is Map ? Map<String, dynamic>.from(json['data'] as Map) : null;
+    final token = (json['token'] ?? dataMap?['token'])?.toString();
     if (token == null || token.isEmpty) {
       throw const ApiException('Token not received from server');
     }
 
-    final rawUser = json['user'];
+    final rawUser = json['user'] ?? dataMap;
     if (rawUser is! Map) {
       throw const ApiException('Invalid user payload from server');
     }
 
     final full = Map<String, dynamic>.from(json);
+    if (dataMap != null) {
+      full.addAll(dataMap);
+    }
     final userMap = Map<String, dynamic>.from(rawUser);
     final resolvedRole = resolveRoleFromLoginResponse(full, token);
     if (resolvedRole != null && resolvedRole.isNotEmpty) {

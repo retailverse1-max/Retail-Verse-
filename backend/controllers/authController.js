@@ -27,8 +27,36 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (!user.clientId && user.role !== "super_admin") {
+      let biz = await Business.findOne({ ownerEmail: user.email });
+      if (!biz) {
+        const displayName = user.name || user.email.split("@")[0];
+        const trialExpiry = new Date();
+        trialExpiry.setDate(trialExpiry.getDate() + 14);
+        biz = await Business.create({
+          businessName: `${displayName}'s Store`,
+          ownerName: displayName,
+          ownerEmail: user.email,
+          phone: user.phone || "",
+          status: "active",
+          subscriptionPlan: "trial",
+          subscriptionStatus: "active",
+          subscriptionExpiry: trialExpiry,
+        });
+      }
+      user.clientId = biz._id;
+      await user.save();
+    }
+
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, clientId: user.clientId },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        clientId: user.clientId,
+        vendorName: user.vendorName,
+        vendorId: user.vendorId,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -64,6 +92,8 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        vendorName: user.vendorName,
+        vendorId: user.vendorId,
         storeId: user.storeId,
         clientId: user.clientId,
         subscriptionPlan,
@@ -78,12 +108,62 @@ const loginUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, name } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const user = await User.findOne({ email });
-    if (!user || !user.isActive) {
-      return res.status(404).json({ message: "User not found or inactive" });
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Professionally auto-create account & trial store for new Google user
+      const displayName = name || email.split("@")[0];
+      const trialExpiry = new Date();
+      trialExpiry.setDate(trialExpiry.getDate() + 14);
+
+      const business = await Business.create({
+        businessName: `${displayName}'s Store`,
+        ownerName: displayName,
+        ownerEmail: email,
+        phone: "",
+        status: "active",
+        subscriptionPlan: "trial",
+        subscriptionStatus: "active",
+        subscriptionExpiry: trialExpiry,
+      });
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash("google_auth_" + Math.random(), salt);
+
+      user = await User.create({
+        name: displayName,
+        email,
+        password: hashedPassword,
+        role: "admin",
+        clientId: business._id,
+      });
+    } else {
+      if (!user.clientId && user.role !== "super_admin") {
+        let business = await Business.findOne({ ownerEmail: user.email });
+        if (!business) {
+          const displayName = user.name || name || email.split("@")[0];
+          const trialExpiry = new Date();
+          trialExpiry.setDate(trialExpiry.getDate() + 14);
+          business = await Business.create({
+            businessName: `${displayName}'s Store`,
+            ownerName: displayName,
+            ownerEmail: email,
+            phone: user.phone || "",
+            status: "active",
+            subscriptionPlan: "trial",
+            subscriptionStatus: "active",
+            subscriptionExpiry: trialExpiry,
+          });
+        }
+        user.clientId = business._id;
+        await user.save();
+      }
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ message: "Account is inactive" });
     }
 
     if (user.role !== "admin" && user.role !== "super_admin") {
@@ -142,8 +222,9 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists with this email" });
     }
 
-    if (phone) {
-      const phoneExists = await User.findOne({ phone });
+    const cleanedPhone = phone && phone.trim().length > 0 ? phone.trim() : undefined;
+    if (cleanedPhone) {
+      const phoneExists = await User.findOne({ phone: cleanedPhone });
       if (phoneExists) {
         return res.status(400).json({ message: "User already exists with this phone number" });
       }
@@ -161,7 +242,7 @@ const registerUser = async (req, res) => {
       businessName: `${name}'s Business`,
       ownerName: name,
       ownerEmail: email,
-      phone: phone || "",
+      phone: cleanedPhone || "",
       status: "active",
       subscriptionPlan: "trial",
       subscriptionStatus: "active",
@@ -171,7 +252,7 @@ const registerUser = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      phone,
+      ...(cleanedPhone && { phone: cleanedPhone }),
       password: hashedPassword,
       role: "admin",
       clientId: business._id,
@@ -179,7 +260,7 @@ const registerUser = async (req, res) => {
 
     if (user) {
       const token = jwt.sign(
-        { id: user._id, email: user.email, role: user.role },
+        { id: user._id, email: user.email, role: user.role, clientId: user.clientId },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );

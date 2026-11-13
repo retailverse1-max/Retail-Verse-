@@ -6,8 +6,16 @@ const MarketplaceConnection = require("../models/MarketplaceConnection");
 const getProducts = async (req, res) => {
   try {
     const filter = {};
-    if (req.user && req.user.clientId) {
-      filter.clientId = req.user.clientId;
+    if (req.user && req.user.role === "super_admin" && !req.headers["x-client-id"] && !req.query.businessId) {
+      // Super admin without specific client filter can see all
+    } else if (req.user && (req.user.clientId || req.headers["x-client-id"] || req.query.businessId)) {
+      filter.clientId = req.headers["x-client-id"] || req.query.businessId || req.user.clientId;
+    } else {
+      // Non-super-admin user without clientId MUST NOT see any products
+      return res.json({
+        message: "Products fetched successfully",
+        data: [],
+      });
     }
     // Fetch products
     const products = await Product.find(filter).sort({ createdAt: -1 }).lean();
@@ -204,6 +212,10 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const clientId = req.user ? req.user.clientId : undefined;
+    const filter = { _id: req.params.id };
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = clientId;
+    }
     const updateData = { ...req.body };
     if (req.body.taxRate !== undefined) {
       updateData.taxRate = Number(req.body.taxRate) || 0;
@@ -213,7 +225,7 @@ const updateProduct = async (req, res) => {
     if (req.body.imageBase64) {
       updateData.imageUrl = req.body.imageBase64;
     }
-    const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
+    const product = await Product.findOneAndUpdate(filter, updateData, {
       new: true,
       runValidators: true,
     });
@@ -276,7 +288,11 @@ const updateProduct = async (req, res) => {
 
 const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const filter = { _id: req.params.id };
+    if (req.user && req.user.role !== "super_admin") {
+      filter.clientId = req.user?.clientId;
+    }
+    const product = await Product.findOneAndDelete(filter);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }

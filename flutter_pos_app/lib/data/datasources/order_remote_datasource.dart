@@ -53,6 +53,8 @@ class OrderRemoteDataSource {
             .map(
               (item) => {
                 'productId': item.product.id,
+                'name': item.product.name,
+                'price': item.product.price,
                 'qty': item.quantity,
               },
             )
@@ -84,37 +86,18 @@ class OrderRemoteDataSource {
 
       var response = await client
           .post(
-            Uri.parse('$baseUrl${ApiEndpoints.createOrder}'),
+            Uri.parse('$baseUrl${ApiEndpoints.orders}'),
             headers: ApiResponseHandler.jsonHeaders(token: token),
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 15));
 
-      // Some deployments expose POST /orders (without /create). Keep current flow
-      // first, and only retry on 404 to avoid breaking existing backend contracts.
       if (response.statusCode == 404) {
-        final fallbackPayload = _fallbackOrderPayload(
-          items: items,
-          paymentMethod: paymentMethod,
-          total: total,
-          customerName: customerName,
-          customerPhone: customerPhone,
-          customerAddress: customerAddress,
-          orderNotes: orderNotes,
-          paymentStatus: paymentStatus,
-          status: status,
-          razorpayOrderId: razorpayOrderId,
-          razorpayPaymentId: razorpayPaymentId,
-          razorpaySignature: razorpaySignature,
-        );
-        debugPrint(
-          'CREATE_ORDER_FALLBACK_REQUEST: ${jsonEncode(fallbackPayload)}',
-        );
         response = await client
             .post(
-              Uri.parse('$baseUrl${ApiEndpoints.orders}'),
+              Uri.parse('$baseUrl${ApiEndpoints.createOrder}'),
               headers: ApiResponseHandler.jsonHeaders(token: token),
-              body: jsonEncode(fallbackPayload),
+              body: jsonEncode(payload),
             )
             .timeout(const Duration(seconds: 15));
       }
@@ -204,6 +187,8 @@ class OrderRemoteDataSource {
             .map(
               (item) => {
                 'productId': item.product.id,
+                'name': item.product.name,
+                'price': item.product.price,
                 'qty': item.quantity,
               },
             )
@@ -300,12 +285,12 @@ class OrderRemoteDataSource {
         );
       }
 
-      final data = decoded['data'];
-      if (data is! List) {
+      final dynamic raw = decoded['data'] ?? decoded['orders'] ?? (decoded is List ? decoded : []);
+      if (raw is! List) {
         return [];
       }
 
-      return data.whereType<Map<String, dynamic>>().map(_parseOrder).toList();
+      return raw.whereType<Map<String, dynamic>>().map(_parseOrder).toList();
     } catch (error) {
       return [];
     }

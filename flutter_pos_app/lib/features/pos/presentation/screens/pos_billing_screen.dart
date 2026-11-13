@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
+import '../../../../core/branding/app_branding.dart';
 import 'package:retail_verse_pos/core/widgets/product_media_image.dart';
 import 'package:retail_verse_pos/core/widgets/product_thumbnail.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
@@ -427,7 +428,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
         var options = {
           'key': razorpayKeyId,
           'amount': orderRes['amount'], // already in paise from backend
-          'name': 'Retail Verse',
+          'name': AppBranding.getStoreName(),
           'description': 'Order Payment',
           'order_id': razorpayOrderId,
           'retry': {'enabled': true, 'max_count': 1},
@@ -779,7 +780,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
                 ),
               ),
               Text(
-                'Retail Verse',
+                ref.watch(appBrandingProvider),
                 style: AppTypography.caption.copyWith(
                   color: AppColors.textTertiary,
                   fontWeight: FontWeight.w500,
@@ -1998,7 +1999,7 @@ class _PosBillingScreenState extends ConsumerState<PosBillingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'By placing your order, you agree to Retail Verse\'s terms and conditions.',
+            'By placing your order, you agree to ${ref.watch(appBrandingProvider)}\'s terms and conditions.',
             textAlign: TextAlign.center,
             style: AppTypography.caption.copyWith(
               fontSize: 10,

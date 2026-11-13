@@ -375,14 +375,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     } catch (_) {}
   }
 
-  Future<void> _openKeyboardSettings() async {
-    try {
-      await _scannerChannel.invokeMethod('openKeyboardSettings');
-    } catch (_) {
-      _showSnack('Unable to open keyboard settings');
-    }
-  }
-
   void _onFieldTapped() {
     if (_isHardwareScannerConnected) {
       _forceShowKeyboard();
@@ -1086,6 +1078,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   /// Action: Opens dialog asking for Product Name, Paper type, and 58mm default sticker size before generating barcode
   void _showGenerateBarcodeDialog() {
     final nameCtrl = TextEditingController(text: _nameController.text.trim());
+    final priceCtrl = TextEditingController(text: _priceController.text.trim());
     String paperType = _selectedBarcodePaperType;
     String selectedSize = _selectedBarcodeSize;
     final customWidthCtrl = TextEditingController(text: '58');
@@ -1176,6 +1169,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           prefixIcon: const Icon(Icons.inventory_2_rounded, size: 18),
                           isDense: true,
                           errorText: nameError,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 2. Price / MRP (Optional)
+                      Text(
+                        'Price / MRP on Label (Optional)',
+                        style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: priceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. 199 (Leave blank if not needed)',
+                          prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                          isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -1389,6 +1401,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                     // 1. Sync product name to main controller
                     _nameController.text = enteredName;
+                    if (priceCtrl.text.trim().isNotEmpty) {
+                      _priceController.text = priceCtrl.text.trim();
+                    }
 
                     // 2. Generate unique EAN barcode
                     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -1448,8 +1463,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final productName = _nameController.text.trim().isEmpty ? 'Product Name' : _nameController.text.trim();
 
     final storeNameController = TextEditingController(text: realStoreName);
+    final priceController = TextEditingController(text: _priceController.text.trim());
     String selectedSize = _selectedBarcodeSize;
     int labelCopies = 2; // Default 2 copies as requested
+    double stickerGapMm = 3.0; // Distance between stickers (yellow backing paper = 3.0mm standard)
+    double stickerTopMargin = 1.8; // Vertical alignment offset (1.8mm perfectly equalizes top and bottom margins)
     final copiesController = TextEditingController(text: '2');
     final customWidthController = TextEditingController(text: '58');
     final customHeightController = TextEditingController(text: '35');
@@ -1465,8 +1483,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       'Custom Dimension (mm)',
     ];
 
+    final printerService = PrinterService();
+    bool isPrintingNow = false;
+    int currentPrintingSticker = 0;
+    int totalStickersToPrint = 0;
+
     showDialog(
       context: context,
+      barrierDismissible: !isPrintingNow,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
@@ -1482,8 +1506,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               previewHeight = (320.0 * ratio).clamp(120.0, 240.0);
             }
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            return PopScope(
+              canPop: !isPrintingNow,
+              onPopInvokedWithResult: (didPop, result) {
+                if (!didPop && isPrintingNow) {
+                  printerService.cancelPrinting();
+                  setDialogState(() {
+                    isPrintingNow = false;
+                  });
+                }
+              },
+              child: AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               title: Row(
@@ -1515,6 +1549,42 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Auto-Pitch Thermal Alignment Banner
+                      if (!selectedSize.contains('A4')) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.straighten_rounded, color: Colors.blue.shade700, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Auto-Pitch Thermal Alignment',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue.shade900),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Auto-feeds the gap between stickers. All labels will print centered and aligned consistently.',
+                                      style: TextStyle(fontSize: 11, color: Colors.blue.shade900, height: 1.25),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       // Store Name Customization Field
                       Text('Store / Brand Name on Sticker', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
                       const SizedBox(height: 6),
@@ -1524,6 +1594,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         decoration: InputDecoration(
                           hintText: 'Enter Store Name...',
                           prefixIcon: const Icon(Icons.storefront_rounded, size: 18),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Optional Price / Cost on Sticker
+                      Text('Price / Cost on Sticker (Optional)', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: priceController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. 199 (Leave blank if not needed)',
+                          prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -1614,9 +1701,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.black87, width: 1.5),
+                          border: Border.all(color: Colors.grey.shade300, width: 1.0),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 3)),
                           ],
                         ),
                         child: selectedSize.contains('A4')
@@ -1625,16 +1712,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 children: [
                                   Text(
                                     storeNameController.text.toUpperCase(),
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1),
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     productName,
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 8),
+                                  if (priceController.text.trim().isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'MRP: ₹${priceController.text.trim()}',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 6),
                                   // 3x4 mini grid representation
                                   Expanded(
                                     child: GridView.count(
@@ -1658,23 +1752,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Store Name Header (NO RETAIL VERSE, REAL STORE NAME)
+                                  // Store Name Header
                                   Text(
                                     storeNameController.text.trim().isEmpty ? 'MY STORE' : storeNameController.text.trim().toUpperCase(),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2, color: Colors.black),
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.black),
                                   ),
                                   // Product Name
                                   Text(
                                     productName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
                                   ),
+                                  // Optional Price / Cost
+                                  if (priceController.text.trim().isNotEmpty)
+                                    Text(
+                                      'MRP: ₹${priceController.text.trim()}',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+                                    ),
                                   // Barcode Graphic Stripes
                                   Container(
-                                    height: previewHeight > 150 ? 46 : 34,
+                                    height: priceController.text.trim().isNotEmpty
+                                        ? (previewHeight > 150 ? 38 : 26)
+                                        : (previewHeight > 150 ? 46 : 34),
                                     alignment: Alignment.center,
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1691,7 +1793,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   // Barcode Digits
                                   Text(
                                     barcode,
-                                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', letterSpacing: 2.5, fontWeight: FontWeight.w500),
+                                    style: const TextStyle(fontSize: 13, fontFamily: 'monospace', letterSpacing: 2.2, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -1707,7 +1809,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Copies to Print:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
-                                Text('Tap + / - or type', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                Text('Tap + / - or type (e.g. 50)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                               ],
                             ),
                           ),
@@ -1767,44 +1869,276 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           ),
                         ],
                       ),
+
+                      if (!selectedSize.contains('A4')) ...[
+                        const SizedBox(height: 12),
+                        // Sticker Gap (Yellow Backing Paper Spacing) Stepper
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Sticker Gap (Yellow Space):', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                                  Text('Distance between stickers (Default: 3.0mm)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  icon: const Icon(Icons.remove_circle_outline, size: 20),
+                                  onPressed: stickerGapMm > 0.0
+                                      ? () {
+                                          setDialogState(() {
+                                            stickerGapMm = (stickerGapMm - 0.5).clamp(0.0, 10.0);
+                                          });
+                                        }
+                                      : null,
+                                ),
+                                Container(
+                                  width: 60,
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade400),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${stickerGapMm.toStringAsFixed(1)}mm',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      stickerGapMm = (stickerGapMm + 0.5).clamp(0.0, 10.0);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+                        // Top alignment offset (shifts content up/down to equalize top and bottom space)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Top Space Alignment:', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                                  Text('Equalize top & bottom margins inside sticker (mm)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  icon: const Icon(Icons.arrow_upward_rounded, size: 20),
+                                  tooltip: 'Shift Up',
+                                  onPressed: stickerTopMargin > 0.0
+                                      ? () {
+                                          setDialogState(() {
+                                            stickerTopMargin = (stickerTopMargin - 0.4).clamp(0.0, 5.0);
+                                          });
+                                        }
+                                      : null,
+                                ),
+                                Container(
+                                  width: 54,
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade400),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${stickerTopMargin.toStringAsFixed(1)}mm',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  icon: const Icon(Icons.arrow_downward_rounded, size: 20, color: AppColors.primary),
+                                  tooltip: 'Shift Down',
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      stickerTopMargin = (stickerTopMargin + 0.4).clamp(0.0, 5.0);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      // Active Printing Progress Banner
+                      if (isPrintingNow) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Printing $currentPrintingSticker of $totalStickersToPrint Sticker(s)...',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Color(0xFF991B1B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'Tap "STOP PRINT" below to halt printing immediately',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFFB91C1C)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                OutlinedButton.icon(
-                  onPressed: () => PrinterManagerSheet.show(context),
-                  icon: const Icon(Icons.bluetooth_connected_rounded, size: 16),
-                  label: const Text('Connect Printer'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final customW = double.tryParse(customWidthController.text.trim()) ?? 50.0;
-                    final customH = double.tryParse(customHeightController.text.trim()) ?? 25.0;
-                    final finalCopies = int.tryParse(copiesController.text.trim()) ?? labelCopies;
-
-                    Navigator.pop(ctx);
-                    await _printBarcodePdf(
-                      storeName: storeNameController.text.trim().isEmpty ? 'MY STORE' : storeNameController.text.trim().toUpperCase(),
-                      productName: productName,
-                      barcode: barcode,
-                      size: selectedSize,
-                      copies: finalCopies > 0 ? finalCopies : 2,
-                      customWidthMm: customW,
-                      customHeightMm: customH,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                if (isPrintingNow) ...[
+                  TextButton(
+                    onPressed: () {
+                      printerService.cancelPrinting();
+                      setDialogState(() {
+                        isPrintingNow = false;
+                      });
+                      _showSnack('Printing stopped by user');
+                    },
+                    child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
                   ),
-                  icon: const Icon(Icons.print_rounded, size: 16),
-                  label: const Text('Print Sticker Now'),
-                ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      printerService.cancelPrinting();
+                      setDialogState(() {
+                        isPrintingNow = false;
+                      });
+                      _showSnack('Printing stopped by user');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626), // Emergency Red
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.stop_circle_rounded, size: 20, color: Colors.white),
+                    label: Text(
+                      'STOP PRINT ($currentPrintingSticker/$totalStickersToPrint)',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                    ),
+                  ),
+                ] else ...[
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                  OutlinedButton.icon(
+                    onPressed: () => PrinterManagerSheet.show(context),
+                    icon: const Icon(Icons.bluetooth_connected_rounded, size: 16),
+                    label: const Text('Connect Printer'),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final customW = double.tryParse(customWidthController.text.trim()) ?? 50.0;
+                      final customH = double.tryParse(customHeightController.text.trim()) ?? 25.0;
+                      final finalCopies = int.tryParse(copiesController.text.trim()) ?? labelCopies;
+                      final priceVal = priceController.text.trim();
+                      if (priceVal.isNotEmpty && _priceController.text.trim().isEmpty) {
+                        _priceController.text = priceVal;
+                      }
+
+                      setDialogState(() {
+                        isPrintingNow = true;
+                        currentPrintingSticker = 1;
+                        totalStickersToPrint = finalCopies > 0 ? finalCopies : 2;
+                      });
+
+                      final success = await _printBarcodePdf(
+                        storeName: storeNameController.text.trim().isEmpty ? 'MY STORE' : storeNameController.text.trim().toUpperCase(),
+                        productName: productName,
+                        barcode: barcode,
+                        price: priceVal.isEmpty ? null : priceVal,
+                        size: selectedSize,
+                        copies: finalCopies > 0 ? finalCopies : 2,
+                        gapMm: stickerGapMm,
+                        topPaddingMm: stickerTopMargin,
+                        customWidthMm: customW,
+                        customHeightMm: customH,
+                        onProgress: (current, total) {
+                          setDialogState(() {
+                            currentPrintingSticker = current;
+                            totalStickersToPrint = total;
+                          });
+                        },
+                      );
+
+                      if (dialogContext.mounted) {
+                        setDialogState(() {
+                          isPrintingNow = false;
+                        });
+                        if (success) {
+                          Navigator.pop(ctx);
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.print_rounded, size: 16),
+                    label: const Text('Print Sticker Now'),
+                  ),
+                ],
               ],
-            );
+            ),
+          );
           },
         );
       },
@@ -1813,30 +2147,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   /// Generates real PDF and sends directly to thermal label or laser printer
   /// Optimized for 58mm Billplus thermal printers with 2x1 inch sticker rolls
-  Future<void> _printBarcodePdf({
+  Future<bool> _printBarcodePdf({
     required String storeName,
     required String productName,
     required String barcode,
+    String? price,
     required String size,
     required int copies,
+    double gapMm = 3.0,
+    double topPaddingMm = 1.8,
     double? customWidthMm,
     double? customHeightMm,
+    void Function(int current, int total)? onProgress,
   }) async {
     try {
       final doc = pw.Document();
 
       // Determine sticker label dimensions in mm
-      double labelWidthMm = 50.8; // 2 inch = 50.8mm
-      double labelHeightMm = 25.4; // 1 inch = 25.4mm
-
-      // The printer roll width (58mm for Billplus)
+      double labelWidthMm = 50.0;
+      double labelHeightMm = 25.0;
       double rollWidthMm = 58.0;
 
-      if (size.contains('58mm')) {
-        rollWidthMm = 58.0;
-        labelWidthMm = 50.8;
-        labelHeightMm = 25.4;
-      } else if (size.contains('50mm x 25mm')) {
+      if (size.contains('58mm') || size.contains('50mm x 25mm')) {
         rollWidthMm = 58.0;
         labelWidthMm = 50.0;
         labelHeightMm = 25.0;
@@ -1857,10 +2189,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         labelWidthMm = 100.0;
         labelHeightMm = 60.0;
       } else if (size.contains('Custom') && customWidthMm != null && customHeightMm != null) {
-        labelWidthMm = customWidthMm > 0 ? customWidthMm : 50.8;
-        labelHeightMm = customHeightMm > 0 ? customHeightMm : 25.4;
-        rollWidthMm = labelWidthMm + 8; // 4mm padding each side
+        labelWidthMm = customWidthMm > 0 ? customWidthMm : 50.0;
+        labelHeightMm = customHeightMm > 0 ? customHeightMm : 25.0;
+        rollWidthMm = labelWidthMm + 8;
       }
+
+      final hasPrice = price != null && price.trim().isNotEmpty;
 
       if (size.contains('A4')) {
         // ── A4 24-LABEL SHEET ──
@@ -1887,15 +2221,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       mainAxisAlignment: pw.MainAxisAlignment.center,
                       crossAxisAlignment: pw.CrossAxisAlignment.center,
                       children: [
-                        pw.Text(storeName, style: pw.TextStyle(fontSize: 5.5, fontWeight: pw.FontWeight.bold)),
+                        pw.Text(storeName, style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold)),
                         pw.SizedBox(height: 1),
-                        pw.Text(productName, maxLines: 1, style: const pw.TextStyle(fontSize: 5)),
-                        pw.SizedBox(height: 2),
+                        pw.Text(productName, maxLines: 1, style: const pw.TextStyle(fontSize: 6.0)),
+                        if (hasPrice) ...[
+                          pw.SizedBox(height: 0.5),
+                          pw.Text('MRP: Rs. ${price.trim()}', style: pw.TextStyle(fontSize: 5.5, fontWeight: pw.FontWeight.bold)),
+                        ],
+                        pw.SizedBox(height: 1.5),
                         pw.BarcodeWidget(
                           barcode: pw.Barcode.code128(),
                           data: barcode,
                           width: 42 * PdfPageFormat.mm,
-                          height: 10 * PdfPageFormat.mm,
+                          height: (hasPrice ? 8.5 : 10) * PdfPageFormat.mm,
+                          textStyle: pw.TextStyle(fontSize: 6.0, fontWeight: pw.FontWeight.bold),
                         ),
                       ],
                     ),
@@ -1906,76 +2245,83 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
         );
       } else {
-        // ── THERMAL STICKER LABEL ──
-        // Page size = roll width (58mm) x label height
-        // Content is centered within the label area
-        final horizontalMargin = (rollWidthMm - labelWidthMm) / 2;
+        // Printable width on 58mm thermal head is exactly 48mm (384 dots @ 203 DPI)
+        const printableWidthMm = 48.0;
         final pageFormat = PdfPageFormat(
-          rollWidthMm * PdfPageFormat.mm,
+          printableWidthMm * PdfPageFormat.mm,
           labelHeightMm * PdfPageFormat.mm,
-          marginLeft: horizontalMargin * PdfPageFormat.mm,
-          marginRight: horizontalMargin * PdfPageFormat.mm,
-          marginTop: 1.5 * PdfPageFormat.mm,
-          marginBottom: 1.5 * PdfPageFormat.mm,
+          marginAll: 0,
         );
 
-        // Scale font sizes based on label height
-        final storeNameFontSize = labelHeightMm <= 25.4 ? 5.5 : (labelHeightMm <= 38 ? 7.0 : 8.0);
-        final productNameFontSize = labelHeightMm <= 25.4 ? 5.0 : (labelHeightMm <= 38 ? 6.0 : 7.0);
-        final barcodeWidth = labelWidthMm * 0.88 * PdfPageFormat.mm;
-        final barcodeHeight = (labelHeightMm * 0.38).clamp(7.0, 18.0) * PdfPageFormat.mm;
+        // High-legibility bold fonts perfectly sized for 203 DPI thermal label
+        final storeNameFontSize = labelHeightMm <= 25.0 ? (hasPrice ? 9.0 : 10.0) : (labelHeightMm <= 38.0 ? 12.0 : 13.5);
+        final productNameFontSize = labelHeightMm <= 25.0 ? (hasPrice ? 8.0 : 9.0) : (labelHeightMm <= 38.0 ? 11.0 : 12.0);
+        final priceFontSize = labelHeightMm <= 25.0 ? 8.0 : 9.5;
+        final barcodeWidth = 42.0 * PdfPageFormat.mm;
+        final barcodeHeight = (labelHeightMm <= 25.0 ? (hasPrice ? 7.0 : 8.5) : (hasPrice ? 11.0 : 13.0)) * PdfPageFormat.mm;
 
-        final totalCopies = copies > 0 ? copies : 2;
-        for (int i = 0; i < totalCopies; i++) {
-          doc.addPage(
-            pw.Page(
-              pageFormat: pageFormat,
-              build: (pw.Context ctx) {
-                return pw.Container(
-                  color: PdfColors.white,
-                  width: double.infinity,
-                  height: double.infinity,
-                  alignment: pw.Alignment.center,
-                  child: pw.Column(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    crossAxisAlignment: pw.CrossAxisAlignment.center,
-                    mainAxisSize: pw.MainAxisSize.min,
-                    children: [
+        // Render one sticker master page containing the sticker
+        doc.addPage(
+          pw.Page(
+            pageFormat: pageFormat,
+            build: (pw.Context ctx) {
+              return pw.Container(
+                color: PdfColors.white,
+                width: rollWidthMm * PdfPageFormat.mm,
+                height: labelHeightMm * PdfPageFormat.mm,
+                padding: pw.EdgeInsets.only(
+                  top: topPaddingMm * PdfPageFormat.mm,
+                  left: 2.0 * PdfPageFormat.mm,
+                  right: 2.0 * PdfPageFormat.mm,
+                ),
+                child: pw.Column(
+                  mainAxisAlignment: pw.MainAxisAlignment.start,
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  mainAxisSize: pw.MainAxisSize.min,
+                  children: [
+                    pw.Text(
+                      storeName,
+                      style: pw.TextStyle(fontSize: storeNameFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 0.4 * PdfPageFormat.mm),
+                    pw.Text(
+                      productName,
+                      maxLines: 1,
+                      style: pw.TextStyle(fontSize: productNameFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    if (hasPrice) ...[
+                      pw.SizedBox(height: 0.4 * PdfPageFormat.mm),
                       pw.Text(
-                        storeName,
-                        style: pw.TextStyle(fontSize: storeNameFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
+                        'MRP: Rs. ${price.trim()}',
+                        style: pw.TextStyle(fontSize: priceFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
                         textAlign: pw.TextAlign.center,
-                      ),
-                      pw.SizedBox(height: 1 * PdfPageFormat.mm),
-                      pw.Text(
-                        productName,
-                        maxLines: 1,
-                        style: pw.TextStyle(fontSize: productNameFontSize, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
-                        textAlign: pw.TextAlign.center,
-                      ),
-                      pw.SizedBox(height: 1.2 * PdfPageFormat.mm),
-                      pw.BarcodeWidget(
-                        barcode: pw.Barcode.code128(),
-                        data: barcode,
-                        width: barcodeWidth,
-                        height: barcodeHeight,
-                        color: PdfColors.black,
-                        backgroundColor: PdfColors.white,
                       ),
                     ],
-                  ),
-                );
-              },
-            ),
-          );
-        }
+                    pw.SizedBox(height: 0.5 * PdfPageFormat.mm),
+                    pw.BarcodeWidget(
+                      barcode: pw.Barcode.code128(),
+                      data: barcode,
+                      width: barcodeWidth,
+                      height: barcodeHeight,
+                      color: PdfColors.black,
+                      backgroundColor: PdfColors.white,
+                      textStyle: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
       }
 
       final pdfBytes = await doc.save();
       final printerService = PrinterService();
 
-      // For 58mm thermal printers (head width = 384 dots)
-      final rasterDpi = (384 / (rollWidthMm / 25.4)).round().toDouble();
+      // Native 203 DPI (8 dots/mm) for exact 1:1 hardware pixel mapping
+      const rasterDpi = 203.0;
 
       // Check if thermal printer is already connected
       bool isConn = await printerService.isConnected();
@@ -1994,10 +2340,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           final success = await printerService.printBarcodeStickerDirect(
             pngBytes: pngBytes,
             count: copies,
+            onProgress: onProgress,
           );
+          if (printerService.isPrintingCancelled) {
+            _showSnack('Printing stopped by user');
+            return false;
+          }
           if (success) {
             _showSnack('$copies Barcode sticker(s) printed to thermal printer!');
-            return;
+            return true;
           }
         } catch (e) {
           debugPrint('Thermal sticker direct print error: $e');
@@ -2009,8 +2360,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (mounted) {
         await PrinterManagerSheet.show(context);
       }
+      return false;
     } catch (e) {
       _showSnack('Thermal printer error: $e', isError: true);
+      return false;
     }
   }
 
@@ -2132,11 +2485,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             );
       }
 
+      final String effectiveImgUrl = (productResult.imageUrl != null && productResult.imageUrl!.isNotEmpty)
+          ? productResult.imageUrl!
+          : (imageBase64 ?? _existingImageUrl ?? '');
+
       final legacy = Product(
         id: productResult.id,
         name: productResult.name,
         sku: productResult.sku,
-        imageUrl: productResult.imageUrl ?? (_productImage == null ? (_existingImageUrl ?? '') : ''),
+        imageUrl: effectiveImgUrl,
         quantity: productResult.stock,
         price: productResult.price,
         description: _descriptionController.text.trim(),
@@ -2148,7 +2505,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       );
 
       try {
-        await ProductLocalService().insertProduct(productResult);
+        final toCache = (productResult.imageUrl != null && productResult.imageUrl!.isNotEmpty)
+            ? productResult
+            : productResult.copyWith(imageUrl: effectiveImgUrl);
+        await ProductLocalService().insertProduct(toCache);
       } catch (err) {
         debugPrint('Failed to cache created product in local DB: $err');
       }
@@ -2814,76 +3174,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           // Hardware Scanner Live Status Banner (Only shown when physical external scanner is connected)
           if (_isHardwareScannerConnected) ...[
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFBBF7D0)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: const Row(
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Hardware Barcode Scanner Connected',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF166534),
-                          ),
-                        ),
+                  Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF16A34A)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Hardware Barcode Scanner Connected',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF166534),
                       ),
-                      Icon(
-                        Icons.sensors_rounded,
-                        color: Color(0xFF16A34A),
-                        size: 18,
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Agar typing keyboard gayab ho rha hai, niche diye option se keyboard show karein ya 1-click me setting enable karein:',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF15803D)),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _forceShowKeyboard,
-                          icon: const Icon(Icons.keyboard_outlined, size: 15),
-                          label: const Text('Show Keyboard', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF15803D),
-                            backgroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFF86EFAC)),
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _openKeyboardSettings,
-                          icon: const Icon(Icons.settings_outlined, size: 15),
-                          label: const Text('Fix Setting', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF16A34A),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    Icons.sensors_rounded,
+                    color: Color(0xFF16A34A),
+                    size: 18,
                   ),
                 ],
               ),
@@ -3745,92 +4059,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            if (_isHardwareScannerConnected) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.sensors_rounded, size: 16, color: Color(0xFF16A34A)),
-                    const SizedBox(width: 6),
-                    const Expanded(
-                      child: Text(
-                        'Scanner Active',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF166534),
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: _forceShowKeyboard,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFF86EFAC)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.keyboard_outlined, size: 14, color: Color(0xFF15803D)),
-                            SizedBox(width: 4),
-                            Text(
-                              'Show Keyboard',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF15803D),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    InkWell(
-                      onTap: _openKeyboardSettings,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.settings_outlined, size: 14, color: Colors.white),
-                            SizedBox(width: 4),
-                            Text(
-                              'Fix Setting',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            Row(
-              children: [
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -3879,8 +4109,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
               ),
             ),
-          ],
-        ),
           ],
         ),
       ),

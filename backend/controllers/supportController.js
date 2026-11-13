@@ -11,9 +11,12 @@ const isZendeskConfigured = () => {
 // POST /api/support/ticket
 exports.createTicket = async (req, res) => {
   try {
-    const { subject, message, userName, email, role, businessName, storeId } = req.body;
+    const { subject, message, description, issueType, userName, email, role, businessName, storeId } = req.body;
 
-    if (!subject || !message) {
+    const effSubject = subject;
+    const effMessage = description || message;
+
+    if (!effSubject || !effMessage) {
       return res.status(400).json({ success: false, message: "Subject and message are required" });
     }
 
@@ -21,8 +24,9 @@ exports.createTicket = async (req, res) => {
     const ticketId = Math.floor(100000 + Math.random() * 900000);
     const localTicket = new Ticket({
       ticketId,
-      subject,
-      message,
+      subject: effSubject,
+      message: effMessage,
+      issueType: issueType || "other",
       userName,
       email,
       role,

@@ -1,8 +1,16 @@
 node_modules/
 .env
 firebaseServiceAccountKey.json
+*.apk
+flutter_pos_app/build/
+flutter_pos_app/.dart_tool/
+flutter_pos_app/venv/
+flutter_pos_app/android/.gradle/
+flutter_pos_app/.idea/
+flutter_pos_app/windows/flutter/ephemeral/
+flutter_pos_app/linux/flutter/ephemeral/
+flutter_pos_app/macos/Flutter/ephemeral/
 
-flutter_pos_app/
 patch_exact.py
 patch_multiline.py
 patch_others.py

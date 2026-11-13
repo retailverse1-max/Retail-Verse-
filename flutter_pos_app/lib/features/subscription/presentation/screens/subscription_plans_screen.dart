@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:retail_verse_pos/core/theme/app_colors.dart';
 import 'package:retail_verse_pos/core/theme/app_typography.dart';
+import 'package:retail_verse_pos/core/branding/app_branding.dart';
 import '../../data/models/subscription_plan.dart';
 import '../../data/repositories/subscription_repository.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
@@ -79,7 +80,7 @@ class _SubscriptionPlansScreenState extends ConsumerState<SubscriptionPlansScree
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Upgrade Your RetailVerse',
+                      'Upgrade Your ${AppBranding.getStoreName()}',
                       style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),

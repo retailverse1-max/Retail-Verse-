@@ -90,7 +90,7 @@ class _SaSubscriptionsScreenState extends State<SaSubscriptionsScreen> with Sing
                               color: AppColors.cardBorder.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                            child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 20),
                           ),
                         ),
                       ),

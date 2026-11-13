@@ -195,6 +195,21 @@ class AppDatabase {
     ''');
   }
 
+  /// Clear all user-specific tables from SQLite on logout or user switch
+  static Future<void> clearAllUserData() async {
+    try {
+      final db = await database;
+      await db.delete('products');
+      await db.delete('categories');
+      await db.delete('orders');
+      await db.delete('order_items');
+      await db.delete('sync_queue');
+      debugPrint('✅ AppDatabase: All local user tables cleared');
+    } catch (e) {
+      debugPrint('❌ AppDatabase: Error clearing local user tables: $e');
+    }
+  }
+
   // OPTIONAL: Delete database (debug only)
   static Future<void> deleteDB() async {
     final dbPath = await getDatabasesPath();

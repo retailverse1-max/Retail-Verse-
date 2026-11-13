@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_exception.dart';
+import '../../features/admin/data/vendor_service.dart';
+import 'admin_users_service.dart';
 import '../models/auth_user.dart';
 
 /// Authentication service for handling login and registration API calls
@@ -43,11 +45,15 @@ class AuthService {
       return await sendOnce();
     } on TimeoutException {
       // Retry once for transient network stalls.
-      await Future<void>.delayed(const Duration(milliseconds: 700));
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
       return sendOnce();
     } on SocketException {
       // Retry once for flaky Wi-Fi handoff.
-      await Future<void>.delayed(const Duration(milliseconds: 700));
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
+      return sendOnce();
+    } on http.ClientException {
+      // Retry once for transient connection resets (e.g. server cold starts)
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
       return sendOnce();
     }
   }
@@ -80,11 +86,14 @@ class AuthService {
         lastError = e;
       } on SocketException catch (e) {
         lastError = e;
+      } on http.ClientException catch (e) {
+        lastError = e;
       }
     }
 
     if (lastError is TimeoutException) throw lastError;
     if (lastError is SocketException) throw lastError;
+    if (lastError is http.ClientException) throw lastError;
     throw TimeoutException('No reachable auth endpoint');
   }
 
@@ -138,6 +147,7 @@ class AuthService {
         'email': email.trim(),
         'phone': phone.trim(),
         'password': password.trim(),
+        'confirmPassword': password.trim(),
       });
 
       print('🔵 AuthService [Register]');
@@ -163,9 +173,15 @@ class AuthService {
           '❌ AuthService: Registration failed with status ${response.statusCode}',
         );
         // Safely extract error message from response
-        final errorMessage = decoded['message'] != null
-            ? decoded['message'].toString()
-            : 'Registration failed with status: ${response.statusCode}';
+        String errorMessage = 'Registration failed with status: ${response.statusCode}';
+        if (decoded['message'] != null && decoded['message'].toString().isNotEmpty) {
+          errorMessage = decoded['message'].toString();
+        } else if (decoded['errors'] is List && (decoded['errors'] as List).isNotEmpty) {
+          final first = (decoded['errors'] as List).first;
+          if (first is Map && first['msg'] != null) {
+            errorMessage = first['msg'].toString();
+          }
+        }
         throw ApiException(errorMessage, statusCode: response.statusCode);
       }
     } on SocketException catch (e) {
@@ -184,6 +200,11 @@ class AuthService {
       throw ApiException(
         'Connection timed out while contacting ${ApiEndpoints.baseUrl}. '
         'Hosted server may be waking up. Please retry.',
+      );
+    } on http.ClientException catch (e) {
+      print('❌ AuthService: ClientException (Connection reset): $e');
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
       );
     } on ApiException catch (e) {
       // Re-throw ApiException as-is
@@ -251,6 +272,19 @@ class AuthService {
         return AuthLoginResponse.fromJson(map);
       } else {
         print('❌ AuthService: Login failed with status ${response.statusCode}');
+        // Check local vendor login fallback if admin granted portal access
+        final localVendor = await VendorService().checkLocalVendorLogin(email, password);
+        if (localVendor != null) {
+          print('✅ AuthService: Authenticated via Local Vendor Login for $email');
+          return localVendor;
+        }
+
+        final localStaff = await AdminUsersService().checkLocalStaffLogin(email, password);
+        if (localStaff != null) {
+          print('✅ AuthService: Authenticated via Local Staff Login for $email');
+          return localStaff;
+        }
+
         // Safely extract error message from response
         final errorMessage = decoded['message'] != null
             ? decoded['message'].toString()
@@ -260,6 +294,16 @@ class AuthService {
     } on SocketException catch (e) {
       print('❌ AuthService: SocketException - Server unreachable');
       print('  Error: ${e.message}');
+      final localVendor = await VendorService().checkLocalVendorLogin(email, password);
+      if (localVendor != null) {
+        print('✅ AuthService: Authenticated offline via Local Vendor Login for $email');
+        return localVendor;
+      }
+      final localStaff = await AdminUsersService().checkLocalStaffLogin(email, password);
+      if (localStaff != null) {
+        print('✅ AuthService: Authenticated offline via Local Staff Login for $email');
+        return localStaff;
+      }
       print('  This usually means:');
       print('    - Backend server is temporarily unreachable');
       print('    - Internet connection is unstable');
@@ -270,9 +314,24 @@ class AuthService {
     } on TimeoutException catch (e) {
       print('❌ AuthService: TimeoutException - Connection timed out');
       print('  Error: ${e.message}');
+      final localVendor = await VendorService().checkLocalVendorLogin(email, password);
+      if (localVendor != null) {
+        print('✅ AuthService: Authenticated on timeout via Local Vendor Login for $email');
+        return localVendor;
+      }
+      final localStaff = await AdminUsersService().checkLocalStaffLogin(email, password);
+      if (localStaff != null) {
+        print('✅ AuthService: Authenticated on timeout via Local Staff Login for $email');
+        return localStaff;
+      }
       throw ApiException(
         'Connection timed out while contacting ${ApiEndpoints.baseUrl}. '
         'Hosted server may be waking up. Please retry.',
+      );
+    } on http.ClientException catch (e) {
+      print('❌ AuthService: ClientException (Connection reset): $e');
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
       );
     } on ApiException catch (e) {
       // Re-throw ApiException as-is
@@ -286,9 +345,12 @@ class AuthService {
   }
 
   /// Login with Google Email (verified via Firebase)
-  Future<AuthLoginResponse> loginWithGoogle({required String email}) async {
+  Future<AuthLoginResponse> loginWithGoogle({required String email, String? name}) async {
     try {
-      final requestBody = jsonEncode({'email': email.trim()});
+      final requestBody = jsonEncode({
+        'email': email.trim(),
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      });
       final response = await _postAuthWithBaseFallback(
         endpoint: ApiEndpoints.googleLogin,
         requestBody: requestBody,
@@ -302,6 +364,10 @@ class AuthService {
         final errorMessage = decoded['message'] ?? 'Google login failed';
         throw ApiException(errorMessage.toString(), statusCode: response.statusCode);
       }
+    } on http.ClientException {
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -326,6 +392,10 @@ class AuthService {
         final errorMessage = decoded['message'] ?? 'Phone login failed';
         throw ApiException(errorMessage.toString(), statusCode: response.statusCode);
       }
+    } on http.ClientException {
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -348,6 +418,10 @@ class AuthService {
           ? decoded['message'].toString()
           : 'OTP send failed with status: ${response.statusCode}';
       throw ApiException(errorMessage, statusCode: response.statusCode);
+    } on http.ClientException {
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -377,6 +451,10 @@ class AuthService {
           ? decoded['message'].toString()
           : 'OTP verify failed with status: ${response.statusCode}';
       throw ApiException(errorMessage, statusCode: response.statusCode);
+    } on http.ClientException {
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -397,6 +475,10 @@ class AuthService {
       }
       final errorMessage = decoded['message']?.toString() ?? 'Forgot password request failed';
       throw ApiException(errorMessage, statusCode: response.statusCode);
+    } on http.ClientException {
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -425,6 +507,10 @@ class AuthService {
       }
       final errorMessage = decoded['message']?.toString() ?? 'Password reset failed';
       throw ApiException(errorMessage, statusCode: response.statusCode);
+    } on http.ClientException {
+      throw const ApiException(
+        'Server is waking up or network was interrupted. Please try again in a few seconds.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {

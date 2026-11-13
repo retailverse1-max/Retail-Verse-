@@ -28,6 +28,7 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:retail_verse_pos/core/widgets/printer_manager_sheet.dart';
+import 'package:retail_verse_pos/core/utils/printer_service.dart';
 
 class POSScreen extends ConsumerStatefulWidget {
   const POSScreen({super.key});
@@ -345,27 +346,8 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
         ref.refresh(posCategoriesProvider.future),
       ]);
       await _checkPendingSyncCount();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            duration: Duration(seconds: 2),
-            content: Text('Inventory refreshed and cached offline successfully'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 2),
-            content: Text('Failed to refresh: $e'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.secondary,
-          ),
-        );
-      }
+    } catch (_) {
+      // Refresh handled cleanly without snackbar popup
     } finally {
       if (mounted) {
         _rotationController.stop();
@@ -1267,44 +1249,49 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
                               ),
                             ],
                             const SizedBox(width: 8),
-                            Bounceable(
-                              onTap: () {
-                                if (!isRefreshing) {
-                                  _handleRefresh();
-                                }
+                            ValueListenableBuilder<bool>(
+                              valueListenable: PrinterService().connectionStatusNotifier,
+                              builder: (context, isPrinterConnected, _) {
+                                return Bounceable(
+                                  onTap: () => PrinterManagerSheet.show(context),
+                                  child: Tooltip(
+                                    message: isPrinterConnected ? 'Thermal Printer Connected' : 'Printer Not Connected - Tap to Connect',
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: isPrinterConnected ? const Color(0xFFF0FDF4) : Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isPrinterConnected ? const Color(0xFF86EFAC) : AppColors.cardBorder,
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Icon(
+                                            Icons.print_rounded,
+                                            size: 20,
+                                            color: isPrinterConnected ? const Color(0xFF16A34A) : AppColors.primary,
+                                          ),
+                                          Positioned(
+                                            right: -3,
+                                            top: -3,
+                                            child: Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: isPrinterConnected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                                                border: Border.all(color: Colors.white, width: 1.5),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
                               },
-                              child: AnimatedOpacity( duration: const Duration(milliseconds: 300), 
-                                opacity: isRefreshing ? 0.6 : 1.0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.cardBorder),
-                                  ),
-                                  child: RotationTransition(
-                                    turns: _rotationController,
-                                    child: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.textPrimary),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Bounceable(
-                              onTap: () => PrinterManagerSheet.show(context),
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.cardBorder),
-                                ),
-                                child: const Icon(
-                                  Icons.print_rounded,
-                                  size: 20,
-                                  color: AppColors.primary,
-                                ),
-                              ),
                             ),
                             const SizedBox(width: 8),
                             Bounceable(
@@ -1718,58 +1705,116 @@ class _POSScreenState extends ConsumerState<POSScreen> with SingleTickerProvider
 
   Widget _buildProductList(BuildContext context, bool isTablet) {
     final productsAsync = ref.watch(productsProvider);
-    return productsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text(e.toString().contains('SocketException') || e.toString().contains('Failed host lookup') ? 'You are offline. Please check your internet connection.' : 'Error: $e')),
-      data: (products) {
-        final filter = GoRouterState.of(context).uri.queryParameters['filter'];
-        
-        final filtered = products.where((p) {
-          if (!p.isActive) return false;
-          final q = searchQuery.toLowerCase();
-          final matchesSearch = q.isEmpty ||
-              p.name.toLowerCase().contains(q) ||
-              p.category.toLowerCase().contains(q) ||
-              p.sku.toLowerCase().contains(q) ||
-              (p.barcode?.toLowerCase().contains(q) ?? false) ||
-              (p.description?.toLowerCase().contains(q) ?? false);
-          final matchesCat = selectedCategory == 'All Menu' || selectedCategory == 'All' || p.category == selectedCategory;
-          
-          bool matchesFilter = true;
-          if (filter == 'low_stock') {
-             matchesFilter = p.stock <= p.reorderLevel;
-          } else if (filter == 'best_sellers') {
-             matchesFilter = p.price > 100;
-          }
-          
-          return matchesSearch && matchesCat && matchesFilter;
-        }).toList();
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // Responsive grid: 1 col per ~180px of available width.
-            // Caps at min 2, so wide screens get more columns automatically.
-            final availableW = constraints.maxWidth;
-            final crossCount = (availableW / 180).floor().clamp(2, 6);
-            final spacing = availableW > 600 ? 20.0 : 12.0;
-            final padding = availableW > 600 ? 24.0 : 12.0;
-            // Aspect ratio: image takes ~55% of height, info 45%
-            const aspectRatio = 0.75;
-
-            return GridView.builder(
-              padding: EdgeInsets.fromLTRB(padding, padding, padding, padding + 80), // Extra bottom padding for nav bar
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossCount,
-                mainAxisSpacing: spacing,
-                crossAxisSpacing: spacing,
-                childAspectRatio: aspectRatio,
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      child: productsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.textTertiary),
+                      const SizedBox(height: 12),
+                      Text(
+                        e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')
+                            ? 'You are offline. Pull down to retry.'
+                            : 'Error: $e\nPull down to retry.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) => _buildUltraPremiumCard(filtered[index]),
+            ),
+          ),
+        ),
+        data: (products) {
+          final filter = GoRouterState.of(context).uri.queryParameters['filter'];
+          
+          final filtered = products.where((p) {
+            if (!p.isActive) return false;
+            final q = searchQuery.toLowerCase();
+            final matchesSearch = q.isEmpty ||
+                p.name.toLowerCase().contains(q) ||
+                p.category.toLowerCase().contains(q) ||
+                p.sku.toLowerCase().contains(q) ||
+                (p.barcode?.toLowerCase().contains(q) ?? false) ||
+                (p.description?.toLowerCase().contains(q) ?? false);
+            final matchesCat = selectedCategory == 'All Menu' || selectedCategory == 'All' || p.category == selectedCategory;
+            
+            bool matchesFilter = true;
+            if (filter == 'low_stock') {
+               matchesFilter = p.stock <= p.reorderLevel;
+            } else if (filter == 'best_sellers') {
+               matchesFilter = p.price > 100;
+            }
+            
+            return matchesSearch && matchesCat && matchesFilter;
+          }).toList();
+
+          if (filtered.isEmpty) {
+            return LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inventory_2_outlined, size: 56, color: AppColors.textTertiary.withValues(alpha: 0.6)),
+                          const SizedBox(height: 12),
+                          Text('No products found', style: AppTypography.titleMedium.copyWith(color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          Text('Pull down to refresh inventory', style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             );
-          },
-        );
-      },
+          }
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              // Responsive grid: 1 col per ~180px of available width.
+              // Caps at min 2, so wide screens get more columns automatically.
+              final availableW = constraints.maxWidth;
+              final crossCount = (availableW / 180).floor().clamp(2, 6);
+              final spacing = availableW > 600 ? 20.0 : 12.0;
+              final padding = availableW > 600 ? 24.0 : 12.0;
+              // Aspect ratio: image takes ~55% of height, info 45%
+              const aspectRatio = 0.75;
+
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(padding, padding, padding, padding + 80), // Extra bottom padding for nav bar
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossCount,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                  childAspectRatio: aspectRatio,
+                ),
+                itemCount: filtered.length,
+                itemBuilder: (context, index) => _buildUltraPremiumCard(filtered[index]),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 

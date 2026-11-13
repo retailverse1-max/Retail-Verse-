@@ -56,14 +56,9 @@ class ProductRemoteDataSource implements IProductDataSource {
         );
       }
 
-      final data = decoded['data'];
-      if (data is! List) {
-        throw const ApiException(
-          'The products response did not contain a valid list.',
-        );
-      }
-
-      final list = Product.listFromJson(data);
+      final dynamic rawList = decoded['data'] ?? decoded['products'];
+      final listData = rawList is List ? rawList : (decoded is List ? decoded : <dynamic>[]);
+      final list = Product.listFromJson(listData);
       if (list.isNotEmpty) {
         try {
           await ProductLocalService().insertProducts(list);
@@ -354,6 +349,9 @@ class ProductRemoteDataSource implements IProductDataSource {
     };
     if (imageBase64 != null && imageBase64.isNotEmpty) {
       payload['imageBase64'] = imageBase64;
+      payload['image'] = imageBase64;
+      payload['imageUrl'] = imageBase64;
+      payload['images'] = [imageBase64];
     }
     if (description != null && description.trim().isNotEmpty) {
       payload['description'] = description.trim();
@@ -385,11 +383,11 @@ class ProductRemoteDataSource implements IProductDataSource {
       );
     }
 
-    final data = decoded['data'];
-    if (data is! Map<String, dynamic>) {
+    final raw = decoded['data'] ?? decoded['product'] ?? decoded;
+    if (raw is! Map) {
       throw const ApiException('Invalid create product response.');
     }
-    return Product.fromJson(data);
+    return Product.fromJson(Map<String, dynamic>.from(raw));
   }
 
   @override
@@ -425,6 +423,9 @@ class ProductRemoteDataSource implements IProductDataSource {
     if (marketplaces != null) body['marketplaces'] = marketplaces;
     if (imageBase64 != null && imageBase64.isNotEmpty) {
       body['imageBase64'] = imageBase64;
+      body['image'] = imageBase64;
+      body['imageUrl'] = imageBase64;
+      body['images'] = [imageBase64];
     }
 
     final response = await client
@@ -448,11 +449,11 @@ class ProductRemoteDataSource implements IProductDataSource {
       );
     }
 
-    final data = decoded['data'];
-    if (data is! Map<String, dynamic>) {
+    final raw = decoded['data'] ?? decoded['product'] ?? decoded;
+    if (raw is! Map) {
       throw const ApiException('Invalid update product response.');
     }
-    return Product.fromJson(data);
+    return Product.fromJson(Map<String, dynamic>.from(raw));
   }
 
   @override

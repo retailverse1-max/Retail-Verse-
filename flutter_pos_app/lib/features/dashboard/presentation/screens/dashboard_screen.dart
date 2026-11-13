@@ -8,7 +8,6 @@ import 'package:retail_verse_pos/core/widgets/product_media_image.dart';
 import 'package:retail_verse_pos/data/models/dashboard_stats_model.dart';
 import 'package:retail_verse_pos/features/super_admin/presentation/widgets/support_dialog.dart';
 import 'package:retail_verse_pos/features/auth/providers/auth_provider.dart';
-import '../../../pos/providers/product_providers.dart';
 import '../../../notifications/providers/notification_provider.dart';
 import '../../providers/dashboard_providers.dart';
 import 'package:retail_verse_pos/features/dashboard/presentation/widgets/dashboard_widgets.dart';
@@ -16,60 +15,24 @@ import 'package:retail_verse_pos/features/dashboard/presentation/widgets/trial_b
 import 'package:retail_verse_pos/core/widgets/common/bounceable.dart';
 import 'package:retail_verse_pos/features/billing/presentation/screens/subscription_expired_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final statsAsync = ref.watch(dashboardStatsProvider);
     final productsAsync = ref.watch(dashboardProductsProvider);
-    final ordersAsync = ref.watch(dashboardOrdersProvider);
-
-    final isInitialLoading = (statsAsync.isLoading && !statsAsync.hasValue) ||
-                             (productsAsync.isLoading && !productsAsync.hasValue) ||
-                             (ordersAsync.isLoading && !ordersAsync.hasValue);
-    // Show a full screen loader on first load to prevent inline spinners on dashboard
-    if (isInitialLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 3,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Setting up your dashboard...',
-                style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This may take a moment',
-                style: AppTypography.labelMedium.copyWith(color: AppColors.textTertiary),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     final userName = user?['name'] ?? 'Admin';
     final stats = statsAsync.asData?.value ?? DashboardStatsModel.empty;
     final searchQuery = ref.watch(dashboardSearchQueryProvider);
-
     final width = MediaQuery.of(context).size.width;
-    final isTablet = width >= 600;
 
     final role = user?['role'];
     bool isExpired = false;
@@ -504,7 +467,9 @@ class DashboardScreen extends ConsumerWidget {
                     dailyMap[key] = 0.0;
                   }
                   for (final o in orders) {
-                    if (o.status == 'completed' || o.status == 'paid') {
+                    final st = o.status.toLowerCase();
+                    final isCompleted = st != 'pending' && st != 'cancelled' && st != 'refunded';
+                    if (isCompleted) {
                       final key = "${o.createdAt.year}-${o.createdAt.month}-${o.createdAt.day}";
                       if (dailyMap.containsKey(key)) {
                         dailyMap[key] = dailyMap[key]! + o.total;
@@ -512,14 +477,15 @@ class DashboardScreen extends ConsumerWidget {
                     }
                   }
                   final dataPoints = dailyMap.values.toList();
-                  final totalSales = dataPoints.fold(0.0, (a, b) => a + b);
+                  final totalRecentSales = dataPoints.fold(0.0, (a, b) => a + b);
+                  final displaySales = totalRecentSales > 0 ? totalRecentSales : stats.totalSales;
                   
                   return SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                       child: ModernLineChart(
                         title: 'Sales Overview',
-                        value: '₹${totalSales.toStringAsFixed(2)}',
+                        value: '₹${displaySales.toStringAsFixed(2)}',
                         change: '+15.2%',
                         data: dataPoints,
                       ),

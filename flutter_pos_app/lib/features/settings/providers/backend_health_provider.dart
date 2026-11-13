@@ -12,6 +12,7 @@ final settingsBackendReachableProvider =
     final body = res.body;
     final okMarker = body.contains('POS Backend running') ||
         body.contains('POS backend is running') ||
+        body.contains('API is running') ||
         body.contains('"ok":true');
     return res.statusCode == 200 && okMarker;
   } catch (_) {

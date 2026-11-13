@@ -12,6 +12,8 @@ import '../../../data/repositories/product_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../data/local/product_local_service.dart';
 import '../../../data/local/sync_queue_local_service.dart';
+import '../../../data/local/order_local_service.dart';
+import '../../../core/services/sync_service.dart';
 
 final posHttpClientProvider = Provider<http.Client>((ref) {
   return http.Client();
@@ -58,8 +60,14 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
     final pendingCount = await SyncQueueLocalService().getPendingCount();
     if (pendingCount > 0) {
       if (kDebugMode) {
-        debugPrint('productsProvider: Using local DB to prevent stale data since there are $pendingCount offline orders pending sync.');
+        debugPrint('productsProvider: Detected $pendingCount offline orders, triggering background sync...');
       }
+      try {
+        SyncService(
+          syncQueueService: SyncQueueLocalService(),
+          orderLocalService: OrderLocalService(),
+        ).processSyncQueue();
+      } catch (_) {}
       final localProducts = await ProductLocalService().getAllProducts();
       if (localProducts.isNotEmpty) return localProducts;
     }
@@ -68,16 +76,32 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
   try {
     final products = await repository.getAllProducts();
     // Cache products locally so POS is always 100% offline-ready
-    if (products.isNotEmpty) {
-      try {
-        await ProductLocalService().insertProducts(products);
-        if (kDebugMode) {
-          debugPrint('productsProvider: Cached ${products.length} products to local SQLite database');
+    try {
+      await ProductLocalService().clearProducts();
+      if (products.isNotEmpty) {
+        // Adjust for any un-synced offline deductions so local stock never jumps backwards
+        final pendingDeductions = await SyncQueueLocalService().getPendingDeductionsByProductId();
+        List<Product> adjustedProducts = products;
+        if (pendingDeductions.isNotEmpty) {
+          adjustedProducts = products.map((p) {
+            final deduction = pendingDeductions[p.id] ?? 0;
+            if (deduction > 0) {
+              final newStock = (p.stock - deduction).clamp(0, 999999);
+              return p.copyWith(stock: newStock);
+            }
+            return p;
+          }).toList();
         }
-      } catch (cacheErr) {
+
+        await ProductLocalService().insertProducts(adjustedProducts);
         if (kDebugMode) {
-          debugPrint('productsProvider: Failed to cache products locally: $cacheErr');
+          debugPrint('productsProvider: Cached ${adjustedProducts.length} products to local SQLite database (adjusted for offline deductions: ${pendingDeductions.length})');
         }
+        return adjustedProducts;
+      }
+    } catch (cacheErr) {
+      if (kDebugMode) {
+        debugPrint('productsProvider: Failed to cache products locally: $cacheErr');
       }
     }
     return products;

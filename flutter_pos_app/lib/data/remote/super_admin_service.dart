@@ -414,12 +414,22 @@ class SuperAdminService {
   Future<List<Map<String, dynamic>>> listCustomDomains() async {
     try {
       final token = await _token();
-      final res = await _client
+      var res = await _client
           .get(
             ApiResponseHandler.uri(ApiEndpoints.superAdminCustomDomains),
             headers: ApiResponseHandler.jsonHeaders(token: token),
           )
           .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        // Fallback to legacy super-admin path if needed
+        res = await _client
+            .get(
+              ApiResponseHandler.uri('/super-admin/custom-domains'),
+              headers: ApiResponseHandler.jsonHeaders(token: token),
+            )
+            .timeout(const Duration(seconds: 15));
+      }
 
       final decoded = ApiResponseHandler.decodeJsonResponse(
         res,
@@ -446,39 +456,86 @@ class SuperAdminService {
     required String domain,
   }) async {
     final token = await _token();
-    final res = await _client
+    final cleanDomain = domain.trim().toLowerCase();
+    final cleanBusinessId = businessId.trim();
+
+    final body = jsonEncode({
+      'businessId': cleanBusinessId,
+      'business_id': cleanBusinessId,
+      'clientId': cleanBusinessId,
+      'client_id': cleanBusinessId,
+      'domain': cleanDomain,
+      'domainName': cleanDomain,
+      'domain_name': cleanDomain,
+      'name': cleanDomain,
+      'customDomain': cleanDomain,
+    });
+
+    var res = await _client
         .post(
           ApiResponseHandler.uri(ApiEndpoints.superAdminCustomDomains),
           headers: ApiResponseHandler.jsonHeaders(token: token),
-          body: jsonEncode({
-            'businessId': businessId.trim(),
-            'domain': domain.trim(),
-          }),
+          body: body,
         )
         .timeout(const Duration(seconds: 20));
+
+    if (res.statusCode == 404) {
+      // Fallback 1: /super-admin/custom-domains
+      res = await _client
+          .post(
+            ApiResponseHandler.uri('/super-admin/custom-domains'),
+            headers: ApiResponseHandler.jsonHeaders(token: token),
+            body: body,
+          )
+          .timeout(const Duration(seconds: 20));
+    }
+
+    if (res.statusCode == 404) {
+      // Fallback 2: /superadmin/custom-domains
+      res = await _client
+          .post(
+            ApiResponseHandler.uri('/superadmin/custom-domains'),
+            headers: ApiResponseHandler.jsonHeaders(token: token),
+            body: body,
+          )
+          .timeout(const Duration(seconds: 20));
+    }
 
     final decoded = ApiResponseHandler.decodeJsonResponse(
       res,
       action: 'add custom domain',
     );
-    if (res.statusCode != 201) {
+    if (res.statusCode != 200 && res.statusCode != 201) {
       throw ApiResponseHandler.errorFromResponse(
         res,
         action: 'add custom domain',
         decodedBody: decoded,
       );
     }
-    return Map<String, dynamic>.from((decoded as Map)['data']);
+    final rawData = (decoded as Map)['data'];
+    if (rawData is Map) {
+      return Map<String, dynamic>.from(rawData);
+    }
+    return {'domain': cleanDomain, 'status': 'pending'};
   }
 
   Future<void> verifyCustomDomain(String domainId) async {
     final token = await _token();
-    final res = await _client
+    var res = await _client
         .post(
           Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminCustomDomains}/$domainId/verify'),
           headers: ApiResponseHandler.jsonHeaders(token: token),
         )
         .timeout(const Duration(seconds: 20));
+
+    if (res.statusCode == 404) {
+      res = await _client
+          .post(
+            Uri.parse('${ApiEndpoints.baseUrl}/super-admin/custom-domains/$domainId/verify'),
+            headers: ApiResponseHandler.jsonHeaders(token: token),
+          )
+          .timeout(const Duration(seconds: 20));
+    }
 
     final decoded = ApiResponseHandler.decodeJsonResponse(
       res,
@@ -495,12 +552,21 @@ class SuperAdminService {
 
   Future<void> activateCustomDomain(String domainId) async {
     final token = await _token();
-    final res = await _client
+    var res = await _client
         .patch(
           Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminCustomDomains}/$domainId/active'),
           headers: ApiResponseHandler.jsonHeaders(token: token),
         )
         .timeout(const Duration(seconds: 20));
+
+    if (res.statusCode == 404) {
+      res = await _client
+          .patch(
+            Uri.parse('${ApiEndpoints.baseUrl}/super-admin/custom-domains/$domainId/active'),
+            headers: ApiResponseHandler.jsonHeaders(token: token),
+          )
+          .timeout(const Duration(seconds: 20));
+    }
 
     final decoded = ApiResponseHandler.decodeJsonResponse(
       res,
@@ -517,12 +583,21 @@ class SuperAdminService {
 
   Future<void> deleteCustomDomain(String domainId) async {
     final token = await _token();
-    final res = await _client
+    var res = await _client
         .delete(
           Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.superAdminCustomDomains}/$domainId'),
           headers: ApiResponseHandler.jsonHeaders(token: token),
         )
         .timeout(const Duration(seconds: 20));
+
+    if (res.statusCode == 404) {
+      res = await _client
+          .delete(
+            Uri.parse('${ApiEndpoints.baseUrl}/super-admin/custom-domains/$domainId'),
+            headers: ApiResponseHandler.jsonHeaders(token: token),
+          )
+          .timeout(const Duration(seconds: 20));
+    }
 
     final decoded = ApiResponseHandler.decodeJsonResponse(
       res,

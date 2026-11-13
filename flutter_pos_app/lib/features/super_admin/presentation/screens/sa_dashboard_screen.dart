@@ -244,7 +244,7 @@ class _SaDashboardScreenState extends ConsumerState<SaDashboardScreen> {
                                             color: Colors.white.withOpacity(0.12),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 20),
+                                          child: const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
                                         ),
                                       ),
                                     ),

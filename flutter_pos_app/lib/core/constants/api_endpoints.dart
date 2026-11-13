@@ -6,20 +6,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Call [initialize] from `main()` before `runApp`.
 ///
 /// Default backend for all platforms:
-/// `https://app-backend-je91.onrender.com/api`
+/// `https://api.retailverse.in/api`
 ///
 /// Override: Settings → API URL, or `--dart-define=API_BASE_URL=https://.../api`
 class ApiEndpoints {
   ApiEndpoints._();
 
-  /// Bump when clearing bad saved URLs; v1/v2/v3/v4 removed on startup.
-  static const String _prefsKey = 'api_base_url_override_v5';
+  /// Bump when clearing bad saved URLs; v1-v7 removed on startup.
+  static const String _prefsKey = 'api_base_url_override_v8';
 
   /// Build-time override (CI / staging).
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static const String _hostedBaseUrl =
-      'https://retail-verse-backend.onrender.com/api';
+  static const String _hostedBaseUrl = 'https://api.retailverse.in/api';
+
+  static String get _localDevUrl {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:5000/api';
+    }
+    return 'http://127.0.0.1:5000/api';
+  }
 
   static String _resolvedBaseUrl = '';
 
@@ -36,14 +42,23 @@ class ApiEndpoints {
     await prefs.remove('api_base_url_override');
     await prefs.remove('api_base_url_override_v2');
     await prefs.remove('api_base_url_override_v3');
+    await prefs.remove('api_base_url_override_v4');
+    await prefs.remove('api_base_url_override_v5');
+    await prefs.remove('api_base_url_override_v6');
+    await prefs.remove('api_base_url_override_v7');
 
     final saved = prefs.getString(_prefsKey)?.trim();
     if (saved != null && saved.isNotEmpty) {
       final normalized = _normalizeApiBaseUrl(saved);
-      if (_isLocalOrPrivateUrl(normalized)) {
+      if (_isLocalOrPrivateUrl(normalized) ||
+          normalized.contains('onrender.com') ||
+          normalized.contains('retail-verse-backend')) {
         await prefs.remove(_prefsKey);
         _resolvedBaseUrl = _hostedBaseUrl;
-      } else if (normalized != _hostedBaseUrl && !normalized.contains('localhost') && !normalized.contains('127.0.0.1')) {
+      } else if (normalized != _hostedBaseUrl &&
+          !normalized.contains('localhost') &&
+          !normalized.contains('127.0.0.1') &&
+          !normalized.contains('10.0.2.2')) {
         // Clear stale remote URLs to force the new active production backend
         await prefs.remove(_prefsKey);
         _resolvedBaseUrl = _hostedBaseUrl;
@@ -87,6 +102,7 @@ class ApiEndpoints {
   }
 
   static bool _isLocalOrPrivateUrl(String input) {
+    if (kDebugMode) return false;
     final lower = input.toLowerCase();
     return lower.contains('localhost') ||
         lower.contains('10.0.2.2') ||
@@ -94,11 +110,12 @@ class ApiEndpoints {
         lower.contains('192.168.');
   }
 
-  /// Effective API root, e.g. `https://app-backend-je91.onrender.com/api`
+  /// Effective API root, e.g. `https://api.retailverse.in/api`
   static String get baseUrl {
     if (_resolvedBaseUrl.isNotEmpty) {
-      if (!_isLocalOrPrivateUrl(_resolvedBaseUrl) && _resolvedBaseUrl != _hostedBaseUrl) {
-        return _hostedBaseUrl;
+      if (!_isLocalOrPrivateUrl(_resolvedBaseUrl) &&
+          _resolvedBaseUrl != _hostedBaseUrl) {
+        if (!kDebugMode) return _hostedBaseUrl;
       }
       return _resolvedBaseUrl;
     }
@@ -109,7 +126,7 @@ class ApiEndpoints {
   }
 
   /// Candidate API roots for auth fallback when a stale URL times out.
-  /// Ordered by preference: current effective URL first, then hosted default.
+  /// Ordered by preference: current effective URL first, then local dev (in debug), then hosted default.
   static List<String> get authFallbackBaseUrls {
     final seen = <String>{};
     final out = <String>[];
@@ -119,6 +136,9 @@ class ApiEndpoints {
     }
 
     add(baseUrl);
+    if (kDebugMode) {
+      add(_localDevUrl);
+    }
     add(_hostedBaseUrl);
     return out;
   }
@@ -174,18 +194,20 @@ class ApiEndpoints {
   static const String superAdminRoot = '/super-admin';
   static const String superAdminHealth = '/super-admin/health';
   static const String superAdminBusinesses = '/super-admin/businesses';
-  static const String superAdminUsers = '/super-admin/users';
+  static const String superAdminUsers = '/users';
   static const String superAdminSubscriptionPlans = '/super-admin/subscription-plans';
   static const String superAdminAnalyticsSummary = '/super-admin/analytics/summary';
   static const String superAdminAuditLogs = '/super-admin/audit-logs';
   static const String superAdminCustomDomains = '/super-admin/custom-domains';
+  static const String customDomains = '/super-admin/custom-domains';
   static const String superAdminTopPerformance = '/super-admin/performance/top-stores';
   static const String superAdminBroadcast = '/super-admin/broadcast';
 
   // Razorpay and Support
   static const String razorpayCreateOrder = '/payments/razorpay/create-order';
   static const String razorpayVerify = '/payments/razorpay/verify';
-  static const String zendeskTicket = '/support/ticket';
+  static const String supportTickets = '/support/tickets';
+  static const String zendeskTicket = '/support/tickets';
 
   // Coupons
   static const String coupons = '/coupons';

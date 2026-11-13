@@ -8,6 +8,7 @@ import 'package:retail_verse_pos/core/constants/api_endpoints.dart';
 import 'package:intl/intl.dart';
 
 import 'package:retail_verse_pos/features/settings/domain/models/pos_settings.dart';
+import 'package:retail_verse_pos/core/branding/app_branding.dart';
 
 class NotificationService {
   Future<void> sendEmailInvoice({
@@ -16,9 +17,9 @@ class NotificationService {
     PosSettings? settings,
   }) async {
     try {
-      final storeTitle = (settings?.storeName.isNotEmpty ?? false)
+      final storeTitle = (settings?.storeName.isNotEmpty ?? false) && settings!.storeName != 'My Store'
           ? settings!.storeName
-          : 'Retail Verse';
+          : AppBranding.getStoreName();
       final storeAddress = settings?.storeAddress ?? '';
       final gstTaxId = settings?.gstTaxId ?? '';
       final footerNote = (settings?.invoiceFooterNote.isNotEmpty ?? false)
@@ -130,7 +131,8 @@ class NotificationService {
           ? order.rewardCouponCode!
           : 'SAVE300-${order.orderId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 4).toUpperCase()}';
 
-      String smsBody = 'Retail Verse Receipt\n';
+      final storeTitle = AppBranding.getStoreName();
+      String smsBody = '$storeTitle Receipt\n';
       smsBody += 'Order: ${order.orderId}\n';
       smsBody += 'Date: $formattedDate\n\n';
       

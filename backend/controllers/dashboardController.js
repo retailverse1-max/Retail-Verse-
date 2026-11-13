@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
@@ -5,13 +6,39 @@ const Customer = require("../models/Customer");
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    const clientId = req.user?.clientId;
-
-    const filter = {};
-    if (req.user && req.user.role !== "super_admin") {
-      filter.clientId = req.user.clientId;
+    let matchClientId = null;
+    if (req.user && req.user.role === "super_admin") {
+      const bId = req.query.businessId || req.headers["x-client-id"];
+      if (bId) {
+        matchClientId = mongoose.Types.ObjectId.isValid(bId) ? new mongoose.Types.ObjectId(bId) : bId;
+      }
+    } else if (req.user && req.user.clientId) {
+      matchClientId = mongoose.Types.ObjectId.isValid(req.user.clientId)
+        ? new mongoose.Types.ObjectId(req.user.clientId)
+        : req.user.clientId;
+    } else {
+      // Non-super-admin user without clientId - return zero stats immediately
+      return res.json({
+        message: "Dashboard stats fetched successfully",
+        data: {
+          totalRevenue: 0,
+          todaySales: 0,
+          monthlySales: 0,
+          totalOrders: 0,
+          totalProducts: 0,
+          totalCustomers: 0,
+          lowStockAlerts: 0,
+          averageOrderValue: 0,
+          salesGrowth: 0,
+        },
+      });
     }
-    const orderFilter = { ...filter, status: { $ne: "cancelled" } };
+
+    const filter = matchClientId ? { clientId: matchClientId } : {};
+    const orderFilter = {
+      ...filter,
+      status: { $nin: ["cancelled", "pending"] },
+    };
 
     // Today's date range
     const startOfDay = new Date();

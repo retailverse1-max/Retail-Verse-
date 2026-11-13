@@ -20,6 +20,7 @@ class SupportRepository {
     required String message,
     String? userName,
     String? email,
+    String? issueType,
   }) {
     return remoteDataSource.createTicket(
       token: token,
@@ -27,6 +28,7 @@ class SupportRepository {
       message: message,
       userName: userName,
       email: email,
+      issueType: issueType,
     );
   }
 

@@ -75,7 +75,7 @@ class _SaCustomersScreenState extends ConsumerState<SaCustomersScreen> {
                               color: AppColors.cardBorder.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                            child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 20),
                           ),
                         ),
                       ),

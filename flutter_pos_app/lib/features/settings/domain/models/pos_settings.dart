@@ -109,7 +109,7 @@ class PosSettings {
   final double fontScale;
 
   static PosSettings defaults() => const PosSettings(
-        storeName: 'My Store',
+        storeName: '',
         storeAddress: '',
         storePhone: '',
         gstTaxId: '',
@@ -296,7 +296,9 @@ class PosSettings {
     PosSettings d() => PosSettings.defaults();
     final def = d();
     return PosSettings(
-      storeName: j['storeName'] as String? ?? def.storeName,
+      storeName: (j['storeName'] as String?)?.trim() == 'My Store'
+          ? ''
+          : ((j['storeName'] as String?)?.trim() ?? def.storeName),
       storeAddress: j['storeAddress'] as String? ?? def.storeAddress,
       storePhone: j['storePhone'] as String? ?? def.storePhone,
       gstTaxId: j['gstTaxId'] as String? ?? def.gstTaxId,

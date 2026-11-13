@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/branding/app_branding.dart';
 import '../../../../core/navigation/role_nav.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../dashboard/providers/dashboard_providers.dart';
@@ -16,6 +17,7 @@ import '../../../../data/remote/auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import '../../../../routes/app_router.dart';
 import '../widgets/privacy_policy_disclaimer.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -39,9 +41,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLocalLoading = false;
+  bool _isGoogleLoading = false;
   bool _useOtp = false;
   bool _otpSent = false;
-  bool _agreedToTerms = false;
+  bool _agreedToTerms = true;
   String _selectedCountryCode = '+91';
   
   Timer? _otpTimer;
@@ -95,10 +98,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Do you want to leave Retail Verse?',
+            Text(
+              'Do you want to leave ${AppConstants.defaultAppName}?',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 8),
           ],
@@ -216,9 +219,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(duration: const Duration(seconds: 2),content: Text(message), backgroundColor: Colors.red),
+    if (message.contains("deactivated widget's ancestor") ||
+        message.contains("element tree is no longer stable")) {
+      return;
+    }
+    scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -234,8 +246,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await AuthService().forgotPassword(email: email);
       
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(duration: const Duration(seconds: 2),content: Text('OTP sent to your email. Please check your inbox.'), backgroundColor: Colors.green),
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        const SnackBar(duration: Duration(seconds: 2), content: Text('OTP sent to your email. Please check your inbox.'), backgroundColor: Colors.green),
       );
       
       _showResetPasswordDialog(email);
@@ -317,13 +329,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         newPassword: newPasswordController.text.trim(),
                       );
                       if (!mounted) return;
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(duration: const Duration(seconds: 2),content: Text('Password reset successfully! Please log in.'), backgroundColor: Colors.green),
+                      Navigator.of(ctx).pop();
+                      scaffoldMessengerKey.currentState?.showSnackBar(
+                        const SnackBar(duration: Duration(seconds: 2), content: Text('Password reset successfully! Please log in.'), backgroundColor: Colors.green),
                       );
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(duration: const Duration(seconds: 2),content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                      scaffoldMessengerKey.currentState?.showSnackBar(
+                        SnackBar(duration: const Duration(seconds: 2), content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
                       );
                     } finally {
                       if (mounted) setDialogState(() => isResetting = false);
@@ -342,45 +354,92 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoading || _isLocalLoading) return;
     if (!_agreedToTerms) {
       _showErrorSnackBar('Please agree to the Terms of Service and Privacy Policy');
       return;
     }
+
+    setState(() => _isGoogleLoading = true);
     try {
       final googleSignIn = GoogleSignIn(
         serverClientId: '127152555107-mo61lp114l0e25128696iud0e0ul2q65.apps.googleusercontent.com',
       );
-      await googleSignIn.signOut();
+      // Clean up previous cached session to prevent hanging on G icon
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return;
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      final UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-      if (userCred.user != null) {
-        // Update AuthProvider state to sync with session
-        await ref.read(authProvider.notifier).signInWithGoogle(userCred.user!);
-        _showSuccessAndNavigate('Google Sign-In successful');
+      if (googleUser == null) {
+        if (mounted) setState(() => _isGoogleLoading = false);
+        return;
       }
+
+      String email = googleUser.email;
+      String? displayName = googleUser.displayName;
+      String uid = googleUser.id;
+
+      // Best effort Firebase credential authentication
+      try {
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        if (googleAuth.idToken != null || googleAuth.accessToken != null) {
+          final OAuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          final userCred = await FirebaseAuth.instance
+              .signInWithCredential(credential)
+              .timeout(const Duration(seconds: 8));
+          if (userCred.user != null) {
+            email = userCred.user!.email ?? email;
+            displayName = userCred.user!.displayName ?? displayName;
+            uid = userCred.user!.uid;
+          }
+        }
+      } catch (fbErr) {
+        debugPrint('[GoogleSignIn] Firebase credential exchange bypassed: $fbErr. Using direct Google Account.');
+      }
+
+      if (email.isEmpty) {
+        throw Exception('Unable to retrieve email from Google Account.');
+      }
+
+      await ref.read(authProvider.notifier).signInWithGoogleAccount(
+        email: email,
+        displayName: displayName,
+        uid: uid,
+      );
+
+      _showSuccessAndNavigate('Google Sign-In successful');
     } catch (e) {
       final errorMsg = e.toString().toLowerCase();
-      if (errorMsg.contains('not found') || 
-          errorMsg.contains('invalid') || 
-          errorMsg.contains('user not exist') || 
-          errorMsg.contains('no user')) {
-        _showErrorSnackBar('Invalid Email');
-      } else {
-        _showErrorSnackBar('Google Sign-In failed: $e');
+      if (errorMsg.contains("deactivated widget") ||
+          errorMsg.contains("element tree")) {
+        // Navigation already handled, ignore framework deactivation
+        return;
+      }
+      _showErrorSnackBar('Google Sign-In failed: ${e.toString().replaceAll('Exception: ', '')}');
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
       }
     }
   }
 
   void _showSuccessAndNavigate(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2),content: Text(msg), backgroundColor: Colors.green));
-    context.go('/dashboard');
+    scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        content: Text(msg),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    if (mounted) {
+      context.go('/dashboard');
+    }
   }
 
   Future<void> _handleSendOtp() async {
@@ -482,7 +541,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Retail Verse',
+                      AppConstants.defaultAppName,
                       style: AppTypography.displaySmall.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -697,21 +756,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _SocialButton(icon: Icons.g_mobiledata_rounded, color: const Color(0xFFDB4437), onTap: _handleGoogleSignIn),
+                        _SocialButton(
+                          icon: Icons.g_mobiledata_rounded,
+                          color: const Color(0xFFDB4437),
+                          isLoading: _isGoogleLoading,
+                          onTap: _isGoogleLoading ? null : _handleGoogleSignIn,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 40),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("New to Retail Verse? ", style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        Text(
+                          "New to ${AppConstants.defaultAppName}? ",
+                          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                        ),
                         GestureDetector(
                           onTap: () => context.push('/signup'),
                           child: Text('Create Account', style: AppTypography.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -812,14 +879,20 @@ class _AuthInputField extends StatelessWidget {
 class _SocialButton extends StatelessWidget {
   final IconData icon;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
-  const _SocialButton({required this.icon, required this.color, required this.onTap});
+  const _SocialButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         height: 56,
@@ -829,7 +902,15 @@ class _SocialButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.divider),
         ),
-        child: Icon(icon, color: color, size: 32),
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFDB4437)),
+                )
+              : Icon(icon, color: color, size: 32),
+        ),
       ),
     );
   }

@@ -314,9 +314,19 @@ exports.getAllDomains = async (req, res) => {
   try {
     const filter = {};
     if (req.user && req.user.role !== "super_admin") {
-      filter.businessId = req.user.clientId;
+      const candidates = [
+        req.user.clientId?.toString(),
+        req.user._id?.toString(),
+        req.user.id?.toString(),
+        "admin_store_id",
+      ].filter(Boolean);
+
+      filter.$or = [
+        { businessId: { $in: candidates } },
+        { business_id: { $in: candidates } },
+      ];
     }
-    const domains = await CustomDomain.find(filter);
+    const domains = await CustomDomain.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: domains });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -325,21 +335,62 @@ exports.getAllDomains = async (req, res) => {
 
 exports.addCustomDomain = async (req, res) => {
   try {
-    const { domain } = req.body;
-    if (req.user && req.user.role !== "super_admin") {
-      req.body.businessId = req.user.clientId;
+    const domain = (
+      req.body.domain ||
+      req.body.domainName ||
+      req.body.domain_name ||
+      req.body.name ||
+      ""
+    ).trim().toLowerCase();
+
+    if (!domain) {
+      return res.status(400).json({ success: false, message: "Domain name is required" });
     }
+
+    req.body.domain = domain;
+    req.body.domainName = domain;
+
+    const assignedBusinessId = (
+      req.user?.clientId?.toString() ||
+      req.user?._id?.toString() ||
+      req.body.businessId ||
+      "admin_store_id"
+    );
+    req.body.businessId = assignedBusinessId;
+
     // Check if domain already exists
-    const existing = await CustomDomain.findOne({ domain });
+    let existing = await CustomDomain.findOne({ domain });
     if (existing) {
-      return res.status(200).json({ success: true, data: existing, message: "Domain already registered" });
+      existing.businessId = assignedBusinessId;
+      await existing.save();
+      return res.status(200).json({ success: true, data: existing, message: "Domain linked to your store" });
     }
+
+    // Derive intelligent DNS parameters
+    const domainParts = domain.split(".");
+    let derivedHost = "@";
+    let derivedType = "CNAME";
+    if (domainParts.length > 2) {
+      derivedHost = domainParts[0];
+      derivedType = "CNAME";
+    } else {
+      derivedHost = "@";
+      derivedType = "CNAME";
+    }
+    req.body.dnsType = req.body.dnsType || derivedType;
+    req.body.dnsName = req.body.dnsName || derivedHost;
+    req.body.dnsValue = req.body.dnsValue || "app.retailverse.in";
+
     const newDomain = await CustomDomain.create(req.body);
     res.status(201).json({ success: true, data: newDomain });
   } catch (error) {
     if (error.code === 11000) {
-      const existing = await CustomDomain.findOne({ domain: req.body.domain });
-      return res.status(200).json({ success: true, data: existing, message: "Domain already registered" });
+      let existing = await CustomDomain.findOne({ domain: req.body.domain });
+      if (existing) {
+        existing.businessId = req.body.businessId;
+        await existing.save();
+        return res.status(200).json({ success: true, data: existing, message: "Domain linked to your store" });
+      }
     }
     res.status(500).json({ success: false, message: error.message });
   }

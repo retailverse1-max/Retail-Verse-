@@ -120,7 +120,7 @@ class SaSettingsScreen extends ConsumerWidget {
     showAboutDialog(
       context: context,
       applicationName: 'Retail Verse Platform',
-      applicationVersion: '2.4.0',
+      applicationVersion: 'v1.0.13 (Build 15)',
       applicationIcon: const Icon(Icons.storefront_rounded, size: 40, color: AppColors.primary),
       children: [
         const Text(
@@ -160,7 +160,7 @@ class SaSettingsScreen extends ConsumerWidget {
                               color: AppColors.cardBorder.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary, size: 20),
+                            child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 20),
                           ),
                         ),
                       )
@@ -361,7 +361,7 @@ class SaSettingsScreen extends ConsumerWidget {
       children: [
         Text('Retail Verse POS Platform', style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text('Version 2.4.0 • Production Build', style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary.withOpacity(0.5), fontSize: 9)),
+        Text('Version 1.0.13 • Production Build', style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary.withOpacity(0.5), fontSize: 9)),
       ],
     );
   }

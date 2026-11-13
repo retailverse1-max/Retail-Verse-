@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 void main() async {
-  final baseUrl = 'https://app-backend-je91.onrender.com/api';
+  final baseUrl = 'https://api.retailverse.in/api';
   final email = 'sumit@example.com'; // Dummy email
   
   print('Testing Google Login endpoint...');

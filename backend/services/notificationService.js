@@ -41,7 +41,11 @@ const createAndSendNotification = async ({
     };
 
     if (clientId) {
-      query.clientId = clientId;
+      if (finalRoles.includes("vendor")) {
+        query.$or = [{ clientId }, { clientId: null }, { clientId: { $exists: false } }];
+      } else {
+        query.clientId = clientId;
+      }
     }
 
     const users = await User.find(query);

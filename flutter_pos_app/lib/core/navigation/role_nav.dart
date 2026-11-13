@@ -32,6 +32,8 @@ String initialHomeRouteForUser(Map<String, dynamic>? user) {
       return '/pos';
     case 'customer':
       return '/store';
+    case 'vendor':
+      return '/vendor/dashboard';
     default:
       return '/dashboard';
   }
@@ -73,6 +75,10 @@ bool canAccessAdminStaffManagement(String role) {
 /// Whether the current shell location is allowed for [role] (after login).
 bool isRouteAllowedForShell(String location, String role) {
   if (location == '/account' || location.startsWith('/account/')) {
+    return true;
+  }
+
+  if (location == '/vendor' || location.startsWith('/vendor/')) {
     return true;
   }
 
@@ -123,6 +129,10 @@ bool isRouteAllowedForShell(String location, String role) {
         return true;
       }
       return false;
+    case 'vendor':
+      return location == '/vendor' ||
+          location.startsWith('/vendor/') ||
+          location.startsWith('/account');
     default:
       return false;
   }
@@ -212,13 +222,35 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
     icon: Icons.language_outlined,
     selectedIcon: Icons.language,
   );
+  const vendors = ShellNavItem(
+    path: '/admin/vendors',
+    label: 'Vendors',
+    icon: Icons.local_shipping_outlined,
+    selectedIcon: Icons.local_shipping,
+  );
+
+  const vendorPortal = ShellNavItem(
+    path: '/vendor/dashboard',
+    label: 'Vendor Portal',
+    icon: Icons.storefront_outlined,
+    selectedIcon: Icons.storefront,
+  );
+
+  const vendorProfile = ShellNavItem(
+    path: '/account',
+    label: 'My Profile',
+    icon: Icons.person_outline_rounded,
+    selectedIcon: Icons.person_rounded,
+  );
 
   // Explicit per role — cashiers must never see an Inventory tab (no dead-end taps).
   switch (r) {
+    case 'vendor':
+      return [vendorPortal, vendorProfile];
     case 'super_admin':
-      return [dash, pos, billing, allProducts, inv, platform, support, customDomain, userRole, settings];
+      return [dash, pos, billing, allProducts, inv, vendors, platform, support, customDomain, userRole, settings];
     case 'admin':
-      return [dash, pos, billing, allProducts, inv, support, customDomain, userRole, settings];
+      return [dash, pos, billing, allProducts, inv, vendors, support, customDomain, userRole, settings];
     case 'user':
       return [pos];
     case 'cashier':
@@ -235,7 +267,9 @@ List<ShellNavItem> shellNavItemsForRole(String role) {
 
 /// True if [location] should highlight the shell tab for [itemPath].
 bool shellPathMatchesItem(String location, String itemPath) {
+  if (itemPath == '/vendor/dashboard') return location.startsWith('/vendor');
   if (itemPath == '/dashboard') return location == '/dashboard';
+  if (itemPath == '/admin/vendors') return location == '/admin/vendors' || location.startsWith('/admin/vendors');
   if (itemPath == '/admin/staff') return location == '/admin/staff';
   if (itemPath == '/admin/custom-domain') return location == '/admin/custom-domain';
   if (itemPath == '/customers') return location == '/customers' || location.startsWith('/customers/');
@@ -347,8 +381,21 @@ List<DrawerNavItem> drawerNavItemsForRole(String role) {
     icon: Icons.receipt_long_rounded,
     route: '/billing-history',
   );
+  const vendors = DrawerNavItem(
+    label: 'Vendors',
+    icon: Icons.local_shipping_rounded,
+    route: '/admin/vendors',
+  );
+
+  const vendorPortalDrawer = DrawerNavItem(
+    label: 'Vendor Portal',
+    icon: Icons.storefront_rounded,
+    route: '/vendor/dashboard',
+  );
 
   switch (r) {
+    case 'vendor':
+      return [vendorPortalDrawer];
     case 'super_admin':
       return [
         dash,
@@ -357,6 +404,7 @@ List<DrawerNavItem> drawerNavItemsForRole(String role) {
         allProducts,
         products,
         customers,
+        vendors,
         platform,
         support,
         customDomain,
@@ -371,6 +419,7 @@ List<DrawerNavItem> drawerNavItemsForRole(String role) {
         allProducts,
         products,
         customers,
+        vendors,
         support,
         customDomain,
         userManagement,

@@ -13,7 +13,8 @@ String? canonicalUiRole(String? raw) {
   if (s == 'seo' || s == 'seo manager') s = 'seo_manager';
   if (s == 'client') s = 'admin';
   if (s == 'employee') s = 'cashier';
-  const known = {'super_admin', 'admin', 'cashier', 'inventory_manager', 'seo_manager', 'customer', 'user'};
+  if (s == 'vendor' || s == 'supplier') s = 'vendor';
+  const known = {'super_admin', 'admin', 'cashier', 'inventory_manager', 'seo_manager', 'customer', 'user', 'vendor'};
   if (known.contains(s)) return s;
   return null;
 }
@@ -68,9 +69,9 @@ String? resolveRoleFromLoginResponse(
   String token,
 ) {
   Map<String, dynamic> userMap = {};
-  final rawUser = json['user'];
+  final rawUser = json['user'] ?? (json['data'] is Map ? json['data'] : null);
   if (rawUser is Map) {
-    userMap = Map<String, dynamic>.from(rawUser as Map);
+    userMap = Map<String, dynamic>.from(rawUser);
   }
 
   var role = parseRoleFromUserLikeMap(userMap);

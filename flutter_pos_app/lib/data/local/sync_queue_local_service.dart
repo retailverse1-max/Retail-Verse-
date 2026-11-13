@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/sync_queue_entity.dart';
 import '../local/app_database.dart';
@@ -31,14 +32,14 @@ class SyncQueueLocalService {
     );
   }
 
-  /// Get pending sync items
+  /// Get pending sync items (includes pending, failed, or interrupted syncing)
   Future<List<SyncQueueEntity>> getPendingItems({int limit = 100}) async {
     final db = await AppDatabase.database;
 
     final result = await db.query(
       'sync_queue',
-      where: 'status = ?',
-      whereArgs: ['pending'],
+      where: 'status != ?',
+      whereArgs: ['synced'],
       orderBy: 'created_at ASC',
       limit: limit,
     );
@@ -147,17 +148,49 @@ class SyncQueueLocalService {
     );
   }
 
-  /// Get pending sync count
+  /// Get pending sync count (all un-synced items)
   Future<int> getPendingCount() async {
     final db = await AppDatabase.database;
 
     final result = await db.rawQuery('''
       SELECT COUNT(*) as count
       FROM sync_queue
-      WHERE status = 'pending'
+      WHERE status != 'synced'
     ''');
 
     return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Returns a map of productId -> total pending deducted quantity from un-synced offline orders
+  Future<Map<String, int>> getPendingDeductionsByProductId() async {
+    final db = await AppDatabase.database;
+    final items = await db.query(
+      'sync_queue',
+      where: 'status != ? AND entity_type = ?',
+      whereArgs: ['synced', 'order'],
+    );
+
+    final Map<String, int> deductions = {};
+    for (final row in items) {
+      try {
+        final payloadStr = row['payload'] as String?;
+        if (payloadStr == null || payloadStr.isEmpty) continue;
+        final data = jsonDecode(payloadStr) as Map<String, dynamic>;
+        final itemsList = data['items'] as List<dynamic>? ?? [];
+        for (final item in itemsList) {
+          if (item is Map) {
+            final productId = item['productId']?.toString();
+            final qty = (item['quantity'] ?? item['qty'] ?? 1) as num;
+            if (productId != null && productId.isNotEmpty) {
+              deductions[productId] = (deductions[productId] ?? 0) + qty.toInt();
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error parsing pending order payload: $e');
+      }
+    }
+    return deductions;
   }
 
   /// Get total sync queue count

@@ -74,15 +74,13 @@ class ProductMediaImage extends ConsumerWidget {
         }
 
         String? resolved = resolveProductImageUrl(rawUrl);
-        // Fallback resolution if it didn't work properly
-        if (rawUrl != null) {
-          if (rawUrl.startsWith('http')) {
-            resolved = rawUrl;
-          } else if (rawUrl.startsWith('/uploads')) {
+        // Fallback resolution if resolveProductImageUrl returned null
+        if (resolved == null && rawUrl != null) {
+          if (rawUrl.startsWith('/uploads')) {
             // strip /api from baseUrl if present to point to static uploads
             final backendHost = ApiEndpoints.baseUrl.replaceAll(RegExp(r'/api$'), '');
             resolved = '$backendHost$rawUrl';
-          } else if (resolved == null) {
+          } else {
             resolved = rawUrl;
           }
         }

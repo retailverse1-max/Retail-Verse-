@@ -48,8 +48,9 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
           (o.customerName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
           (o.customerPhone?.contains(_searchQuery) ?? false);
 
-      final isQuote = o.status.toLowerCase() == 'pending';
-      final isInvoice = o.status.toLowerCase() == 'completed';
+      final statusLower = o.status.toLowerCase();
+      final isQuote = statusLower == 'pending' || statusLower == 'quote' || statusLower == 'quotation';
+      final isInvoice = !isQuote;
 
       final matchesTab = selectedTab == 'Invoices' ? isInvoice : isQuote;
       return matchesSearch && matchesTab;
@@ -96,17 +97,22 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                             ),
                           ],
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (selectedTab == 'Quotes')
+                        if (selectedTab == 'Quotes')
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               FilledButton.icon(
-                                onPressed: () {
-                                  showDialog(
+                                onPressed: () async {
+                                  final res = await showDialog<bool>(
                                     context: context,
                                     barrierDismissible: false,
                                     builder: (context) => const CreateQuoteModal(),
                                   );
+                                  if (res == true) {
+                                    ref.invalidate(ordersListProvider);
+                                    ref.invalidate(saOrdersListProvider);
+                                    setState(() {});
+                                  }
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.primary,
@@ -115,18 +121,9 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                                 ),
                                 icon: const Icon(Icons.add_rounded, size: 18),
                                 label: const Text('Create Quote'),
-                              )
-                            else
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
                               ),
-                          ],
-                        ),
+                            ],
+                          ),
                       ],
                     ),
                   ),
@@ -282,8 +279,8 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
   }
 
   Widget _buildStatsRow(List<Order> allOrders) {
-    final invoices = allOrders.where((o) => o.status.toLowerCase() == 'completed').toList();
     final quotes = allOrders.where((o) => o.status.toLowerCase() == 'pending').toList();
+    final invoices = allOrders.where((o) => o.status.toLowerCase() != 'pending').toList();
 
     if (selectedTab == 'Invoices') {
       final totalInvoices = invoices.length;

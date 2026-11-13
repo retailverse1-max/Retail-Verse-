@@ -59,7 +59,7 @@ class _SaLogsScreenState extends State<SaLogsScreen> with SingleTickerProviderSt
         elevation: 0,
         leading: (saScaffoldNavigationKey.currentState?.hasDrawer ?? false)
             ? IconButton(
-                icon: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary),
+                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
                 onPressed: () => saScaffoldNavigationKey.currentState?.openDrawer(),
               )
             : null,

@@ -63,7 +63,10 @@ class ApiResponseHandler {
         action.toLowerCase().contains('sign up');
 
     if (!isAuthAction && response.statusCode == 401) {
-      _handleSessionExpiration();
+      final msg = trimmedBody.toLowerCase();
+      if (msg.contains('jwt expired') || msg.contains('token expired')) {
+        _handleSessionExpiration();
+      }
       throw const ApiException(
         'Your session has expired. Please log in again.',
         statusCode: 401,
@@ -94,11 +97,7 @@ class ApiResponseHandler {
       // of a raw error snackbar.
       if (!isAuthAction && decoded is Map<String, dynamic>) {
         final msg = (decoded['message'] ?? decoded['error'] ?? '').toString().toLowerCase();
-        if (msg.contains('user not found') ||
-            msg.contains('invalid token') ||
-            msg.contains('not authorized') ||
-            msg.contains('jwt expired') ||
-            msg.contains('token expired')) {
+        if (msg.contains('jwt expired') || msg.contains('token expired')) {
           _handleSessionExpiration();
           throw const ApiException(
             'Your session has expired. Please log in again.',
@@ -129,11 +128,9 @@ class ApiResponseHandler {
         action.toLowerCase().contains('sign up');
 
     if (!isAuthAction &&
-        (response.statusCode == 401 ||
-            (message != null &&
-                (message.toLowerCase().contains('user not found') ||
-                 message.toLowerCase().contains('invalid token') ||
-                 message.toLowerCase().contains('not authorized'))))) {
+        (message != null &&
+            (message.toLowerCase().contains('jwt expired') ||
+             message.toLowerCase().contains('token expired')))) {
       // Trigger automatic session cleanup and clean user-facing redirect
       _handleSessionExpiration();
       return ApiException(
