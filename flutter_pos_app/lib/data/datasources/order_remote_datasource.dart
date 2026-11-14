@@ -48,6 +48,17 @@ class OrderRemoteDataSource {
       final extra = extraCharges < 0 ? 0.0 : extraCharges;
       final total = subtotal + taxAmount - discount + extra;
 
+      final effectiveCustomerName = (customerName != null && customerName.trim().isNotEmpty)
+          ? customerName.trim()
+          : 'Walk-in Customer';
+      final cleanPhone = (customerPhone != null) ? customerPhone.replaceAll(RegExp(r'\D'), '') : '';
+      final effectivePhone = (cleanPhone.length >= 10)
+          ? (cleanPhone.length > 10 ? cleanPhone.substring(cleanPhone.length - 10) : cleanPhone)
+          : '9876543210';
+      final effectiveAddress = (customerAddress != null && customerAddress.trim().isNotEmpty)
+          ? customerAddress.trim()
+          : 'Store Counter / In-Store Pickup';
+
       final payload = {
         'items': items
             .map(
@@ -55,25 +66,41 @@ class OrderRemoteDataSource {
                 'productId': item.product.id,
                 'name': item.product.name,
                 'price': item.product.price,
+                'unitPrice': item.product.price,
                 'qty': item.quantity,
+                'quantity': item.quantity,
+                'total': item.total,
+                'itemTotal': item.total,
               },
             )
             .toList(),
         'paymentMethod': _normalizePaymentMethod(paymentMethod),
         'total': total,
+        'totalPrice': total,
+        'grandTotal': total,
+        'totalAmount': total,
         'discount': discount,
+        'discountAmount': discount,
         'tax': taxAmount,
+        'taxPrice': taxAmount,
+        'totalGst': taxAmount,
         'extraCharges': extra,
+        'shippingAddress': {
+          'fullName': effectiveCustomerName,
+          'phone': effectivePhone,
+          'address': effectiveAddress,
+          'city': 'Local',
+          'state': 'Delhi',
+          'zipCode': '110001',
+          'country': 'India',
+        },
         if (couponCode != null && couponCode.isNotEmpty)
           'couponCode': couponCode.toUpperCase(),
-        if (customerName != null && customerName.isNotEmpty)
-          'customerName': customerName,
-        if (customerPhone != null && customerPhone.isNotEmpty)
-          'customerPhone': customerPhone,
+        'customerName': effectiveCustomerName,
+        'customerPhone': effectivePhone,
         if (customerEmail != null && customerEmail.isNotEmpty)
           'customerEmail': customerEmail,
-        if (customerAddress != null && customerAddress.isNotEmpty)
-          'customerAddress': customerAddress,
+        'customerAddress': effectiveAddress,
         if (orderNotes != null && orderNotes.isNotEmpty) 'notes': orderNotes,
         if (paymentStatus != null) 'paymentStatus': paymentStatus,
         if (status != null) 'status': status,
@@ -351,15 +378,15 @@ class OrderRemoteDataSource {
       return OrderItem(
         product: product,
         quantity: parseIntLoose(itemJson['qty'] ?? itemJson['quantity'], 1),
-        price: parseMoney(itemJson['price']),
-        total: parseMoney(itemJson['total']),
+        price: parseMoney(itemJson['price'] ?? itemJson['unitPrice']),
+        total: parseMoney(itemJson['total'] ?? itemJson['itemTotal'] ?? ((parseMoney(itemJson['price'] ?? itemJson['unitPrice'])) * parseIntLoose(itemJson['qty'] ?? itemJson['quantity'], 1))),
       );
     }).toList();
 
     final subtotal = items.fold<double>(0.0, (sum, item) => sum + item.total);
-    final oid = _stringifyId(json['_id'] ?? json['id']);
+    final oid = _stringifyId(json['_id'] ?? json['id'] ?? json['orderId']);
     final orderNum =
-        json['orderNumber']?.toString() ?? json['orderId']?.toString() ?? oid;
+        json['orderNumber']?.toString() ?? json['orderId']?.toString() ?? json['invoiceNumber']?.toString() ?? oid;
 
     return Order(
       id: oid,
@@ -371,9 +398,9 @@ class OrderRemoteDataSource {
                 : DateTime.now()),
       items: items,
       subtotal: subtotal,
-      tax: parseMoney(json['tax']),
-      discount: parseMoney(json['discount']),
-      total: parseMoney(json['total']),
+      tax: parseMoney(json['tax'] ?? json['taxPrice'] ?? json['totalGst']),
+      discount: parseMoney(json['discount'] ?? json['discountAmount']),
+      total: parseMoney(json['total'] ?? json['totalPrice'] ?? json['grandTotal'] ?? json['totalAmount']),
       extraCharges: parseMoney(json['extraCharges']),
       paymentMethod: _prettyPayment(json['paymentMethod']?.toString() ?? 'cash'),
       status: _prettyStatus(json['status']?.toString() ?? 'completed'),

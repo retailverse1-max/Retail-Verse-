@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Override: Settings → API URL, or `--dart-define=API_BASE_URL=https://.../api`
 class ApiEndpoints {
   ApiEndpoints._();
+  
 
   /// Bump when clearing bad saved URLs; v1-v7 removed on startup.
   static const String _prefsKey = 'api_base_url_override_v8';
